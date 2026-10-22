@@ -12,7 +12,11 @@ struct VideoPictureVal final : public ObjectVal {
     bool IsCompatibleWith(const VideoSessionDesc& sessionDesc) const;
     bool IsSameSubresource(const VideoPictureVal& videoPicture) const;
     bool IsSameTexture(const VideoPictureVal& videoPicture) const;
+    bool IsSameExtent(const VideoPictureVal& videoPicture) const;
+    bool HasTextureExtent(uint32_t width, uint32_t height) const;
     uint32_t GetTextureLayerNum() const;
+    bool IsOutputOnly() const;
+    bool IsReferenceOnly() const;
 
 private:
     const TextureVal* m_Texture = nullptr;
@@ -21,7 +25,12 @@ private:
     uint32_t m_Height = 0;
     uint32_t m_Layer = 0;
     uint32_t m_TextureLayerNum = 0;
+    uint32_t m_TextureWidth = 0;
+    uint32_t m_TextureHeight = 0;
     VideoCodec m_Codec = VideoCodec::NONE;
     VideoPictureUsage m_Usage = VideoPictureUsage::MAX_NUM;
+    bool m_IsOutputOnly = false;
+    bool m_IsReferenceOnly = false;
+    bool m_IsAV1FilmGrain = false;
 };
 } // namespace nri

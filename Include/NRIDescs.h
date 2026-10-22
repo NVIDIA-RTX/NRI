@@ -735,7 +735,8 @@ NriBits(TextureUsageBits, uint16_t,                 // Min compatible access:   
     HOST_TRANSFER                       = NriBit(6),    // HOST_READ/HOST_WRITE                     Synchronous copy between texture and host memory
     VIDEO_DECODE                        = NriBit(7),    // VIDEO_DECODE                             Video decode output / DPB picture
     VIDEO_ENCODE                        = NriBit(8),    // VIDEO_ENCODE                             Video encode input / DPB picture
-    VIDEO_REFERENCE_ONLY                = NriBit(9)     // VIDEO_*                                  Video DPB/reference-only allocation
+    VIDEO_REFERENCE_ONLY                = NriBit(9),    // VIDEO_*                                  Video DPB/reference-only allocation
+    VIDEO_OUTPUT_ONLY                   = NriBit(10)    // VIDEO_*                                  Video decode output / encode input never used as a DPB picture (required if "decodeDpbAndOutputCoincide" is false; encode: pair with "VIDEO_REFERENCE_ONLY" DPB textures, VK may not support the combined usage)
 );
 
 // https://docs.vulkan.org/refpages/latest/refpages/source/VkBufferUsageFlagBits.html
@@ -776,6 +777,7 @@ NriStruct(TextureDesc) {
     NriOptional Nri(Sample_t) sampleNum;
     NriOptional Nri(SharingMode) sharingMode;
     NriOptional Nri(VideoCodec) videoCodec;             // VK: required for video textures
+    NriOptional bool videoAV1FilmGrain;                 // VK: AV1 decode textures of sessions with "VideoSessionDesc::av1FilmGrain"
     NriOptional Nri(ClearValue) optimizedClearValue;    // D3D12: not needed on desktop, since any HW can track many clear values
 };
 

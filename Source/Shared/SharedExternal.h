@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include <algorithm> // sort
 #include <cassert>   // assert
 #include <cinttypes> // PRIu64
 #include <cstring>   // memcpy

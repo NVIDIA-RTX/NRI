@@ -176,6 +176,21 @@ static inline void AppendNalHeader(bitstream::ByteWriter& bytes, uint8_t nalHead
     bytes.WriteByte(nalHeader);
 }
 
+// The cropped frame must not be empty: "CropUnitX * (left + right) < PicWidthInSamplesL", "CropUnitY * (top + bottom) < 16 * FrameHeightInMbs"
+static inline bool IsFrameCroppingValid(const VideoH264SequenceParameterSetDesc& sps) {
+    if (!(sps.flags & VideoH264SequenceParameterSetBits::FRAME_CROPPING))
+        return true;
+
+    const bool frameMbsOnly = !!(sps.flags & VideoH264SequenceParameterSetBits::FRAME_MBS_ONLY);
+    const bool hasChroma = sps.chromaFormatIdc != 0 && !(sps.flags & VideoH264SequenceParameterSetBits::SEPARATE_COLOUR_PLANE);
+    const uint32_t cropUnitX = (hasChroma && sps.chromaFormatIdc != 3) ? 2 : 1;
+    const uint32_t cropUnitY = ((hasChroma && sps.chromaFormatIdc == 1) ? 2 : 1) * (frameMbsOnly ? 1 : 2);
+    const uint32_t frameWidth = (sps.pictureWidthInMbsMinus1 + 1u) * 16;
+    const uint32_t frameHeight = (sps.pictureHeightInMapUnitsMinus1 + 1u) * 16 * (frameMbsOnly ? 1 : 2);
+
+    return (cropUnitX * (sps.frameCropLeftOffset + sps.frameCropRightOffset)) < frameWidth && (cropUnitY * (sps.frameCropTopOffset + sps.frameCropBottomOffset)) < frameHeight;
+}
+
 static inline Result WriteAnnexBParameterSets(const VideoAnnexBParameterSetsDesc& desc, bitstream::ByteWriter& bytes) {
     const bool hasParameterSets = desc.h264Sps && desc.h264Pps;
 
@@ -188,6 +203,9 @@ static inline Result WriteAnnexBParameterSets(const VideoAnnexBParameterSetsDesc
 
     if (!highProfileSps || sps.chromaFormatIdc > 3 || sps.pictureOrderCountType > 2 || (pps.flags & VideoH264PictureParameterSetBits::TRANSFORM_8X8_MODE) != 0)
         return Result::UNSUPPORTED;
+
+    if (!IsFrameCroppingValid(sps))
+        return Result::INVALID_ARGUMENT;
 
     AppendNalHeader(bytes, 0x67);
     bitstream::RbspBitWriter spsWriter{bytes};
@@ -233,8 +251,17 @@ static inline Result WriteAnnexBParameterSets(const VideoAnnexBParameterSetsDesc
         spsWriter.WriteBit(!!(sps.flags & VideoH264SequenceParameterSetBits::MB_ADAPTIVE_FRAME_FIELD));
 
     spsWriter.WriteBit(!!(sps.flags & VideoH264SequenceParameterSetBits::DIRECT_8X8_INFERENCE));
-    spsWriter.WriteBit(0);
-    spsWriter.WriteBit(0);
+    const bool frameCropping = !!(sps.flags & VideoH264SequenceParameterSetBits::FRAME_CROPPING);
+    spsWriter.WriteBit(frameCropping);
+
+    if (frameCropping) {
+        spsWriter.WriteUe(sps.frameCropLeftOffset);
+        spsWriter.WriteUe(sps.frameCropRightOffset);
+        spsWriter.WriteUe(sps.frameCropTopOffset);
+        spsWriter.WriteUe(sps.frameCropBottomOffset);
+    }
+
+    spsWriter.WriteBit(0); // vui_parameters_present_flag
     spsWriter.FinishRbsp();
 
     AppendNalHeader(bytes, 0x68);
@@ -349,6 +376,101 @@ static inline bool BuildEncodeReferenceLists(const VideoReference* references, c
     if (referenceNum && !lists.list0Num) {
         lists.invalidPictureOrderCount = true;
         return false;
+    }
+
+    return true;
+}
+
+struct EncodeInitialLists {
+    std::array<uint32_t, MAX_REFERENCE_NUM> temp0 = {}; // "RefPicListTemp0" as reference indices
+    std::array<uint32_t, MAX_REFERENCE_NUM> temp1 = {}; // "RefPicListTemp1" as reference indices
+    std::array<uint32_t, MAX_REFERENCE_NUM> list0Entries = {}; // "list_entry_l0" of the List0 entries
+    std::array<uint32_t, MAX_REFERENCE_NUM> list1Entries = {}; // "list_entry_l1" of the List1 entries
+};
+
+// H.265 8.3.4: "RefPicListTemp0" holds the preceding pictures by descending, the following pictures by ascending picture order count, then the
+// long-term pictures ("RefPicListTemp1" the following pictures first). All references are used by the current picture. "list_entry" values index them
+static inline bool BuildEncodeInitialLists(const VideoReference* references, const VideoH265ReferenceDesc* referenceDescs, uint32_t referenceNum, int32_t currentPictureOrderCount,
+    const EncodeReferenceLists& lists, EncodeInitialLists& initialLists) {
+    initialLists = {};
+
+    std::array<uint32_t, MAX_REFERENCE_NUM> before = {};
+    std::array<uint32_t, MAX_REFERENCE_NUM> after = {};
+    std::array<uint32_t, MAX_REFERENCE_NUM> longTerm = {};
+    uint32_t beforeNum = 0;
+    uint32_t afterNum = 0;
+    uint32_t longTermNum = 0;
+
+    for (uint32_t i = 0; i < referenceNum; i++) {
+        const VideoH265ReferenceDesc* referenceDesc = GetReferenceDesc(references, referenceDescs, referenceNum, i);
+        if (!referenceDesc)
+            return false;
+
+        if (referenceDesc->longTerm)
+            longTerm[longTermNum++] = i;
+        else if (referenceDesc->pictureOrderCount < currentPictureOrderCount)
+            before[beforeNum++] = i;
+        else
+            after[afterNum++] = i;
+    }
+
+    auto getPictureOrderCount = [&](uint32_t referenceIndex) {
+        return GetReferenceDesc(references, referenceDescs, referenceNum, referenceIndex)->pictureOrderCount;
+    };
+
+    std::sort(before.begin(), before.begin() + beforeNum, [&](uint32_t a, uint32_t b) { return getPictureOrderCount(a) > getPictureOrderCount(b); });
+    std::sort(after.begin(), after.begin() + afterNum, [&](uint32_t a, uint32_t b) { return getPictureOrderCount(a) < getPictureOrderCount(b); });
+
+    uint32_t tempNum = 0;
+    for (uint32_t i = 0; i < beforeNum; i++)
+        initialLists.temp0[tempNum++] = before[i];
+    for (uint32_t i = 0; i < afterNum; i++)
+        initialLists.temp0[tempNum++] = after[i];
+    for (uint32_t i = 0; i < longTermNum; i++)
+        initialLists.temp0[tempNum++] = longTerm[i];
+
+    tempNum = 0;
+    for (uint32_t i = 0; i < afterNum; i++)
+        initialLists.temp1[tempNum++] = after[i];
+    for (uint32_t i = 0; i < beforeNum; i++)
+        initialLists.temp1[tempNum++] = before[i];
+    for (uint32_t i = 0; i < longTermNum; i++)
+        initialLists.temp1[tempNum++] = longTerm[i];
+
+    auto findEntry = [&](const std::array<uint32_t, MAX_REFERENCE_NUM>& temp, uint32_t referenceIndex) {
+        for (uint32_t i = 0; i < tempNum; i++) {
+            if (temp[i] == referenceIndex)
+                return i;
+        }
+
+        return UINT32_MAX;
+    };
+
+    for (uint32_t i = 0; i < lists.list0Num; i++) {
+        initialLists.list0Entries[i] = findEntry(initialLists.temp0, lists.list0[i]);
+        if (initialLists.list0Entries[i] == UINT32_MAX)
+            return false;
+    }
+
+    for (uint32_t i = 0; i < lists.list1Num; i++) {
+        initialLists.list1Entries[i] = findEntry(initialLists.temp1, lists.list1[i]);
+        if (initialLists.list1Entries[i] == UINT32_MAX)
+            return false;
+    }
+
+    return true;
+}
+
+// Without "lists_modification_present_flag" the lists are the initial lists
+static inline bool AreEncodeListsInitial(const EncodeReferenceLists& lists, const EncodeInitialLists& initialLists) {
+    for (uint32_t i = 0; i < lists.list0Num; i++) {
+        if (initialLists.list0Entries[i] != i)
+            return false;
+    }
+
+    for (uint32_t i = 0; i < lists.list1Num; i++) {
+        if (initialLists.list1Entries[i] != i)
+            return false;
     }
 
     return true;
@@ -567,6 +689,7 @@ namespace av1 {
 
 constexpr uint32_t REFERENCE_NAME_NUM = 7;
 constexpr uint32_t REFERENCE_FRAME_NUM = 8;
+constexpr uint32_t DECODE_REFERENCE_DESC_MAX_NUM = 7 + REFERENCE_FRAME_NUM; // named entries + "NONE" entries of the reference frame map
 
 static constexpr VideoAV1PictureBits GetDefaultPictureFlags() {
     return VideoAV1PictureBits::ERROR_RESILIENT_MODE | VideoAV1PictureBits::DISABLE_CDF_UPDATE | VideoAV1PictureBits::ALLOW_SCREEN_CONTENT_TOOLS | VideoAV1PictureBits::FORCE_INTEGER_MV | VideoAV1PictureBits::SHOW_FRAME | VideoAV1PictureBits::SHOWABLE_FRAME;
@@ -735,7 +858,8 @@ struct BitReader {
     bool ByteAlign() {
         while (bitOffset % 8) {
             uint32_t bit = 0;
-            if (!ReadBits(1, bit))
+
+            if (!ReadBits(1, bit) || bit)
                 return false;
         }
         return true;
@@ -837,21 +961,6 @@ static inline bool FindFramePayload(const uint8_t* data, size_t size, FramePaylo
     return false;
 }
 
-static inline bool PeekGeneratedFrameType(const uint8_t* payload, size_t availablePayloadSize, uint32_t& frameType, uint8_t& showFrame) {
-    BitReader reader{payload, availablePayloadSize, 0};
-    uint8_t showExistingFrame = 0;
-    if (!reader.ReadFlag(showExistingFrame) || showExistingFrame || !reader.ReadBits(2, frameType) || !reader.ReadFlag(showFrame))
-        return false;
-
-    return true;
-}
-
-static inline uint32_t TileLog2(uint32_t blockSize, uint32_t target);
-static inline bool ReadDeltaQ(BitReader& reader, int8_t& value);
-static inline void BindPointers(VideoAV1EncodeDecodeInfo& info);
-static inline void FillIdentityGlobalMotion(VideoAV1GlobalMotionDesc& globalMotion);
-static inline void FillSingleTileLayout(VideoAV1EncodeDecodeInfo& info, uint32_t width, uint32_t height);
-
 static inline VideoAV1ReferenceName GetReferenceNameFromReferenceIndex(uint32_t referenceIndex) {
     switch (referenceIndex) {
         case 0:
@@ -898,346 +1007,22 @@ static inline bool BuildInterFrameReferences(const VideoAV1EncodeDecodeInfoDesc&
         referenceNum++;
     }
 
+    // The rest of the reference frame map (D3D12 decode needs the complete map)
+    for (uint32_t i = 0; i < desc.referenceNum; i++) {
+        const VideoAV1ReferenceDesc& reference = desc.references[i];
+        if (reference.refFrameIndex >= REFERENCE_FRAME_NUM)
+            return false;
+
+        if (FindReferenceByRefFrameIndex(info.references, referenceNum, reference.refFrameIndex))
+            continue;
+
+        info.references[referenceNum] = reference;
+        info.references[referenceNum].name = VideoAV1ReferenceName::NONE;
+        referenceNum++;
+    }
+
     info.picture.references = info.references;
     info.picture.referenceNum = referenceNum;
-    return true;
-}
-
-static inline bool ParseGeneratedInterFrameHeader(const uint8_t* payload, size_t availablePayloadSize, size_t fullPayloadSize, bool requireTilePayload,
-    const VideoAV1SequenceDesc& sequence,
-    std::array<uint8_t, 7>& refFrameIndices, VideoAV1EncodeDecodeInfo& info) {
-    BitReader reader{payload, availablePayloadSize, 0};
-    VideoAV1PictureBits flags = VideoAV1PictureBits::SHOW_FRAME | VideoAV1PictureBits::SHOWABLE_FRAME;
-
-    uint8_t showExistingFrame = 0;
-    uint32_t frameType = 0;
-    uint8_t showFrame = 0;
-    uint8_t errorResilient = 0;
-    uint8_t disableCdfUpdate = 0;
-    uint8_t allowScreenContentTools = 0;
-    uint8_t forceIntegerMv = 0;
-    uint8_t frameSizeOverride = 0;
-    uint32_t orderHint = 0;
-    uint32_t primaryRefFrame = 0;
-    uint32_t refreshFrameFlags = 0;
-    uint32_t ignored = 0;
-    if (!reader.ReadFlag(showExistingFrame) || showExistingFrame || !reader.ReadBits(2, frameType) || !reader.ReadFlag(showFrame) || frameType != 1 || !showFrame)
-        return false;
-    if (!reader.ReadFlag(errorResilient) || errorResilient || !reader.ReadFlag(disableCdfUpdate))
-        return false;
-    if (disableCdfUpdate)
-        flags |= VideoAV1PictureBits::DISABLE_CDF_UPDATE | VideoAV1PictureBits::DISABLE_FRAME_END_UPDATE_CDF;
-    if (sequence.seqForceScreenContentTools == SELECT_SCREEN_CONTENT_TOOLS) {
-        if (!reader.ReadFlag(allowScreenContentTools))
-            return false;
-    } else
-        allowScreenContentTools = sequence.seqForceScreenContentTools;
-    if (allowScreenContentTools) {
-        flags |= VideoAV1PictureBits::ALLOW_SCREEN_CONTENT_TOOLS;
-        if (sequence.seqForceIntegerMv == SELECT_SCREEN_CONTENT_TOOLS) {
-            if (!reader.ReadFlag(forceIntegerMv))
-                return false;
-        } else
-            forceIntegerMv = sequence.seqForceIntegerMv;
-        if (forceIntegerMv)
-            flags |= VideoAV1PictureBits::FORCE_INTEGER_MV;
-    }
-
-    if (sequence.flags & VideoAV1SequenceBits::FRAME_ID_NUMBERS_PRESENT) {
-        uint32_t currentFrameId = 0;
-        const uint32_t frameIdBits = sequence.additionalFrameIdLengthMinus1 + sequence.deltaFrameIdLengthMinus2 + 3;
-
-        if (!reader.ReadBits(frameIdBits, currentFrameId))
-
-            return false;
-
-        info.picture.currentFrameId = currentFrameId;
-    }
-
-    if (!reader.ReadFlag(frameSizeOverride))
-        return false;
-
-    if (sequence.flags & VideoAV1SequenceBits::ENABLE_ORDER_HINT) {
-        if (!reader.ReadBits(sequence.orderHintBitsMinus1 + 1, orderHint))
-            return false;
-    }
-    if (!reader.ReadBits(3, primaryRefFrame) || !reader.ReadBits(8, refreshFrameFlags))
-        return false;
-
-    if (sequence.flags & VideoAV1SequenceBits::ENABLE_ORDER_HINT) {
-        uint8_t frameRefsShortSignaling = 0;
-        if (!reader.ReadFlag(frameRefsShortSignaling) || frameRefsShortSignaling)
-            return false;
-    }
-    for (uint32_t i = 0; i < 7; i++) {
-        if (!reader.ReadBits(3, ignored))
-            return false;
-        refFrameIndices[i] = (uint8_t)ignored;
-    }
-    if (frameSizeOverride)
-        return false;
-
-    const uint32_t width = sequence.maxFrameWidthMinus1 + 1;
-    const uint32_t height = sequence.maxFrameHeightMinus1 + 1;
-    if (sequence.flags & VideoAV1SequenceBits::ENABLE_SUPERRES) {
-        uint8_t useSuperres = 0;
-        if (!reader.ReadFlag(useSuperres))
-            return false;
-        if (useSuperres) {
-            uint32_t codedDenom = 0;
-            if (!reader.ReadBits(3, codedDenom))
-                return false;
-            info.picture.codedDenom = (uint8_t)codedDenom;
-            info.picture.superresDenom = (uint8_t)(codedDenom + 9);
-            flags |= VideoAV1PictureBits::USE_SUPERRES;
-        }
-    }
-    uint32_t renderWidthMinus1 = width - 1;
-    uint32_t renderHeightMinus1 = height - 1;
-    uint8_t renderAndFrameSizeDifferent = 0;
-    if (!reader.ReadFlag(renderAndFrameSizeDifferent))
-        return false;
-    if (renderAndFrameSizeDifferent) {
-        if (!reader.ReadBits(16, renderWidthMinus1) || !reader.ReadBits(16, renderHeightMinus1))
-            return false;
-        flags |= VideoAV1PictureBits::RENDER_AND_FRAME_SIZE_DIFFERENT;
-    }
-
-    uint8_t allowHighPrecisionMv = 0;
-    if (!allowScreenContentTools && !reader.ReadFlag(allowHighPrecisionMv))
-        return false;
-    if (allowHighPrecisionMv)
-        flags |= VideoAV1PictureBits::ALLOW_HIGH_PRECISION_MV;
-    uint8_t isFilterSwitchable = 0;
-    if (!reader.ReadFlag(isFilterSwitchable))
-        return false;
-    if (isFilterSwitchable)
-        flags |= VideoAV1PictureBits::IS_FILTER_SWITCHABLE;
-    uint32_t interpolationFilter = INTERPOLATION_FILTER_EIGHTTAP;
-    if (isFilterSwitchable)
-        interpolationFilter = INTERPOLATION_FILTER_SWITCHABLE;
-    else if (!reader.ReadBits(2, interpolationFilter))
-        return false;
-    uint8_t isMotionModeSwitchable = 0;
-    if (!reader.ReadFlag(isMotionModeSwitchable))
-        return false;
-    if (isMotionModeSwitchable)
-        flags |= VideoAV1PictureBits::IS_MOTION_MODE_SWITCHABLE;
-    if (sequence.flags & VideoAV1SequenceBits::ENABLE_REF_FRAME_MVS) {
-        uint8_t useRefFrameMvs = 0;
-        if (!reader.ReadFlag(useRefFrameMvs))
-            return false;
-        if (useRefFrameMvs)
-            flags |= VideoAV1PictureBits::USE_REF_FRAME_MVS;
-    }
-    if (!disableCdfUpdate) {
-        uint8_t disableFrameEndUpdateCdf = 0;
-        if (!reader.ReadFlag(disableFrameEndUpdateCdf))
-            return false;
-        if (disableFrameEndUpdateCdf)
-            flags |= VideoAV1PictureBits::DISABLE_FRAME_END_UPDATE_CDF;
-    }
-
-    const uint32_t miCols = 2 * ((width + 7) >> 3);
-    const uint32_t miRows = 2 * ((height + 7) >> 3);
-    const uint32_t sbShift = 4;
-    const uint32_t sbSize = sbShift + 2;
-    const uint32_t sbCols = (miCols + 15) >> 4;
-    const uint32_t sbRows = (miRows + 15) >> 4;
-    const uint32_t minLog2TileCols = TileLog2(4096 >> sbSize, sbCols);
-    const uint32_t maxLog2TileCols = TileLog2(1, std::min(sbCols, 64u));
-    const uint32_t maxLog2TileRows = TileLog2(1, std::min(sbRows, 64u));
-    const uint32_t minLog2Tiles = std::max(minLog2TileCols, TileLog2((4096 * 2304) >> (2 * sbSize), sbRows * sbCols));
-    uint8_t uniformTileSpacing = 0;
-    if (!reader.ReadFlag(uniformTileSpacing) || !uniformTileSpacing)
-        return false;
-    uint32_t tileColsLog2 = 0;
-    uint32_t tileRowsLog2 = 0;
-    if (!reader.ReadIncrement(minLog2TileCols, maxLog2TileCols, tileColsLog2))
-        return false;
-    const uint32_t minLog2TileRows = std::max<int32_t>((int32_t)minLog2Tiles - (int32_t)tileColsLog2, 0);
-    if (!reader.ReadIncrement(minLog2TileRows, maxLog2TileRows, tileRowsLog2))
-        return false;
-    if (tileColsLog2 || tileRowsLog2)
-        return false;
-
-    uint32_t baseQIndex = 0;
-    uint8_t usingQmatrix = 0;
-    int8_t deltaQYDc = 0;
-    int8_t deltaQUDc = 0;
-    int8_t deltaQUAc = 0;
-
-    if (!reader.ReadBits(8, baseQIndex) || !ReadDeltaQ(reader, deltaQYDc) || !ReadDeltaQ(reader, deltaQUDc) || !ReadDeltaQ(reader, deltaQUAc) || !reader.ReadFlag(usingQmatrix))
-        return false;
-
-    uint32_t qmY = 0;
-    uint32_t qmU = 0;
-    uint32_t qmV = 0;
-
-    if (usingQmatrix) {
-        if (!reader.ReadBits(4, qmY) || !reader.ReadBits(4, qmU))
-
-            return false;
-
-        if (sequence.flags & VideoAV1SequenceBits::SEPARATE_UV_DELTA_Q) {
-            if (!reader.ReadBits(4, qmV))
-
-                return false;
-        } else {
-            qmV = qmU;
-        }
-    }
-
-    uint8_t segmentationEnabled = 0;
-
-    if (!reader.ReadFlag(segmentationEnabled) || segmentationEnabled)
-        return false;
-    uint32_t deltaQRes = 0;
-    if (baseQIndex) {
-        uint8_t deltaQPresent = 0;
-        if (!reader.ReadFlag(deltaQPresent))
-            return false;
-        if (deltaQPresent) {
-            if (!reader.ReadBits(2, deltaQRes))
-                return false;
-            flags |= VideoAV1PictureBits::DELTA_Q_PRESENT;
-            uint8_t deltaLfPresent = 0;
-            if (!reader.ReadFlag(deltaLfPresent) || deltaLfPresent)
-                return false;
-        }
-    }
-
-    const bool codedLossless = baseQIndex == 0 && deltaQYDc == 0 && deltaQUDc == 0 && deltaQUAc == 0;
-    uint32_t loopFilterLevel0 = 0;
-    uint32_t loopFilterLevel1 = 0;
-    uint32_t loopFilterLevelU = 0;
-    uint32_t loopFilterLevelV = 0;
-    uint32_t loopFilterSharpness = 0;
-    uint32_t value = 0;
-    if (!codedLossless) {
-        if (!reader.ReadBits(6, loopFilterLevel0) || !reader.ReadBits(6, loopFilterLevel1))
-            return false;
-        if (loopFilterLevel0 || loopFilterLevel1) {
-            if (!reader.ReadBits(6, loopFilterLevelU) || !reader.ReadBits(6, loopFilterLevelV))
-                return false;
-        }
-        uint8_t loopFilterDeltaEnabled = 0;
-        if (!reader.ReadBits(3, loopFilterSharpness) || !reader.ReadFlag(loopFilterDeltaEnabled) || loopFilterDeltaEnabled)
-            return false;
-    }
-    uint32_t cdefDampingMinus3 = 0;
-    uint32_t cdefBits = 0;
-    std::array<uint8_t, 8> cdefYPrimaryStrength = {};
-    std::array<uint8_t, 8> cdefYSecondaryStrength = {};
-    std::array<uint8_t, 8> cdefUvPrimaryStrength = {};
-    std::array<uint8_t, 8> cdefUvSecondaryStrength = {};
-    if ((sequence.flags & VideoAV1SequenceBits::ENABLE_CDEF) && !codedLossless) {
-        if (!reader.ReadBits(2, cdefDampingMinus3) || !reader.ReadBits(2, cdefBits))
-            return false;
-        for (uint32_t i = 0; i < (1u << cdefBits); i++) {
-            if (!reader.ReadBits(4, value))
-                return false;
-            cdefYPrimaryStrength[i] = (uint8_t)value;
-            if (!reader.ReadBits(2, value))
-                return false;
-            cdefYSecondaryStrength[i] = (uint8_t)(value == 3 ? 4 : value);
-            if (!reader.ReadBits(4, value))
-                return false;
-            cdefUvPrimaryStrength[i] = (uint8_t)value;
-            if (!reader.ReadBits(2, value))
-                return false;
-            cdefUvSecondaryStrength[i] = (uint8_t)(value == 3 ? 4 : value);
-        }
-    }
-    std::array<uint8_t, 3> restorationTypes = {};
-    if ((sequence.flags & VideoAV1SequenceBits::ENABLE_RESTORATION) && !codedLossless) {
-        for (uint32_t i = 0; i < 3; i++) {
-            if (!reader.ReadBits(2, value) || value)
-                return false;
-            restorationTypes[i] = (uint8_t)value;
-        }
-    }
-    uint32_t txMode = TX_MODE_ONLY_4X4;
-    if (!codedLossless) {
-        if (!reader.ReadIncrement(TX_MODE_LARGEST, TX_MODE_SELECT, txMode))
-            return false;
-    }
-    uint8_t referenceSelect = 0;
-    if (!reader.ReadFlag(referenceSelect))
-        return false;
-    if (referenceSelect)
-        flags |= VideoAV1PictureBits::REFERENCE_SELECT;
-    for (uint32_t i = 0; i < 7; i++) {
-        uint8_t isGlobal = 0;
-        if (!reader.ReadFlag(isGlobal) || isGlobal)
-            return false;
-    }
-    uint8_t reducedTxSet = 0;
-    if (!reader.ReadFlag(reducedTxSet) || !reader.ByteAlign())
-        return false;
-    if (reducedTxSet)
-        flags |= VideoAV1PictureBits::REDUCED_TX_SET;
-
-    const size_t tileDataOffset = reader.ByteOffset();
-
-    if (requireTilePayload && tileDataOffset >= fullPayloadSize)
-        return false;
-
-    if (requireTilePayload) {
-        if (tileDataOffset > std::numeric_limits<uint32_t>::max() || fullPayloadSize - tileDataOffset > std::numeric_limits<uint32_t>::max())
-
-            return false;
-    }
-
-    info.sequence = sequence;
-    FillSingleTileLayout(info, width, height);
-    info.picture.tileNum = 1;
-
-    if (requireTilePayload)
-        info.tiles[0] = {(uint32_t)tileDataOffset, (uint32_t)(fullPayloadSize - tileDataOffset), 0, 0, 0xFF};
-
-    info.picture.frameType = VideoFrameType::P;
-    info.picture.orderHint = (uint8_t)orderHint;
-    info.picture.refreshFrameFlags = (uint8_t)refreshFrameFlags;
-    info.picture.primaryReferenceName = GetReferenceNameFromReferenceIndex(primaryRefFrame);
-    info.picture.flags = flags;
-    info.picture.renderWidthMinus1 = (uint16_t)renderWidthMinus1;
-    info.picture.renderHeightMinus1 = (uint16_t)renderHeightMinus1;
-    info.picture.baseQIndex = (uint8_t)baseQIndex;
-    info.picture.interpolationFilter = (uint8_t)interpolationFilter;
-    info.picture.txMode = (uint8_t)txMode;
-    info.picture.cdefDampingMinus3 = (uint8_t)cdefDampingMinus3;
-    info.picture.cdefBits = (uint8_t)cdefBits;
-    info.picture.deltaQRes = (uint8_t)deltaQRes;
-    info.tileLayout.contextUpdateTileId = 0;
-    info.quantization.deltaQYDc = deltaQYDc;
-    info.quantization.deltaQUDc = deltaQUDc;
-    info.quantization.deltaQUAc = deltaQUAc;
-    info.quantization.deltaQVDc = deltaQUDc;
-    info.quantization.deltaQVAc = deltaQUAc;
-    info.quantization.usingQmatrix = usingQmatrix;
-    info.quantization.qmY = (uint8_t)qmY;
-    info.quantization.qmU = (uint8_t)qmU;
-    info.quantization.qmV = (uint8_t)qmV;
-    info.loopFilter.level[0] = (uint8_t)loopFilterLevel0;
-    info.loopFilter.level[1] = (uint8_t)loopFilterLevel1;
-    info.loopFilter.level[2] = (uint8_t)loopFilterLevelU;
-    info.loopFilter.level[3] = (uint8_t)loopFilterLevelV;
-    info.loopFilter.sharpness = (uint8_t)loopFilterSharpness;
-    info.loopFilter.refDeltas[0] = 1;
-    info.loopFilter.refDeltas[4] = -1;
-    info.loopFilter.refDeltas[6] = -1;
-    info.loopFilter.refDeltas[7] = -1;
-    for (uint32_t i = 0; i < 8; i++) {
-        info.cdef.yPrimaryStrength[i] = cdefYPrimaryStrength[i];
-        info.cdef.ySecondaryStrength[i] = cdefYSecondaryStrength[i];
-        info.cdef.uvPrimaryStrength[i] = cdefUvPrimaryStrength[i];
-        info.cdef.uvSecondaryStrength[i] = cdefUvSecondaryStrength[i];
-    }
-    for (uint32_t i = 0; i < 3; i++)
-        info.loopRestoration.frameRestorationType[i] = restorationTypes[i];
-    FillIdentityGlobalMotion(info.globalMotion);
-    BindPointers(info);
     return true;
 }
 
@@ -1283,6 +1068,266 @@ static inline bool ReadDeltaQ(BitReader& reader, int8_t& value) {
     return reader.ReadSigned(7, value);
 }
 
+// The saved state of a reference frame slot, if provided and fully determined
+static inline const VideoAV1SavedFrameState* GetSavedFrameState(const VideoAV1EncodeDecodeInfoDesc& desc, uint32_t refFrameIndex) {
+    if (!desc.savedFrameStates || refFrameIndex >= 8 || !desc.savedFrameStates[refFrameIndex].valid)
+        return nullptr;
+
+    return desc.savedFrameStates + refFrameIndex;
+}
+
+// "inverse_recenter"
+static inline int32_t InverseRecenter(int32_t r, int32_t v) {
+    if (v > 2 * r)
+        return v;
+
+    return (v & 1) ? r - ((v + 1) >> 1) : r + (v >> 1);
+}
+
+// "decode_subexp"
+static inline bool ReadSubexp(BitReader& reader, uint32_t symbolNum, uint32_t& value) {
+    uint32_t i = 0;
+    uint32_t mk = 0;
+    constexpr uint32_t k = 3;
+
+    while (true) {
+        const uint32_t b2 = i ? k + i - 1 : k;
+        const uint32_t a = 1u << b2;
+
+        if (symbolNum <= mk + 3 * a) {
+            uint32_t finalBits = 0;
+
+            if (!ReadNs(reader, symbolNum - mk, finalBits))
+                return false;
+
+            value = finalBits + mk;
+            return true;
+        }
+
+        uint8_t moreBits = 0;
+        if (!reader.ReadFlag(moreBits))
+            return false;
+
+        if (!moreBits) {
+            uint32_t bits = 0;
+
+            if (!reader.ReadBits(b2, bits))
+                return false;
+
+            value = bits + mk;
+            return true;
+        }
+
+        i++;
+        mk += a;
+    }
+}
+
+// "setup_shear" ("warpValid"), with "resolve_divisor"
+static inline bool IsGlobalMotionShearValid(const int32_t* params) {
+    constexpr int32_t WARPEDMODEL_PREC_BITS = 16;
+    constexpr int32_t WARP_PARAM_REDUCE_BITS = 6;
+    constexpr int32_t DIV_LUT_BITS = 8;
+    constexpr int32_t DIV_LUT_PREC_BITS = 14;
+
+    auto clip16 = [](int64_t x) { return x < -32768 ? -32768 : (x > 32767 ? 32767 : x); };
+    auto round2Signed = [](int64_t x, int32_t n) { return x >= 0 ? (x + (int64_t(1) << n >> 1)) >> n : -((-x + (int64_t(1) << n >> 1)) >> n); };
+    auto abs64 = [](int64_t x) { return x < 0 ? -x : x; };
+
+    // "resolve_divisor(gm_params[2])": "Div_Lut[f]" = Round(2^22 / (256 + f))
+    const int64_t d = params[2];
+    const int64_t absD = abs64(d);
+    if (absD == 0)
+        return false;
+
+    int32_t n = 0;
+    while ((absD >> (n + 1)) != 0)
+        n++;
+
+    const int64_t e = absD - (int64_t(1) << n);
+    const int64_t f = n > DIV_LUT_BITS ? round2Signed(e, n - DIV_LUT_BITS) : e << (DIV_LUT_BITS - n);
+    const int64_t divLut = ((int64_t(1) << 23) / ((int64_t(1) << DIV_LUT_BITS) + f) + 1) >> 1;
+    const int32_t divShift = n + DIV_LUT_PREC_BITS;
+    const int64_t divFactor = d < 0 ? -divLut : divLut;
+
+    const int64_t alpha0 = clip16(int64_t(params[2]) - (int64_t(1) << WARPEDMODEL_PREC_BITS));
+    const int64_t beta0 = clip16(params[3]);
+    const int64_t gamma0 = clip16(round2Signed(int64_t(params[4]) * (int64_t(1) << WARPEDMODEL_PREC_BITS) * divFactor, divShift));
+    const int64_t delta0 = clip16(int64_t(params[5]) - round2Signed(int64_t(params[3]) * params[4] * divFactor, divShift) - (int64_t(1) << WARPEDMODEL_PREC_BITS));
+
+    const int64_t alpha = round2Signed(alpha0, WARP_PARAM_REDUCE_BITS) * (1 << WARP_PARAM_REDUCE_BITS);
+    const int64_t beta = round2Signed(beta0, WARP_PARAM_REDUCE_BITS) * (1 << WARP_PARAM_REDUCE_BITS);
+    const int64_t gamma = round2Signed(gamma0, WARP_PARAM_REDUCE_BITS) * (1 << WARP_PARAM_REDUCE_BITS);
+    const int64_t delta = round2Signed(delta0, WARP_PARAM_REDUCE_BITS) * (1 << WARP_PARAM_REDUCE_BITS);
+
+    return 4 * abs64(alpha) + 7 * abs64(beta) < (int64_t(1) << WARPEDMODEL_PREC_BITS) && 4 * abs64(gamma) + 4 * abs64(delta) < (int64_t(1) << WARPEDMODEL_PREC_BITS);
+}
+
+// "read_global_param" relative to "PrevGmParams"
+static inline bool ReadGlobalParam(BitReader& reader, uint32_t type, uint32_t index, bool allowHighPrecisionMv, int32_t previous, int32_t& value) {
+    constexpr uint32_t GM_TYPE_TRANSLATION = 1;
+    constexpr uint32_t WARPEDMODEL_PREC_BITS = 16;
+
+    uint32_t absBits = 12; // GM_ABS_ALPHA_BITS
+    uint32_t precBits = 15; // GM_ALPHA_PREC_BITS
+
+    if (index < 2) {
+        if (type == GM_TYPE_TRANSLATION) {
+            absBits = 9 - !allowHighPrecisionMv;  // GM_ABS_TRANS_ONLY_BITS
+            precBits = 3 - !allowHighPrecisionMv; // GM_TRANS_ONLY_PREC_BITS
+        } else {
+            absBits = 12; // GM_ABS_TRANS_BITS
+            precBits = 6; // GM_TRANS_PREC_BITS
+        }
+    }
+
+    const uint32_t precDiff = WARPEDMODEL_PREC_BITS - precBits;
+    const int32_t round = (index % 3) == 2 ? (1 << WARPEDMODEL_PREC_BITS) : 0;
+    const int32_t sub = (index % 3) == 2 ? (1 << precBits) : 0;
+    const int32_t mx = 1 << absBits;
+    const int32_t r = (previous >> precDiff) - sub;
+
+    // "decode_signed_subexp_with_ref(-mx, mx + 1, r)" via "decode_unsigned_subexp_with_ref(2 * mx + 1, r + mx)"
+    const int32_t symbolNum = 2 * mx + 1;
+    const int32_t reference = r + mx;
+    uint32_t v = 0;
+
+    if (reference < 0 || reference >= symbolNum || !ReadSubexp(reader, (uint32_t)symbolNum, v))
+        return false;
+
+    const int32_t x = (reference << 1) <= symbolNum ? InverseRecenter(reference, (int32_t)v) : symbolNum - 1 - InverseRecenter(symbolNum - 1 - reference, (int32_t)v);
+    value = ((x - mx) * (1 << precDiff)) + round;
+
+    return true;
+}
+
+// "film_grain_params" with "update_grain = 1"
+static inline bool ReadFilmGrainParams(BitReader& reader, const VideoAV1SequenceDesc& sequence, VideoAV1FilmGrainDesc& filmGrain) {
+    const bool isMonochrome = !!(sequence.flags & VideoAV1SequenceBits::MONO_CHROME);
+    uint32_t value = 0;
+
+    if (!reader.ReadBits(4, value) || value > 14)
+        return false;
+    filmGrain.numYPoints = (uint8_t)value;
+
+    for (uint32_t i = 0; i < filmGrain.numYPoints; i++) {
+        uint32_t pointValue = 0;
+        uint32_t pointScaling = 0;
+
+        if (!reader.ReadBits(8, pointValue) || !reader.ReadBits(8, pointScaling))
+            return false;
+
+        filmGrain.pointYValue[i] = (uint8_t)pointValue;
+        filmGrain.pointYScaling[i] = (uint8_t)pointScaling;
+    }
+
+    if (!isMonochrome && !reader.ReadFlag(filmGrain.chromaScalingFromLuma))
+        return false;
+
+    if (!isMonochrome && !filmGrain.chromaScalingFromLuma && !(sequence.subsamplingX == 1 && sequence.subsamplingY == 1 && filmGrain.numYPoints == 0)) {
+        if (!reader.ReadBits(4, value) || value > 10)
+            return false;
+        filmGrain.numCbPoints = (uint8_t)value;
+
+        for (uint32_t i = 0; i < filmGrain.numCbPoints; i++) {
+            uint32_t pointValue = 0;
+            uint32_t pointScaling = 0;
+
+            if (!reader.ReadBits(8, pointValue) || !reader.ReadBits(8, pointScaling))
+                return false;
+
+            filmGrain.pointCbValue[i] = (uint8_t)pointValue;
+            filmGrain.pointCbScaling[i] = (uint8_t)pointScaling;
+        }
+
+        if (!reader.ReadBits(4, value) || value > 10)
+            return false;
+        filmGrain.numCrPoints = (uint8_t)value;
+
+        for (uint32_t i = 0; i < filmGrain.numCrPoints; i++) {
+            uint32_t pointValue = 0;
+            uint32_t pointScaling = 0;
+
+            if (!reader.ReadBits(8, pointValue) || !reader.ReadBits(8, pointScaling))
+                return false;
+
+            filmGrain.pointCrValue[i] = (uint8_t)pointValue;
+            filmGrain.pointCrScaling[i] = (uint8_t)pointScaling;
+        }
+    }
+
+    if (!reader.ReadBits(2, value))
+        return false;
+    filmGrain.grainScalingMinus8 = (uint8_t)value;
+
+    if (!reader.ReadBits(2, value))
+        return false;
+    filmGrain.arCoeffLag = (uint8_t)value;
+
+    const uint32_t numPosLuma = 2 * filmGrain.arCoeffLag * (filmGrain.arCoeffLag + 1);
+    const uint32_t numPosChroma = filmGrain.numYPoints ? numPosLuma + 1 : numPosLuma;
+
+    if (filmGrain.numYPoints) {
+        for (uint32_t i = 0; i < numPosLuma; i++) {
+            if (!reader.ReadBits(8, value))
+                return false;
+            filmGrain.arCoeffsYPlus128[i] = (uint8_t)value;
+        }
+    }
+
+    if (filmGrain.chromaScalingFromLuma || filmGrain.numCbPoints) {
+        for (uint32_t i = 0; i < numPosChroma; i++) {
+            if (!reader.ReadBits(8, value))
+                return false;
+            filmGrain.arCoeffsCbPlus128[i] = (uint8_t)value;
+        }
+    }
+
+    if (filmGrain.chromaScalingFromLuma || filmGrain.numCrPoints) {
+        for (uint32_t i = 0; i < numPosChroma; i++) {
+            if (!reader.ReadBits(8, value))
+                return false;
+            filmGrain.arCoeffsCrPlus128[i] = (uint8_t)value;
+        }
+    }
+
+    if (!reader.ReadBits(2, value))
+        return false;
+    filmGrain.arCoeffShiftMinus6 = (uint8_t)value;
+
+    if (!reader.ReadBits(2, value))
+        return false;
+    filmGrain.grainScaleShift = (uint8_t)value;
+
+    if (filmGrain.numCbPoints) {
+        uint32_t mult = 0;
+        uint32_t lumaMult = 0;
+        uint32_t offset = 0;
+
+        if (!reader.ReadBits(8, mult) || !reader.ReadBits(8, lumaMult) || !reader.ReadBits(9, offset))
+            return false;
+
+        filmGrain.cbMult = (uint8_t)mult;
+        filmGrain.cbLumaMult = (uint8_t)lumaMult;
+        filmGrain.cbOffset = (int16_t)offset;
+    }
+
+    if (filmGrain.numCrPoints) {
+        uint32_t mult = 0;
+        uint32_t lumaMult = 0;
+        uint32_t offset = 0;
+
+        if (!reader.ReadBits(8, mult) || !reader.ReadBits(8, lumaMult) || !reader.ReadBits(9, offset))
+            return false;
+
+        filmGrain.crMult = (uint8_t)mult;
+        filmGrain.crLumaMult = (uint8_t)lumaMult;
+        filmGrain.crOffset = (int16_t)offset;
+    }
+
+    return reader.ReadFlag(filmGrain.overlapFlag) && reader.ReadFlag(filmGrain.clipToRestrictedRange);
+}
+
 static inline void BindPointers(VideoAV1EncodeDecodeInfo& info) {
     info.tileLayout.miColumnStarts = info.miColumnStarts;
     info.tileLayout.miRowStarts = info.miRowStarts;
@@ -1295,6 +1340,8 @@ static inline void BindPointers(VideoAV1EncodeDecodeInfo& info) {
     info.picture.cdef = &info.cdef;
     info.picture.loopRestoration = &info.loopRestoration;
     info.picture.globalMotion = &info.globalMotion;
+    info.picture.segmentation = &info.segmentation;
+    info.picture.filmGrain = &info.filmGrain;
     info.picture.tiles = info.tiles;
     info.picture.references = info.references;
 }
@@ -1306,11 +1353,13 @@ static inline void FillIdentityGlobalMotion(VideoAV1GlobalMotionDesc& globalMoti
     }
 }
 
+// The superblock size is taken from "info.sequence"
 static inline void FillSingleTileLayout(VideoAV1EncodeDecodeInfo& info, uint32_t width, uint32_t height) {
+    const uint32_t sbShift = (info.sequence.flags & VideoAV1SequenceBits::USE_128X128_SUPERBLOCK) ? 5 : 4;
     const uint32_t miCols = 2 * ((width + 7) >> 3);
     const uint32_t miRows = 2 * ((height + 7) >> 3);
-    const uint32_t sbCols = (miCols + 15) >> 4;
-    const uint32_t sbRows = (miRows + 15) >> 4;
+    const uint32_t sbCols = (miCols + (1u << sbShift) - 1) >> sbShift;
+    const uint32_t sbRows = (miRows + (1u << sbShift) - 1) >> sbShift;
 
     info.tileLayout.columnNum = 1;
     info.tileLayout.rowNum = 1;
@@ -1324,16 +1373,167 @@ static inline void FillSingleTileLayout(VideoAV1EncodeDecodeInfo& info, uint32_t
     info.heightInSuperblocksMinus1[0] = (uint16_t)(sbRows - 1);
 }
 
-static inline bool ParseGeneratedKeyFrameHeader(const uint8_t* payload, size_t availablePayloadSize, const uint8_t* tilePayload, size_t availableTilePayloadSize,
-    size_t fullTilePayloadSize, bool combinedFrameObu, const VideoAV1SequenceDesc& sequence, VideoAV1EncodeDecodeInfo& info) {
+// "get_relative_dist"
+static inline int32_t GetRelativeDistance(const VideoAV1SequenceDesc& sequence, uint32_t a, uint32_t b) {
+    if (!(sequence.flags & VideoAV1SequenceBits::ENABLE_ORDER_HINT))
+        return 0;
+
+    const int32_t m = 1 << sequence.orderHintBitsMinus1;
+    const int32_t diff = (int32_t)a - (int32_t)b;
+
+    return (diff & (m - 1)) - (diff & m);
+}
+
+// "skip_mode_params": returns "skipModeAllowed" and fills "SkipModeFrame" from the references of the current frame, ordered by reference name
+static inline bool GetSkipModeFrames(const VideoAV1SequenceDesc& sequence, uint32_t orderHint, const VideoAV1ReferenceDesc* references, VideoAV1ReferenceName* skipModeFrames) {
+    int32_t forwardIndex = -1;
+    int32_t backwardIndex = -1;
+    uint32_t forwardHint = 0;
+    uint32_t backwardHint = 0;
+
+    for (int32_t i = 0; i < (int32_t)REFERENCE_NAME_NUM; i++) {
+        const uint32_t referenceHint = references[i].orderHint;
+
+        if (GetRelativeDistance(sequence, referenceHint, orderHint) < 0) {
+            if (forwardIndex < 0 || GetRelativeDistance(sequence, referenceHint, forwardHint) > 0) {
+                forwardIndex = i;
+                forwardHint = referenceHint;
+            }
+        } else if (GetRelativeDistance(sequence, referenceHint, orderHint) > 0) {
+            if (backwardIndex < 0 || GetRelativeDistance(sequence, referenceHint, backwardHint) < 0) {
+                backwardIndex = i;
+                backwardHint = referenceHint;
+            }
+        }
+    }
+
+    if (forwardIndex < 0)
+        return false;
+
+    int32_t secondIndex = backwardIndex;
+
+    if (secondIndex < 0) {
+        uint32_t secondForwardHint = 0;
+
+        for (int32_t i = 0; i < (int32_t)REFERENCE_NAME_NUM; i++) {
+            const uint32_t referenceHint = references[i].orderHint;
+
+            if (GetRelativeDistance(sequence, referenceHint, forwardHint) < 0 && (secondIndex < 0 || GetRelativeDistance(sequence, referenceHint, secondForwardHint) > 0)) {
+                secondIndex = i;
+                secondForwardHint = referenceHint;
+            }
+        }
+
+        if (secondIndex < 0)
+            return false;
+    }
+
+    skipModeFrames[0] = GetReferenceNameFromReferenceIndex((uint32_t)std::min(forwardIndex, secondIndex));
+    skipModeFrames[1] = GetReferenceNameFromReferenceIndex((uint32_t)std::max(forwardIndex, secondIndex));
+
+    return true;
+}
+
+// "set_frame_refs" (AV1 7.8): "ref_frame_idx[]" from "last_frame_idx", "gold_frame_idx" and the order hints of all 8 slots
+static inline bool SetFrameRefs(const VideoAV1EncodeDecodeInfoDesc& desc, uint32_t orderHint, uint32_t lastFrameIdx, uint32_t goldFrameIdx, std::array<uint8_t, 7>& refFrameIndices) {
+    const VideoAV1SequenceDesc& sequence = *desc.sequence;
+    const int32_t curFrameHint = 1 << sequence.orderHintBitsMinus1;
+
+    std::array<int32_t, 8> shiftedOrderHints = {};
+    for (uint32_t i = 0; i < 8; i++) {
+        const VideoAV1SavedFrameState* state = GetSavedFrameState(desc, i);
+        if (!state)
+            return false;
+
+        shiftedOrderHints[i] = curFrameHint + GetRelativeDistance(sequence, state->orderHint, orderHint);
+    }
+
+    if (shiftedOrderHints[lastFrameIdx] >= curFrameHint || shiftedOrderHints[goldFrameIdx] >= curFrameHint)
+        return false;
+
+    std::array<int32_t, 7> indices = {};
+    indices.fill(-1);
+    indices[0] = (int32_t)lastFrameIdx;  // LAST_FRAME
+    indices[3] = (int32_t)goldFrameIdx;  // GOLDEN_FRAME
+
+    std::array<bool, 8> usedFrame = {};
+    usedFrame[lastFrameIdx] = true;
+    usedFrame[goldFrameIdx] = true;
+
+    auto findReference = [&](bool isBackward, bool isLatest) {
+        int32_t reference = -1;
+        int32_t referenceHint = 0;
+
+        for (int32_t i = 0; i < 8; i++) {
+            const int32_t hint = shiftedOrderHints[i];
+
+            if (usedFrame[i] || (hint >= curFrameHint) != isBackward)
+                continue;
+
+            if (reference < 0 || (isLatest ? hint >= referenceHint : hint < referenceHint)) {
+                reference = i;
+                referenceHint = hint;
+            }
+        }
+
+        return reference;
+    };
+
+    auto assign = [&](uint32_t nameIndex, int32_t reference) {
+        if (reference >= 0) {
+            indices[nameIndex] = reference;
+            usedFrame[reference] = true;
+        }
+    };
+
+    assign(6, findReference(true, true));  // ALTREF_FRAME: the latest backward reference
+    assign(4, findReference(true, false)); // BWDREF_FRAME: the earliest backward reference
+    assign(5, findReference(true, false)); // ALTREF2_FRAME: the next earliest backward reference
+
+    // "Ref_Frame_List": LAST2, LAST3, BWDREF, ALTREF2, ALTREF get the latest remaining forward references
+    constexpr uint32_t REF_FRAME_LIST[5] = {1, 2, 4, 5, 6};
+    for (uint32_t nameIndex : REF_FRAME_LIST) {
+        if (indices[nameIndex] < 0)
+            assign(nameIndex, findReference(false, true));
+    }
+
+    // The remaining references are the frame with the smallest order hint
+    int32_t earliest = 0;
+    for (int32_t i = 1; i < 8; i++) {
+        if (shiftedOrderHints[i] < shiftedOrderHints[earliest])
+            earliest = i;
+    }
+
+    for (uint32_t i = 0; i < 7; i++)
+        refFrameIndices[i] = (uint8_t)(indices[i] < 0 ? earliest : indices[i]);
+
+    return true;
+}
+
+// Parses "uncompressed_header" and the following tile group header of a shown KEY or INTER frame. State inherited from reference frames
+// ("frame_refs_short_signaling", "frame_size_with_refs", "load_previous", "load_grain_params") comes from "desc.savedFrameStates": a frame
+// that needs missing state is rejected, a frame that inherits missing state without needing it gets an invalid "savedFrameState"
+static inline bool ParseGeneratedFrameHeader(const VideoAV1EncodeDecodeInfoDesc& desc, const uint8_t* payload, size_t availablePayloadSize, const uint8_t* tilePayload, size_t availableTilePayloadSize,
+    size_t fullTilePayloadSize, bool combinedFrameObu, VideoAV1EncodeDecodeInfo& info) {
     constexpr uint32_t MAX_TILE_WIDTH = 4096;
     constexpr uint32_t MAX_TILE_AREA = 4096 * 2304;
     constexpr uint32_t MAX_TILE_COLS = 64;
     constexpr uint32_t MAX_TILE_ROWS = 64;
+    constexpr uint32_t PRIMARY_REF_NONE = 7;
+    constexpr uint32_t SUPERRES_NUM = 8;
+    constexpr uint8_t REMAP_LR_TYPE[4] = {0, 3, 1, 2};
+
+    const VideoAV1SequenceDesc& sequence = *desc.sequence;
+    const bool enableOrderHint = !!(sequence.flags & VideoAV1SequenceBits::ENABLE_ORDER_HINT);
+    const bool frameIdNumbersPresent = !!(sequence.flags & VideoAV1SequenceBits::FRAME_ID_NUMBERS_PRESENT);
+    const bool use128x128Superblock = !!(sequence.flags & VideoAV1SequenceBits::USE_128X128_SUPERBLOCK);
+    const bool separateUvDeltaQ = !!(sequence.flags & VideoAV1SequenceBits::SEPARATE_UV_DELTA_Q);
+    const uint32_t planeNum = (sequence.flags & VideoAV1SequenceBits::MONO_CHROME) ? 1 : 3;
+
+    if (sequence.flags & VideoAV1SequenceBits::REDUCED_STILL_PICTURE_HEADER)
+        return false;
 
     BitReader reader{payload, availablePayloadSize, 0};
-    VideoAV1PictureBits flags = VideoAV1PictureBits::NONE;
-
     uint8_t showExistingFrame = 0;
     uint32_t frameType = 0;
     uint8_t showFrame = 0;
@@ -1341,40 +1541,59 @@ static inline bool ParseGeneratedKeyFrameHeader(const uint8_t* payload, size_t a
     if (!reader.ReadFlag(showExistingFrame) || showExistingFrame || !reader.ReadBits(2, frameType) || !reader.ReadFlag(showFrame))
         return false;
 
-    if (frameType != 0 || !showFrame)
+    if (frameType > 1 || !showFrame)
         return false;
 
-    flags |= VideoAV1PictureBits::ERROR_RESILIENT_MODE | VideoAV1PictureBits::SHOW_FRAME;
+    const bool isKeyFrame = frameType == 0;
+    VideoAV1PictureBits flags = VideoAV1PictureBits::SHOW_FRAME;
+    uint8_t errorResilient = 1; // shown KEY frames
+
+    if (!isKeyFrame) {
+        if (!reader.ReadFlag(errorResilient))
+            return false;
+
+        flags |= VideoAV1PictureBits::SHOWABLE_FRAME;
+    }
+
+    if (errorResilient)
+        flags |= VideoAV1PictureBits::ERROR_RESILIENT_MODE;
 
     uint8_t disableCdfUpdate = 0;
     uint8_t allowScreenContentTools = 0;
     uint8_t forceIntegerMv = 0;
+
     if (!reader.ReadFlag(disableCdfUpdate))
         return false;
+
+    if (disableCdfUpdate)
+        flags |= VideoAV1PictureBits::DISABLE_CDF_UPDATE | VideoAV1PictureBits::DISABLE_FRAME_END_UPDATE_CDF;
+
     if (sequence.seqForceScreenContentTools == SELECT_SCREEN_CONTENT_TOOLS) {
         if (!reader.ReadFlag(allowScreenContentTools))
             return false;
     } else
         allowScreenContentTools = sequence.seqForceScreenContentTools;
-    if (disableCdfUpdate)
-        flags |= VideoAV1PictureBits::DISABLE_CDF_UPDATE | VideoAV1PictureBits::DISABLE_FRAME_END_UPDATE_CDF;
+
     if (allowScreenContentTools) {
         flags |= VideoAV1PictureBits::ALLOW_SCREEN_CONTENT_TOOLS;
+
         if (sequence.seqForceIntegerMv == SELECT_SCREEN_CONTENT_TOOLS) {
             if (!reader.ReadFlag(forceIntegerMv))
                 return false;
         } else
             forceIntegerMv = sequence.seqForceIntegerMv;
-        if (forceIntegerMv)
-            flags |= VideoAV1PictureBits::FORCE_INTEGER_MV;
     }
 
-    if (sequence.flags & VideoAV1SequenceBits::FRAME_ID_NUMBERS_PRESENT) {
+    if (isKeyFrame)
+        forceIntegerMv = 1;
+
+    if (forceIntegerMv)
+        flags |= VideoAV1PictureBits::FORCE_INTEGER_MV;
+
+    if (frameIdNumbersPresent) {
         uint32_t currentFrameId = 0;
-        const uint32_t frameIdBits = sequence.additionalFrameIdLengthMinus1 + sequence.deltaFrameIdLengthMinus2 + 3;
 
-        if (!reader.ReadBits(frameIdBits, currentFrameId))
-
+        if (!reader.ReadBits(sequence.additionalFrameIdLengthMinus1 + sequence.deltaFrameIdLengthMinus2 + 3, currentFrameId))
             return false;
 
         info.picture.currentFrameId = currentFrameId;
@@ -1382,66 +1601,215 @@ static inline bool ParseGeneratedKeyFrameHeader(const uint8_t* payload, size_t a
 
     uint8_t frameSizeOverride = 0;
     uint32_t orderHint = 0;
+    uint32_t primaryRefFrame = PRIMARY_REF_NONE;
+    uint32_t refreshFrameFlags = 0xFF;
+
     if (!reader.ReadFlag(frameSizeOverride))
         return false;
-    if (sequence.flags & VideoAV1SequenceBits::ENABLE_ORDER_HINT) {
-        if (!reader.ReadBits(sequence.orderHintBitsMinus1 + 1, orderHint))
+
+    if (enableOrderHint && !reader.ReadBits(sequence.orderHintBitsMinus1 + 1, orderHint))
+        return false;
+
+    std::array<uint8_t, 7> refFrameIndices = {};
+
+    if (!isKeyFrame) {
+        if ((!errorResilient && !reader.ReadBits(3, primaryRefFrame)) || !reader.ReadBits(8, refreshFrameFlags))
             return false;
-    }
-    if (frameSizeOverride) {
-        flags |= VideoAV1PictureBits::FRAME_SIZE_OVERRIDE;
-        uint32_t ignored = 0;
-        if (!reader.ReadBits(sequence.frameWidthBitsMinus1 + 1, ignored) || !reader.ReadBits(sequence.frameHeightBitsMinus1 + 1, ignored))
+
+        // "ref_order_hint": only used by decoders that lost references
+        if (errorResilient && enableOrderHint) {
+            for (uint32_t i = 0; i < 8; i++) {
+                uint32_t refOrderHint = 0;
+
+                if (!reader.ReadBits(sequence.orderHintBitsMinus1 + 1, refOrderHint))
+                    return false;
+            }
+        }
+
+        uint8_t frameRefsShortSignaling = 0;
+
+        if (enableOrderHint && !reader.ReadFlag(frameRefsShortSignaling))
+            return false;
+
+        if (frameRefsShortSignaling) {
+            uint32_t lastFrameIdx = 0;
+            uint32_t goldFrameIdx = 0;
+
+            if (!reader.ReadBits(3, lastFrameIdx) || !reader.ReadBits(3, goldFrameIdx) || !SetFrameRefs(desc, orderHint, lastFrameIdx, goldFrameIdx, refFrameIndices))
+                return false;
+
+            flags |= VideoAV1PictureBits::FRAME_REFS_SHORT_SIGNALING;
+        }
+
+        for (uint32_t i = 0; i < REFERENCE_NAME_NUM; i++) {
+            uint32_t value = 0;
+
+            if (!frameRefsShortSignaling) {
+                if (!reader.ReadBits(3, value))
+                    return false;
+
+                refFrameIndices[i] = (uint8_t)value;
+            }
+
+            // "delta_frame_id_minus_1"
+            if (frameIdNumbersPresent && !reader.ReadBits(sequence.deltaFrameIdLengthMinus2 + 2, value))
+                return false;
+        }
+
+        if (!BuildInterFrameReferences(desc, refFrameIndices, info))
             return false;
     }
 
-    const uint32_t width = sequence.maxFrameWidthMinus1 + 1;
-    const uint32_t height = sequence.maxFrameHeightMinus1 + 1;
+    // "load_previous" source, "setup_past_independence" without it
+    const VideoAV1SavedFrameState* primaryState = primaryRefFrame != PRIMARY_REF_NONE ? GetSavedFrameState(desc, refFrameIndices[primaryRefFrame]) : nullptr;
+    const bool isPrimaryStateMissing = primaryRefFrame != PRIMARY_REF_NONE && !primaryState;
+
+    // "frame_size_with_refs": the size of the first reference with "found_ref"
+    uint32_t upscaledWidth = sequence.maxFrameWidthMinus1 + 1u;
+    uint32_t frameHeight = sequence.maxFrameHeightMinus1 + 1u;
+    const VideoAV1SavedFrameState* sizeState = nullptr;
+
+    if (!isKeyFrame && frameSizeOverride && !errorResilient) {
+        for (uint32_t i = 0; i < REFERENCE_NAME_NUM && !sizeState; i++) {
+            uint8_t foundRef = 0;
+
+            if (!reader.ReadFlag(foundRef))
+                return false;
+
+            if (foundRef) {
+                sizeState = GetSavedFrameState(desc, refFrameIndices[i]);
+
+                if (!sizeState)
+                    return false;
+
+                upscaledWidth = sizeState->upscaledWidthMinus1 + 1u;
+                frameHeight = sizeState->frameHeightMinus1 + 1u;
+            }
+        }
+
+        flags |= VideoAV1PictureBits::FRAME_SIZE_OVERRIDE;
+    }
+
+    // "frame_size" and "superres_params"
+    if (frameSizeOverride && !sizeState) {
+        uint32_t frameWidthMinus1 = 0;
+        uint32_t frameHeightMinus1 = 0;
+
+        if (!reader.ReadBits(sequence.frameWidthBitsMinus1 + 1, frameWidthMinus1) || !reader.ReadBits(sequence.frameHeightBitsMinus1 + 1, frameHeightMinus1))
+            return false;
+
+        if (frameWidthMinus1 > sequence.maxFrameWidthMinus1 || frameHeightMinus1 > sequence.maxFrameHeightMinus1)
+            return false;
+
+        upscaledWidth = frameWidthMinus1 + 1;
+        frameHeight = frameHeightMinus1 + 1;
+        flags |= VideoAV1PictureBits::FRAME_SIZE_OVERRIDE;
+    }
+
+    uint32_t superresDenom = SUPERRES_NUM;
+
     if (sequence.flags & VideoAV1SequenceBits::ENABLE_SUPERRES) {
         uint8_t useSuperres = 0;
+
         if (!reader.ReadFlag(useSuperres))
             return false;
+
         if (useSuperres) {
             uint32_t codedDenom = 0;
+
             if (!reader.ReadBits(3, codedDenom))
                 return false;
+
+            superresDenom = codedDenom + 9;
             info.picture.codedDenom = (uint8_t)codedDenom;
-            info.picture.superresDenom = (uint8_t)(codedDenom + 9);
+            info.picture.superresDenom = (uint8_t)superresDenom;
             flags |= VideoAV1PictureBits::USE_SUPERRES;
         }
     }
 
-    uint32_t renderWidthMinus1 = width - 1;
-    uint32_t renderHeightMinus1 = height - 1;
+    const uint32_t frameWidth = (upscaledWidth * SUPERRES_NUM + superresDenom / 2) / superresDenom;
+
+    // "render_size", the render size of the reference with "found_ref"
+    uint32_t renderWidthMinus1 = sizeState ? sizeState->renderWidthMinus1 : upscaledWidth - 1;
+    uint32_t renderHeightMinus1 = sizeState ? sizeState->renderHeightMinus1 : frameHeight - 1;
     uint8_t renderAndFrameSizeDifferent = 0;
-    if (!reader.ReadFlag(renderAndFrameSizeDifferent))
+
+    if (!sizeState && !reader.ReadFlag(renderAndFrameSizeDifferent))
         return false;
+
     if (renderAndFrameSizeDifferent) {
         if (!reader.ReadBits(16, renderWidthMinus1) || !reader.ReadBits(16, renderHeightMinus1))
             return false;
+
         flags |= VideoAV1PictureBits::RENDER_AND_FRAME_SIZE_DIFFERENT;
     }
 
     uint8_t allowIntrabc = 0;
-    if (allowScreenContentTools && !reader.ReadFlag(allowIntrabc))
-        return false;
-    if (allowIntrabc)
-        flags |= VideoAV1PictureBits::ALLOW_INTRABC;
+    uint32_t interpolationFilter = INTERPOLATION_FILTER_EIGHTTAP;
+
+    if (isKeyFrame) {
+        if (allowScreenContentTools && upscaledWidth == frameWidth && !reader.ReadFlag(allowIntrabc))
+            return false;
+
+        if (allowIntrabc)
+            flags |= VideoAV1PictureBits::ALLOW_INTRABC;
+    } else {
+        uint8_t allowHighPrecisionMv = 0;
+
+        if (!forceIntegerMv && !reader.ReadFlag(allowHighPrecisionMv))
+            return false;
+
+        if (allowHighPrecisionMv)
+            flags |= VideoAV1PictureBits::ALLOW_HIGH_PRECISION_MV;
+
+        uint8_t isFilterSwitchable = 0;
+
+        if (!reader.ReadFlag(isFilterSwitchable))
+            return false;
+
+        if (isFilterSwitchable) {
+            interpolationFilter = INTERPOLATION_FILTER_SWITCHABLE;
+            flags |= VideoAV1PictureBits::IS_FILTER_SWITCHABLE;
+        } else if (!reader.ReadBits(2, interpolationFilter))
+            return false;
+
+        uint8_t isMotionModeSwitchable = 0;
+
+        if (!reader.ReadFlag(isMotionModeSwitchable))
+            return false;
+
+        if (isMotionModeSwitchable)
+            flags |= VideoAV1PictureBits::IS_MOTION_MODE_SWITCHABLE;
+
+        // "enable_ref_frame_mvs" is only coded (and the writer only emits it) with "enable_order_hint", "use_ref_frame_mvs" not with "error_resilient_mode"
+        if (!errorResilient && enableOrderHint && (sequence.flags & VideoAV1SequenceBits::ENABLE_REF_FRAME_MVS)) {
+            uint8_t useRefFrameMvs = 0;
+
+            if (!reader.ReadFlag(useRefFrameMvs))
+                return false;
+
+            if (useRefFrameMvs)
+                flags |= VideoAV1PictureBits::USE_REF_FRAME_MVS;
+        }
+    }
 
     if (!disableCdfUpdate) {
         uint8_t disableFrameEndUpdateCdf = 0;
+
         if (!reader.ReadFlag(disableFrameEndUpdateCdf))
             return false;
+
         if (disableFrameEndUpdateCdf)
             flags |= VideoAV1PictureBits::DISABLE_FRAME_END_UPDATE_CDF;
     }
 
-    const uint32_t miCols = 2 * ((width + 7) >> 3);
-    const uint32_t miRows = 2 * ((height + 7) >> 3);
-    const uint32_t sbShift = 4;
+    // "tile_info"
+    const uint32_t miCols = 2 * ((frameWidth + 7) >> 3);
+    const uint32_t miRows = 2 * ((frameHeight + 7) >> 3);
+    const uint32_t sbShift = use128x128Superblock ? 5 : 4;
     const uint32_t sbSize = sbShift + 2;
-    const uint32_t sbCols = (miCols + 15) >> 4;
-    const uint32_t sbRows = (miRows + 15) >> 4;
+    const uint32_t sbCols = (miCols + (1u << sbShift) - 1) >> sbShift;
+    const uint32_t sbRows = (miRows + (1u << sbShift) - 1) >> sbShift;
     const uint32_t minLog2TileCols = TileLog2(MAX_TILE_WIDTH >> sbSize, sbCols);
     const uint32_t maxLog2TileCols = TileLog2(1, std::min(sbCols, MAX_TILE_COLS));
     const uint32_t maxLog2TileRows = TileLog2(1, std::min(sbRows, MAX_TILE_ROWS));
@@ -1499,7 +1867,6 @@ static inline bool ParseGeneratedKeyFrameHeader(const uint8_t* payload, size_t a
             uint32_t tileWidthMinus1 = 0;
 
             if (!ReadNs(reader, maxWidth, tileWidthMinus1))
-
                 return false;
 
             const uint32_t tileWidthSb = tileWidthMinus1 + 1;
@@ -1511,7 +1878,6 @@ static inline bool ParseGeneratedKeyFrameHeader(const uint8_t* payload, size_t a
         tileColsLog2 = TileLog2(1, tileCols);
 
         if (startSb != sbCols || !tileCols)
-
             return false;
 
         startSb = 0;
@@ -1530,7 +1896,6 @@ static inline bool ParseGeneratedKeyFrameHeader(const uint8_t* payload, size_t a
             uint32_t tileHeightMinus1 = 0;
 
             if (!ReadNs(reader, maxHeight, tileHeightMinus1))
-
                 return false;
 
             info.heightInSuperblocksMinus1[i] = (uint16_t)tileHeightMinus1;
@@ -1541,7 +1906,6 @@ static inline bool ParseGeneratedKeyFrameHeader(const uint8_t* payload, size_t a
         tileRowsLog2 = TileLog2(1, tileRows);
 
         if (startSb != sbRows || !tileRows)
-
             return false;
     }
 
@@ -1558,46 +1922,124 @@ static inline bool ParseGeneratedKeyFrameHeader(const uint8_t* payload, size_t a
         info.miRowStarts[i] = (uint16_t)(tileStartRowSb[i] << sbShift);
     info.miRowStarts[tileRows] = (uint16_t)miRows;
 
+    // "quantization_params"
+    VideoAV1QuantizationDesc& quantization = info.quantization;
     uint32_t baseQIndex = 0;
-    uint8_t usingQmatrix = 0;
 
-    if (!reader.ReadBits(8, baseQIndex) || !ReadDeltaQ(reader, info.quantization.deltaQYDc) || !ReadDeltaQ(reader, info.quantization.deltaQUDc) || !ReadDeltaQ(reader, info.quantization.deltaQUAc) || !reader.ReadFlag(usingQmatrix))
+    if (!reader.ReadBits(8, baseQIndex) || !ReadDeltaQ(reader, quantization.deltaQYDc))
         return false;
 
-    info.quantization.deltaQVDc = info.quantization.deltaQUDc;
-    info.quantization.deltaQVAc = info.quantization.deltaQUAc;
-    info.quantization.usingQmatrix = usingQmatrix;
+    if (planeNum > 1) {
+        if (separateUvDeltaQ && !reader.ReadFlag(quantization.diffUvDelta))
+            return false;
 
-    if (usingQmatrix) {
+        if (!ReadDeltaQ(reader, quantization.deltaQUDc) || !ReadDeltaQ(reader, quantization.deltaQUAc))
+            return false;
+
+        if (quantization.diffUvDelta) {
+            if (!ReadDeltaQ(reader, quantization.deltaQVDc) || !ReadDeltaQ(reader, quantization.deltaQVAc))
+                return false;
+        } else {
+            quantization.deltaQVDc = quantization.deltaQUDc;
+            quantization.deltaQVAc = quantization.deltaQUAc;
+        }
+    }
+
+    if (!reader.ReadFlag(quantization.usingQmatrix))
+        return false;
+
+    if (quantization.usingQmatrix) {
         uint32_t qmY = 0;
         uint32_t qmU = 0;
         uint32_t qmV = 0;
 
         if (!reader.ReadBits(4, qmY) || !reader.ReadBits(4, qmU))
-
             return false;
 
-        if (sequence.flags & VideoAV1SequenceBits::SEPARATE_UV_DELTA_Q) {
-            if (!reader.ReadBits(4, qmV))
-
-                return false;
-        } else {
+        if (!separateUvDeltaQ)
             qmV = qmU;
-        }
+        else if (!reader.ReadBits(4, qmV))
+            return false;
 
-        info.quantization.qmY = (uint8_t)qmY;
-        info.quantization.qmU = (uint8_t)qmU;
-        info.quantization.qmV = (uint8_t)qmV;
+        quantization.qmY = (uint8_t)qmY;
+        quantization.qmU = (uint8_t)qmU;
+        quantization.qmV = (uint8_t)qmV;
     }
+
+    // "segmentation_params"
+    constexpr uint8_t SEGMENTATION_FEATURE_BITS[8] = {8, 6, 6, 6, 6, 3, 0, 0};
+    constexpr bool SEGMENTATION_FEATURE_SIGNED[8] = {true, true, true, true, true, false, false, false};
+    constexpr int32_t SEGMENTATION_FEATURE_MAX[8] = {255, 63, 63, 63, 63, 7, 0, 0};
 
     uint8_t segmentationEnabled = 0;
 
     if (!reader.ReadFlag(segmentationEnabled))
         return false;
 
-    if (segmentationEnabled)
-        return false;
+    if (segmentationEnabled) {
+        uint8_t updateMap = 1;
+        uint8_t temporalUpdate = 0;
+        uint8_t updateData = 1;
 
+        if (primaryRefFrame != PRIMARY_REF_NONE) {
+            if (!reader.ReadFlag(updateMap) || (updateMap && !reader.ReadFlag(temporalUpdate)) || !reader.ReadFlag(updateData))
+                return false;
+        }
+
+        flags |= VideoAV1PictureBits::SEGMENTATION_ENABLED;
+
+        if (updateMap)
+            flags |= VideoAV1PictureBits::SEGMENTATION_UPDATE_MAP;
+
+        if (temporalUpdate)
+            flags |= VideoAV1PictureBits::SEGMENTATION_TEMPORAL_UPDATE;
+
+        if (updateData) {
+            flags |= VideoAV1PictureBits::SEGMENTATION_UPDATE_DATA;
+
+            for (uint32_t i = 0; i < 8; i++) {
+                for (uint32_t j = 0; j < 8; j++) {
+                    uint8_t featureEnabled = 0;
+
+                    if (!reader.ReadFlag(featureEnabled))
+                        return false;
+
+                    int32_t clippedValue = 0;
+
+                    if (featureEnabled) {
+                        const uint32_t bitNum = SEGMENTATION_FEATURE_BITS[j];
+                        const int32_t limit = SEGMENTATION_FEATURE_MAX[j];
+                        uint32_t bits = 0;
+
+                        if (SEGMENTATION_FEATURE_SIGNED[j]) {
+                            if (!reader.ReadBits(bitNum + 1, bits))
+                                return false;
+
+                            const int32_t signedValue = (bits & (1u << bitNum)) ? (int32_t)bits - (int32_t)(1u << (bitNum + 1)) : (int32_t)bits;
+                            clippedValue = std::max(-limit, std::min(signedValue, limit));
+                        } else {
+                            if (!reader.ReadBits(bitNum, bits))
+                                return false;
+
+                            clippedValue = std::min((int32_t)bits, limit);
+                        }
+
+                        info.segmentation.featureEnabled[i] |= (uint8_t)(1u << j);
+                    }
+
+                    info.segmentation.featureData[i][j] = (int16_t)clippedValue;
+                }
+            }
+        } else {
+            // "load_previous": the segmentation features of "primary_ref_frame"
+            if (!primaryState)
+                return false;
+
+            info.segmentation = primaryState->segmentation;
+        }
+    }
+
+    // "delta_q_params" and "delta_lf_params"
     if (baseQIndex > 0) {
         uint8_t deltaQPresent = 0;
 
@@ -1612,26 +2054,57 @@ static inline bool ParseGeneratedKeyFrameHeader(const uint8_t* payload, size_t a
 
             info.picture.deltaQRes = (uint8_t)deltaQRes;
             flags |= VideoAV1PictureBits::DELTA_Q_PRESENT;
+
+            uint8_t deltaLfPresent = 0;
+
+            if (!allowIntrabc && !reader.ReadFlag(deltaLfPresent))
+                return false;
+
+            if (deltaLfPresent) {
+                uint32_t deltaLfRes = 0;
+                uint8_t deltaLfMulti = 0;
+
+                if (!reader.ReadBits(2, deltaLfRes) || !reader.ReadFlag(deltaLfMulti))
+                    return false;
+
+                info.picture.deltaLfRes = (uint8_t)deltaLfRes;
+                flags |= VideoAV1PictureBits::DELTA_LF_PRESENT;
+
+                if (deltaLfMulti)
+                    flags |= VideoAV1PictureBits::DELTA_LF_MULTI;
+            }
         }
     }
 
-    if (flags & VideoAV1PictureBits::DELTA_Q_PRESENT) {
-        uint8_t deltaLfPresent = 0;
+    // "CodedLossless": "LosslessArray" of every segment, "get_qindex(1, segmentId)" applies "SEG_LVL_ALT_Q"
+    bool codedLossless = quantization.deltaQYDc == 0 && quantization.deltaQUDc == 0 && quantization.deltaQUAc == 0 && quantization.deltaQVDc == 0 && quantization.deltaQVAc == 0;
+    for (uint32_t segment = 0; segment < 8 && codedLossless; segment++) {
+        int32_t qIndex = (int32_t)baseQIndex;
+        if (segmentationEnabled && (info.segmentation.featureEnabled[segment] & 0x01))
+            qIndex = std::max(0, std::min(255, qIndex + info.segmentation.featureData[segment][0]));
 
-        if (!allowIntrabc && !reader.ReadFlag(deltaLfPresent))
-            return false;
+        codedLossless = qIndex == 0;
+    }
+    const bool allLossless = codedLossless && frameWidth == upscaledWidth;
 
-        if (deltaLfPresent)
-            return false;
+    // "loop_filter_params": the deltas of "primary_ref_frame" ("load_previous") or the defaults
+    const bool isLoopFilterCoded = !codedLossless && !allowIntrabc;
+    bool areLoopFilterDeltasKnown = true;
+
+    if (primaryState && isLoopFilterCoded) {
+        for (uint32_t i = 0; i < 8; i++)
+            info.loopFilter.refDeltas[i] = primaryState->loopFilter.refDeltas[i];
+        for (uint32_t i = 0; i < 2; i++)
+            info.loopFilter.modeDeltas[i] = primaryState->loopFilter.modeDeltas[i];
+    } else {
+        info.loopFilter.refDeltas[0] = 1;
+        info.loopFilter.refDeltas[4] = -1;
+        info.loopFilter.refDeltas[6] = -1;
+        info.loopFilter.refDeltas[7] = -1;
+        areLoopFilterDeltasKnown = !isPrimaryStateMissing || !isLoopFilterCoded;
     }
 
-    const bool codedLossless = baseQIndex == 0 && info.quantization.deltaQYDc == 0 && info.quantization.deltaQUDc == 0 && info.quantization.deltaQUAc == 0;
-    info.loopFilter.refDeltas[0] = 1;
-    info.loopFilter.refDeltas[4] = -1;
-    info.loopFilter.refDeltas[6] = -1;
-    info.loopFilter.refDeltas[7] = -1;
-
-    if (!codedLossless && !allowIntrabc) {
+    if (isLoopFilterCoded) {
         uint32_t value = 0;
 
         if (!reader.ReadBits(6, value))
@@ -1642,7 +2115,7 @@ static inline bool ParseGeneratedKeyFrameHeader(const uint8_t* payload, size_t a
             return false;
         info.loopFilter.level[1] = (uint8_t)value;
 
-        if (info.loopFilter.level[0] || info.loopFilter.level[1]) {
+        if (planeNum > 1 && (info.loopFilter.level[0] || info.loopFilter.level[1])) {
             if (!reader.ReadBits(6, value))
                 return false;
             info.loopFilter.level[2] = (uint8_t)value;
@@ -1659,20 +2132,21 @@ static inline bool ParseGeneratedKeyFrameHeader(const uint8_t* payload, size_t a
         if (!reader.ReadFlag(info.loopFilter.deltaEnabled))
             return false;
 
+        // The deltas of this frame are inherited from a missing state
+        if (info.loopFilter.deltaEnabled && !areLoopFilterDeltasKnown)
+            return false;
+
         if (info.loopFilter.deltaEnabled) {
             if (!reader.ReadFlag(info.loopFilter.deltaUpdate))
-
                 return false;
 
             for (uint32_t i = 0; i < 8; i++) {
                 uint8_t updateRefDelta = 0;
 
                 if (info.loopFilter.deltaUpdate && !reader.ReadFlag(updateRefDelta))
-
                     return false;
 
                 if (updateRefDelta && !reader.ReadSigned(7, info.loopFilter.refDeltas[i]))
-
                     return false;
             }
 
@@ -1680,65 +2154,130 @@ static inline bool ParseGeneratedKeyFrameHeader(const uint8_t* payload, size_t a
                 uint8_t updateModeDelta = 0;
 
                 if (info.loopFilter.deltaUpdate && !reader.ReadFlag(updateModeDelta))
-
                     return false;
 
-                if (updateModeDelta) {
-                    int8_t modeDelta = 0;
-
-                    if (!reader.ReadSigned(7, modeDelta))
-
-                        return false;
-
-                    info.loopFilter.modeDeltas[i] = modeDelta;
-                }
+                if (updateModeDelta && !reader.ReadSigned(7, info.loopFilter.modeDeltas[i]))
+                    return false;
             }
         }
     }
 
+    // "cdef_params"
     if ((sequence.flags & VideoAV1SequenceBits::ENABLE_CDEF) && !codedLossless && !allowIntrabc) {
         uint32_t value = 0;
+
         if (!reader.ReadBits(2, value))
             return false;
         info.picture.cdefDampingMinus3 = (uint8_t)value;
+
         if (!reader.ReadBits(2, value))
             return false;
         info.picture.cdefBits = (uint8_t)value;
+
         const uint32_t cdefStrengthNum = 1u << info.picture.cdefBits;
         for (uint32_t i = 0; i < cdefStrengthNum; i++) {
             if (!reader.ReadBits(4, value))
                 return false;
             info.cdef.yPrimaryStrength[i] = (uint8_t)value;
+
             if (!reader.ReadBits(2, value))
                 return false;
-            info.cdef.ySecondaryStrength[i] = (uint8_t)(value == 3 ? 4 : value);
-            if (!reader.ReadBits(4, value))
-                return false;
-            info.cdef.uvPrimaryStrength[i] = (uint8_t)value;
-            if (!reader.ReadBits(2, value))
-                return false;
-            info.cdef.uvSecondaryStrength[i] = (uint8_t)(value == 3 ? 4 : value);
+            info.cdef.ySecondaryStrength[i] = (uint8_t)value; // as coded: the decoders apply the 3 -> 4 adjustment
+
+            if (planeNum > 1) {
+                if (!reader.ReadBits(4, value))
+                    return false;
+                info.cdef.uvPrimaryStrength[i] = (uint8_t)value;
+
+                if (!reader.ReadBits(2, value))
+                    return false;
+                info.cdef.uvSecondaryStrength[i] = (uint8_t)value;
+            }
         }
     }
 
-    if ((sequence.flags & VideoAV1SequenceBits::ENABLE_RESTORATION) && !codedLossless && !allowIntrabc) {
-        uint32_t restorationType = 0;
+    // "lr_params"
+    if ((sequence.flags & VideoAV1SequenceBits::ENABLE_RESTORATION) && !allLossless && !allowIntrabc) {
+        for (uint32_t plane = 0; plane < planeNum; plane++) {
+            uint32_t lrType = 0;
 
-        for (uint32_t plane = 0; plane < 3; plane++) {
-            if (!reader.ReadBits(2, restorationType))
+            if (!reader.ReadBits(2, lrType))
                 return false;
-            info.loopRestoration.frameRestorationType[plane] = (uint8_t)restorationType;
+
+            info.loopRestoration.frameRestorationType[plane] = REMAP_LR_TYPE[lrType];
+
+            if (lrType) {
+                flags |= VideoAV1PictureBits::USES_LR;
+
+                if (plane)
+                    flags |= VideoAV1PictureBits::USES_CHROMA_LR;
+            }
+        }
+
+        if (flags & VideoAV1PictureBits::USES_LR) {
+            uint32_t lrUnitShift = 0;
+
+            if (!reader.ReadBits(1, lrUnitShift))
+                return false;
+
+            if (use128x128Superblock)
+                lrUnitShift++;
+            else if (lrUnitShift) {
+                uint32_t lrUnitExtraShift = 0;
+
+                if (!reader.ReadBits(1, lrUnitExtraShift))
+                    return false;
+
+                lrUnitShift += lrUnitExtraShift;
+            }
+
+            info.loopRestoration.lrUnitShift = (uint8_t)lrUnitShift;
+
+            uint32_t lrUvShift = 0;
+
+            if (sequence.subsamplingX && sequence.subsamplingY && (flags & VideoAV1PictureBits::USES_CHROMA_LR) && !reader.ReadBits(1, lrUvShift))
+                return false;
+
+            info.loopRestoration.lrUvShift = (uint8_t)lrUvShift;
         }
     }
 
-    if (!codedLossless) {
-        uint32_t txMode = TX_MODE_ONLY_4X4;
+    // "read_tx_mode"
+    uint32_t txMode = TX_MODE_ONLY_4X4;
 
-        if (!reader.ReadIncrement(TX_MODE_LARGEST, TX_MODE_SELECT, txMode))
+    if (!codedLossless && !reader.ReadIncrement(TX_MODE_LARGEST, TX_MODE_SELECT, txMode))
+        return false;
+
+    // "frame_reference_mode" and "skip_mode_params"
+    info.picture.skipModeFrames[0] = VideoAV1ReferenceName::NONE;
+    info.picture.skipModeFrames[1] = VideoAV1ReferenceName::NONE;
+
+    if (!isKeyFrame) {
+        uint8_t referenceSelect = 0;
+
+        if (!reader.ReadFlag(referenceSelect))
             return false;
 
-        info.picture.txMode = (uint8_t)txMode;
+        if (referenceSelect)
+            flags |= VideoAV1PictureBits::REFERENCE_SELECT;
+
+        uint8_t skipModePresent = 0;
+
+        if (referenceSelect && enableOrderHint && GetSkipModeFrames(sequence, orderHint, info.references, info.picture.skipModeFrames) && !reader.ReadFlag(skipModePresent))
+            return false;
+
+        if (skipModePresent)
+            flags |= VideoAV1PictureBits::SKIP_MODE_PRESENT;
+
+        uint8_t allowWarpedMotion = 0;
+
+        if (!errorResilient && (sequence.flags & VideoAV1SequenceBits::ENABLE_WARPED_MOTION) && !reader.ReadFlag(allowWarpedMotion))
+            return false;
+
+        if (allowWarpedMotion)
+            flags |= VideoAV1PictureBits::ALLOW_WARPED_MOTION;
     }
+
     uint8_t reducedTxSet = 0;
 
     if (!reader.ReadFlag(reducedTxSet))
@@ -1747,6 +2286,124 @@ static inline bool ParseGeneratedKeyFrameHeader(const uint8_t* payload, size_t a
     if (reducedTxSet)
         flags |= VideoAV1PictureBits::REDUCED_TX_SET;
 
+    // "global_motion_params" relative to "PrevGmParams": the parameters of "primary_ref_frame" or the defaults
+    constexpr uint32_t GM_TYPE_TRANSLATION = 1;
+    constexpr uint32_t GM_TYPE_ROTZOOM = 2;
+    constexpr uint32_t GM_TYPE_AFFINE = 3;
+
+    FillIdentityGlobalMotion(info.globalMotion);
+
+    if (!isKeyFrame) {
+        VideoAV1GlobalMotionDesc previous = {};
+        FillIdentityGlobalMotion(previous);
+
+        if (primaryState && !errorResilient)
+            previous = primaryState->globalMotion;
+
+        const bool isPreviousMissing = isPrimaryStateMissing && !errorResilient;
+        const bool allowHighPrecisionMv = !!(flags & VideoAV1PictureBits::ALLOW_HIGH_PRECISION_MV);
+
+        for (uint32_t reference = 1; reference <= REFERENCE_NAME_NUM; reference++) {
+            uint8_t isGlobal = 0;
+            uint32_t type = 0;
+
+            if (!reader.ReadFlag(isGlobal))
+                return false;
+
+            if (isGlobal) {
+                uint8_t isRotZoom = 0;
+                uint8_t isTranslation = 0;
+
+                if (!reader.ReadFlag(isRotZoom) || (!isRotZoom && !reader.ReadFlag(isTranslation)))
+                    return false;
+
+                type = isRotZoom ? GM_TYPE_ROTZOOM : (isTranslation ? GM_TYPE_TRANSLATION : GM_TYPE_AFFINE);
+
+                if (isPreviousMissing)
+                    return false;
+            }
+
+            info.globalMotion.type[reference] = (uint8_t)type;
+            int32_t* params = info.globalMotion.params[reference];
+            const int32_t* previousParams = previous.params[reference];
+
+            if (type >= GM_TYPE_ROTZOOM) {
+                if (!ReadGlobalParam(reader, type, 2, allowHighPrecisionMv, previousParams[2], params[2]) || !ReadGlobalParam(reader, type, 3, allowHighPrecisionMv, previousParams[3], params[3]))
+                    return false;
+
+                if (type == GM_TYPE_AFFINE) {
+                    if (!ReadGlobalParam(reader, type, 4, allowHighPrecisionMv, previousParams[4], params[4]) || !ReadGlobalParam(reader, type, 5, allowHighPrecisionMv, previousParams[5], params[5]))
+                        return false;
+                } else {
+                    params[4] = -params[3];
+                    params[5] = params[2];
+                }
+            }
+
+            if (type >= GM_TYPE_TRANSLATION) {
+                if (!ReadGlobalParam(reader, type, 0, allowHighPrecisionMv, previousParams[0], params[0]) || !ReadGlobalParam(reader, type, 1, allowHighPrecisionMv, previousParams[1], params[1]))
+                    return false;
+            }
+
+            // DXVA "wminvalid": the model can't be used for warped blocks
+            info.globalMotion.invalid[reference] = type >= GM_TYPE_ROTZOOM && !IsGlobalMotionShearValid(params);
+        }
+    }
+
+    // "film_grain_params", "load_grain_params" for "update_grain = 0"
+    if (sequence.flags & VideoAV1SequenceBits::FILM_GRAIN_PARAMS_PRESENT) {
+        uint8_t applyGrain = 0;
+
+        if (!reader.ReadFlag(applyGrain))
+            return false;
+
+        if (applyGrain) {
+            uint32_t grainSeed = 0;
+            uint8_t updateGrain = 1;
+
+            if (!reader.ReadBits(16, grainSeed) || (!isKeyFrame && !reader.ReadFlag(updateGrain)))
+                return false;
+
+            if (updateGrain) {
+                if (!ReadFilmGrainParams(reader, sequence, info.filmGrain))
+                    return false;
+            } else {
+                uint32_t refIndex = 0;
+
+                if (!reader.ReadBits(3, refIndex))
+                    return false;
+
+                // "film_grain_params_ref_idx" must be one of "ref_frame_idx[]"
+                const VideoAV1SavedFrameState* grainState = GetSavedFrameState(desc, refIndex);
+                bool isReference = false;
+
+                for (uint8_t refFrameIndex : refFrameIndices)
+                    isReference |= refFrameIndex == refIndex;
+
+                if (!grainState || !isReference)
+                    return false;
+
+                info.filmGrain = grainState->filmGrain;
+                applyGrain = grainState->applyGrain;
+            }
+
+            // Resolved parameters: backends get the full set
+            if (applyGrain) {
+                info.filmGrain.grainSeed = (uint16_t)grainSeed;
+                info.filmGrain.updateGrain = 1;
+                info.filmGrain.filmGrainParamsRefIdx = 0;
+                info.filmGrain.matrixCoeffIsIdentity = sequence.matrixCoefficients == 0;
+                flags |= VideoAV1PictureBits::APPLY_GRAIN;
+            } else
+                info.filmGrain = {}; // "reset_grain_params"
+        }
+    }
+
+    // "frame_obu": "byte_alignment" between "frame_header_obu" and "tile_group_obu"
+    if (combinedFrameObu && !reader.ByteAlign())
+        return false;
+
+    // "tile_group_obu"
     const uint32_t tileNum = tileCols * tileRows;
     BitReader tileReader{tilePayload, availableTilePayloadSize, 0};
     BitReader& tileGroupReader = combinedFrameObu ? reader : tileReader;
@@ -1758,18 +2415,15 @@ static inline bool ParseGeneratedKeyFrameHeader(const uint8_t* payload, size_t a
         uint8_t tileStartAndEndPresent = 0;
 
         if (!tileGroupReader.ReadFlag(tileStartAndEndPresent))
-
             return false;
 
         if (tileStartAndEndPresent) {
             const uint32_t tileBits = tileColsLog2 + tileRowsLog2;
 
             if (!tileGroupReader.ReadBits(tileBits, tileGroupStart) || !tileGroupReader.ReadBits(tileBits, tileGroupEnd))
-
                 return false;
 
             if (tileGroupStart > tileGroupEnd || tileGroupEnd >= tileNum)
-
                 return false;
         }
     }
@@ -1785,11 +2439,9 @@ static inline bool ParseGeneratedKeyFrameHeader(const uint8_t* payload, size_t a
     uint32_t tileGroupTileNum = tileGroupEnd - tileGroupStart + 1;
 
     if (!tileGroupTileNum || tileGroupTileNum > std::size(info.tiles))
-
         return false;
 
     if (tileGroupStart != 0 || tileGroupEnd != tileNum - 1)
-
         return false;
 
     const uint32_t tileSizeByteNum = tileSizeBytesMinus1 + 1;
@@ -1802,7 +2454,6 @@ static inline bool ParseGeneratedKeyFrameHeader(const uint8_t* payload, size_t a
 
             if (groupTileIndex + 1 < tileGroupTileNum) {
                 if (tilePayloadCursor + tileSizeByteNum > availableTilePayloadSize)
-
                     return false;
 
                 uint32_t tileSizeMinus1 = 0;
@@ -1813,14 +2464,12 @@ static inline bool ParseGeneratedKeyFrameHeader(const uint8_t* payload, size_t a
                 tileSize = tileSizeMinus1 + 1;
             } else {
                 if (tilePayloadCursor > fullTilePayloadSize || fullTilePayloadSize - tilePayloadCursor > std::numeric_limits<uint32_t>::max())
-
                     return false;
 
                 tileSize = (uint32_t)(fullTilePayloadSize - tilePayloadCursor);
             }
 
             if (tilePayloadCursor + tileSize > fullTilePayloadSize)
-
                 return false;
 
             VideoAV1DecodeTileDesc& tile = info.tiles[groupTileIndex];
@@ -1838,27 +2487,44 @@ static inline bool ParseGeneratedKeyFrameHeader(const uint8_t* payload, size_t a
     if (!parseTilePayload())
         return false;
 
-    info.sequence = sequence;
-
     if (fullTilePayloadSize > std::numeric_limits<uint32_t>::max())
         return false;
+
+    info.sequence = sequence;
+
+    if (!enableOrderHint)
+        info.sequence.flags &= ~(VideoAV1SequenceBits::ENABLE_JNT_COMP | VideoAV1SequenceBits::ENABLE_REF_FRAME_MVS);
 
     info.tileLayout.columnNum = (uint8_t)tileCols;
     info.tileLayout.rowNum = (uint8_t)tileRows;
     info.tileLayout.tileSizeBytesMinus1 = (uint8_t)tileSizeBytesMinus1;
     info.tileLayout.uniformSpacing = uniformTileSpacing;
     info.tileLayout.contextUpdateTileId = (uint16_t)contextUpdateTileId;
-    info.picture.frameType = VideoFrameType::IDR;
+    info.picture.frameType = isKeyFrame ? VideoFrameType::IDR : VideoFrameType::P;
     info.picture.orderHint = (uint8_t)orderHint;
-    info.picture.refreshFrameFlags = 0xFF;
-    info.picture.primaryReferenceName = VideoAV1ReferenceName::NONE;
+    info.picture.refreshFrameFlags = (uint8_t)refreshFrameFlags;
+    info.picture.primaryReferenceName = GetReferenceNameFromReferenceIndex(primaryRefFrame);
     info.picture.flags = flags;
     info.picture.renderWidthMinus1 = (uint16_t)renderWidthMinus1;
     info.picture.renderHeightMinus1 = (uint16_t)renderHeightMinus1;
     info.picture.baseQIndex = (uint8_t)baseQIndex;
-    info.picture.interpolationFilter = INTERPOLATION_FILTER_EIGHTTAP;
+    info.picture.interpolationFilter = (uint8_t)interpolationFilter;
+    info.picture.txMode = (uint8_t)txMode;
     info.picture.tileNum = tileGroupTileNum;
-    FillIdentityGlobalMotion(info.globalMotion);
+
+    VideoAV1SavedFrameState& savedFrameState = info.savedFrameState;
+    savedFrameState.loopFilter = info.loopFilter;
+    savedFrameState.segmentation = info.segmentation;
+    savedFrameState.globalMotion = info.globalMotion;
+    savedFrameState.filmGrain = info.filmGrain;
+    savedFrameState.upscaledWidthMinus1 = (uint16_t)(upscaledWidth - 1);
+    savedFrameState.frameHeightMinus1 = (uint16_t)(frameHeight - 1);
+    savedFrameState.renderWidthMinus1 = (uint16_t)renderWidthMinus1;
+    savedFrameState.renderHeightMinus1 = (uint16_t)renderHeightMinus1;
+    savedFrameState.orderHint = (uint8_t)orderHint;
+    savedFrameState.applyGrain = (flags & VideoAV1PictureBits::APPLY_GRAIN) ? 1 : 0;
+    savedFrameState.valid = areLoopFilterDeltasKnown;
+
     BindPointers(info);
 
     return true;
@@ -1883,32 +2549,9 @@ static inline Result GetEncodeDecodeInfoFromHeader(const VideoAV1EncodeDecodeInf
     const uint8_t* tilePayload = desc.encodedPayloadHeader + (frame.combinedFrameObu ? frame.headerPayloadOffset : frame.tilePayloadOffset);
     const size_t availableTilePayload = frame.combinedFrameObu ? availablePayload : (size_t)desc.encodedPayloadHeaderSize - frame.tilePayloadOffset;
     const size_t fullTilePayloadSize = frame.combinedFrameObu ? frame.headerPayloadSize : frame.tilePayloadSize;
-    const size_t fullHeaderPayloadSize = frame.headerPayloadSize;
 
-    if (!ParseGeneratedKeyFrameHeader(desc.encodedPayloadHeader + frame.headerPayloadOffset, availablePayload, tilePayload, availableTilePayload, fullTilePayloadSize, frame.combinedFrameObu, *desc.sequence, parsedInfo)) {
-        uint32_t frameType = 0;
-        uint8_t showFrame = 0;
-
-        if (!PeekGeneratedFrameType(desc.encodedPayloadHeader + frame.headerPayloadOffset, availablePayload, frameType, showFrame) || frameType != 1 || !showFrame)
-            return Result::FAILURE;
-
-        std::array<uint8_t, 7> refFrameIndices = {};
-
-        if (!ParseGeneratedInterFrameHeader(desc.encodedPayloadHeader + frame.headerPayloadOffset, availablePayload, fullHeaderPayloadSize, frame.combinedFrameObu, *desc.sequence, refFrameIndices, parsedInfo))
-            return Result::FAILURE;
-
-        if (!BuildInterFrameReferences(desc, refFrameIndices, parsedInfo))
-            return Result::FAILURE;
-
-        if (!frame.combinedFrameObu) {
-            if (frame.tilePayloadSize > std::numeric_limits<uint32_t>::max())
-
-                return Result::FAILURE;
-
-            parsedInfo.picture.tileNum = 1;
-            parsedInfo.tiles[0] = {0, (uint32_t)frame.tilePayloadSize, 0, 0, 0xFF};
-        }
-    }
+    if (!ParseGeneratedFrameHeader(desc, desc.encodedPayloadHeader + frame.headerPayloadOffset, availablePayload, tilePayload, availableTilePayload, fullTilePayloadSize, frame.combinedFrameObu, parsedInfo))
+        return Result::FAILURE;
 
     if (frame.combinedFrameObu) {
         parsedInfo.bitstreamOffset = frame.headerPayloadOffset;
@@ -2084,6 +2727,10 @@ static inline Result WriteSequenceHeaderPayload(const VideoAV1SequenceDesc& desc
         return Result::INVALID_ARGUMENT;
 
     if (reducedStillPictureHeader && (!stillPicture || timingInfoPresent || initialDisplayDelayPresent || frameIdNumbersPresent || enableOrderHint))
+        return Result::INVALID_ARGUMENT;
+
+    // "frame_id_length" (additional_frame_id_length_minus_1 + delta_frame_id_length_minus_2 + 3) must not exceed 16
+    if (frameIdNumbersPresent && (desc.additionalFrameIdLengthMinus1 > 7 || (desc.additionalFrameIdLengthMinus1 + desc.deltaFrameIdLengthMinus2 + 3) > 16))
         return Result::INVALID_ARGUMENT;
 
     if (timingInfoPresent && (!desc.numUnitsInDisplayTick || !desc.timeScale || desc.numTicksPerPictureMinus1 == UINT32_MAX))

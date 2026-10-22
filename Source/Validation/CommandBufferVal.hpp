@@ -324,7 +324,7 @@ static inline bool IsVideoPictureUsageValid(const VideoPictureVal& picture, Vide
     if (picture.GetUsage() == usage)
         return true;
 
-    return usage == VideoPictureUsage::DECODE_REFERENCE && picture.GetUsage() == VideoPictureUsage::DECODE_OUTPUT;
+    return usage == VideoPictureUsage::DECODE_REFERENCE && picture.GetUsage() == VideoPictureUsage::DECODE_OUTPUT && !picture.IsOutputOnly();
 }
 
 static inline bool IsVideoPictureValidForSession(const VideoPictureVal& picture, VideoPictureUsage usage, const VideoSessionDesc& sessionDesc) {
@@ -390,7 +390,7 @@ static inline bool IsVideoEncodeH265ReferenceListValid(const VideoEncodeDesc& vi
     uint32_t list1ReferenceNum = 0;
     for (uint32_t i = 0; i < videoEncodeDesc.referenceNum; i++) {
         const VideoH265ReferenceDesc* reference = video::FindReferenceDesc(videoEncodeDesc.h265ReferenceDescs, videoEncodeDesc.referenceNum, videoEncodeDesc.references[i].slot);
-        if (!reference || !IsVideoFrameTypeValid(reference->frameType))
+        if (!reference || !IsVideoFrameTypeValid(reference->frameType) || reference->longTerm)
             return false;
 
         if (reference->listIndex == 0)
@@ -416,6 +416,20 @@ static inline bool IsVideoAV1LoopRestorationDescValid(const VideoAV1LoopRestorat
     return desc.lrUvShift <= desc.lrUnitShift;
 }
 
+static inline bool IsVideoAV1CdefDescValid(const VideoAV1CdefDesc& desc) {
+    for (uint32_t i = 0; i < 8; i++) {
+        if (desc.yPrimaryStrength[i] > 15 || desc.ySecondaryStrength[i] > 3 || desc.uvPrimaryStrength[i] > 15 || desc.uvSecondaryStrength[i] > 3)
+            return false;
+    }
+
+    return true;
+}
+
+// AV1 "interpolation_filter" (4 = SWITCHABLE) and "TxMode"
+static inline bool AreVideoAV1PictureModesValid(uint8_t interpolationFilter, uint8_t txMode) {
+    return interpolationFilter <= video::av1::INTERPOLATION_FILTER_SWITCHABLE && txMode <= video::av1::TX_MODE_SELECT;
+}
+
 static inline bool IsVideoAV1InterFrameWithoutReferences(VideoFrameType frameType, uint32_t referenceNum) {
     return (frameType == VideoFrameType::P || frameType == VideoFrameType::B) && referenceNum == 0;
 }
@@ -433,15 +447,20 @@ static inline bool AreVideoDecodeSliceOffsetsValid(const uint32_t* offsets, uint
     return true;
 }
 
+static inline bool IsVideoAV1FilmGrainDescValid(const VideoAV1FilmGrainDesc& desc) {
+    return desc.numYPoints <= 14 && desc.numCbPoints <= 10 && desc.numCrPoints <= 10 && desc.grainScalingMinus8 <= 3 && desc.arCoeffLag <= 3 && desc.arCoeffShiftMinus6 <= 3 && desc.grainScaleShift <= 3 && desc.filmGrainParamsRefIdx < 8
+        && desc.cbOffset >= 0 && desc.cbOffset <= 511 && desc.crOffset >= 0 && desc.crOffset <= 511; // "cb_offset", "cr_offset": f(9)
+}
+
 static bool IsVideoAV1DecodePictureDescValid(const VideoDecodeDesc& videoDecodeDesc) {
     const VideoAV1DecodePictureDesc& desc = *videoDecodeDesc.av1PictureDesc;
-    if (desc.flags & VideoAV1PictureBits::APPLY_GRAIN)
+    if ((desc.flags & VideoAV1PictureBits::APPLY_GRAIN) && (!desc.filmGrain || !IsVideoAV1FilmGrainDescValid(*desc.filmGrain)))
         return false;
 
     if (desc.tileNum == 0 || desc.tileNum > 64 || !desc.tiles)
         return false;
 
-    if (desc.referenceNum > 8 || (desc.referenceNum != 0 && !desc.references))
+    if (desc.referenceNum > video::av1::DECODE_REFERENCE_DESC_MAX_NUM || (desc.referenceNum != 0 && !desc.references))
         return false;
 
     if (desc.references && !HasValidVideoAV1ReferenceKeys(desc.references, desc.referenceNum))
@@ -456,6 +475,14 @@ static bool IsVideoAV1DecodePictureDescValid(const VideoDecodeDesc& videoDecodeD
     if (IsVideoAV1InterFrameWithoutReferences(desc.frameType, videoDecodeDesc.referenceNum))
         return false;
 
+    // Inter frames code "ref_frame_idx" for every reference name (AV1 "uncompressed_header")
+    if (desc.frameType == VideoFrameType::P || desc.frameType == VideoFrameType::B) {
+        for (uint8_t name = (uint8_t)VideoAV1ReferenceName::LAST; name <= (uint8_t)VideoAV1ReferenceName::ALTREF; name++) {
+            if (!HasVideoAV1ReferenceName(desc.references, desc.referenceNum, (VideoAV1ReferenceName)name))
+                return false;
+        }
+    }
+
     for (uint32_t i = 0; i < desc.tileNum; i++) {
         const VideoAV1DecodeTileDesc& tile = desc.tiles[i];
         if (tile.offset >= videoDecodeDesc.bitstream.size || tile.size > videoDecodeDesc.bitstream.size - tile.offset)
@@ -465,10 +492,20 @@ static bool IsVideoAV1DecodePictureDescValid(const VideoDecodeDesc& videoDecodeD
     if (!IsVideoAV1ReferenceNameValid(desc.primaryReferenceName))
         return false;
 
+    if (desc.flags & VideoAV1PictureBits::SKIP_MODE_PRESENT) {
+        for (VideoAV1ReferenceName skipModeFrame : desc.skipModeFrames) {
+            if (skipModeFrame == VideoAV1ReferenceName::NONE || !IsVideoAV1ReferenceNameValid(skipModeFrame) || !HasVideoAV1ReferenceName(desc.references, desc.referenceNum, skipModeFrame))
+                return false;
+        }
+    }
+
     if (desc.tileLayout && !IsVideoAV1TileLayoutValid(*desc.tileLayout))
         return false;
 
     if (desc.loopRestoration && !IsVideoAV1LoopRestorationDescValid(*desc.loopRestoration))
+        return false;
+
+    if ((desc.cdef && !IsVideoAV1CdefDescValid(*desc.cdef)) || !AreVideoAV1PictureModesValid(desc.interpolationFilter, desc.txMode))
         return false;
 
     for (uint32_t i = 0; i < desc.referenceNum; i++) {
@@ -476,13 +513,13 @@ static bool IsVideoAV1DecodePictureDescValid(const VideoDecodeDesc& videoDecodeD
         if (!IsVideoAV1ReferenceNameValid(reference.name) || !IsVideoFrameTypeValid(reference.frameType) || reference.refFrameIndex >= 8)
             return false;
 
-        if (reference.name != VideoAV1ReferenceName::NONE && !video::HasReferenceSlot(videoDecodeDesc.references, videoDecodeDesc.referenceNum, reference.slot))
+        // Also "NONE" entries: D3D12 maps every reference frame map entry to a reference picture
+        if (!video::HasReferenceSlot(videoDecodeDesc.references, videoDecodeDesc.referenceNum, reference.slot))
             return false;
     }
 
     for (uint32_t i = 0; i < videoDecodeDesc.referenceNum; i++) {
-        const VideoAV1ReferenceDesc* reference = video::FindReferenceDesc(desc.references, desc.referenceNum, videoDecodeDesc.references[i].slot);
-        if (!reference || reference->name == VideoAV1ReferenceName::NONE)
+        if (!video::FindReferenceDesc(desc.references, desc.referenceNum, videoDecodeDesc.references[i].slot))
             return false;
     }
 
@@ -504,6 +541,9 @@ static bool IsVideoAV1EncodePictureDescValid(const VideoEncodeDesc& videoEncodeD
         return false;
 
     if (desc.loopRestoration && !IsVideoAV1LoopRestorationDescValid(*desc.loopRestoration))
+        return false;
+
+    if ((desc.cdef && !IsVideoAV1CdefDescValid(*desc.cdef)) || !AreVideoAV1PictureModesValid(desc.interpolationFilter, desc.txMode))
         return false;
 
     if (desc.refreshFrameFlags && !videoEncodeDesc.reconstructedPicture)
@@ -1617,9 +1657,19 @@ NRI_INLINE void CommandBufferVal::DecodeVideo(const VideoDecodeDesc& videoDecode
         NRI_RETURN_ON_FAILURE(&m_Device, IsVideoPictureValidForSession(setupPictureVal, VideoPictureUsage::DECODE_REFERENCE, sessionVal.GetDesc()), ReturnVoid(), "'setupPicture' must have decode reference usage and match the session format, codec and coded extent");
 
         isDpbAndOutputDistinct = !setupPictureVal.IsSameSubresource(dstPictureVal);
+        NRI_RETURN_ON_FAILURE(&m_Device, !isDpbAndOutputDistinct || setupPictureVal.IsSameExtent(dstPictureVal), ReturnVoid(), "a distinct 'setupPicture' must have the same picture and texture extents as 'dstPicture'");
+
+        // Distinct support covers the session extent (D3D12 converts between the whole textures)
+        const VideoSessionDesc& sessionDesc = sessionVal.GetDesc();
+        NRI_RETURN_ON_FAILURE(&m_Device, !isDpbAndOutputDistinct || (setupPictureVal.HasTextureExtent(sessionDesc.width, sessionDesc.height) && dstPictureVal.HasTextureExtent(sessionDesc.width, sessionDesc.height)), ReturnVoid(), "distinct 'dstPicture' and 'setupPicture' textures must have the session extent");
     }
 
-    NRI_RETURN_ON_FAILURE(&m_Device, isDpbAndOutputDistinct ? capabilities.decodeDpbAndOutputDistinct : capabilities.decodeDpbAndOutputCoincide, ReturnVoid(), "the video session does not support the requested decode output and DPB setup mode");
+    // VK: applying film grain requires a distinct setup picture, even if distinct mode isn't advertised for the session
+    const bool isFilmGrainApplied = videoDecodeDesc.av1PictureDesc && (videoDecodeDesc.av1PictureDesc->flags & VideoAV1PictureBits::APPLY_GRAIN);
+    NRI_RETURN_ON_FAILURE(&m_Device, !isFilmGrainApplied || sessionVal.GetDesc().av1FilmGrain, ReturnVoid(), "'APPLY_GRAIN' requires a session with 'av1FilmGrain'");
+    NRI_RETURN_ON_FAILURE(&m_Device, !isFilmGrainApplied || !sessionVal.GetDesc().maxReferenceNum || isDpbAndOutputDistinct, ReturnVoid(), "'APPLY_GRAIN' requires a distinct 'setupPicture' (the reference must be the picture without film grain)");
+    NRI_RETURN_ON_FAILURE(&m_Device, isDpbAndOutputDistinct ? (capabilities.decodeDpbAndOutputDistinct || isFilmGrainApplied) : capabilities.decodeDpbAndOutputCoincide, ReturnVoid(), "the video session does not support the requested decode output and DPB setup mode");
+    NRI_RETURN_ON_FAILURE(&m_Device, videoDecodeDesc.setupPicture || !sessionVal.GetDesc().maxReferenceNum || !dstPictureVal.IsOutputOnly(), ReturnVoid(), "'dstPicture' uses a 'VIDEO_OUTPUT_ONLY' texture and can't be the DPB setup picture; provide a distinct 'setupPicture'");
 
     if (videoDecodeDesc.argumentNum > 10) {
         NRI_REPORT_ERROR(&m_Device, "'argumentNum' must be <= 10");
@@ -1633,12 +1683,18 @@ NRI_INLINE void CommandBufferVal::DecodeVideo(const VideoDecodeDesc& videoDecode
 
     NRI_RETURN_ON_FAILURE(&m_Device, IsVideoDecodeDpbLayoutValid(videoDecodeDesc, sessionVal.GetDesc().maxReferenceNum), ReturnVoid(), "'references' exceed the session capacity or contain duplicate slots");
 
+    const uint32_t setupSlot = video::GetDecodeSetupSlot(videoDecodeDesc);
+
     for (uint32_t i = 0; i < videoDecodeDesc.referenceNum; i++) {
+        NRI_RETURN_ON_FAILURE(&m_Device, setupSlot != videoDecodeDesc.references[i].slot, ReturnVoid(), "the decode setup slot must not match 'references[%u].slot'", i);
         NRI_RETURN_ON_FAILURE(&m_Device, videoDecodeDesc.references[i].picture, ReturnVoid(), "'references[%u].picture' is NULL", i);
 
         VideoPictureVal& pictureVal = *(VideoPictureVal*)videoDecodeDesc.references[i].picture;
         NRI_RETURN_ON_FAILURE(&m_Device, IsVideoPictureValidForSession(pictureVal, VideoPictureUsage::DECODE_REFERENCE, sessionVal.GetDesc()), ReturnVoid(), "'references[%u].picture' must have decode reference usage and match the session format, codec and coded extent", i);
+        NRI_RETURN_ON_FAILURE(&m_Device, !capabilities.decodeReferenceOnlyRequired || pictureVal.IsReferenceOnly(), ReturnVoid(), "the video session requires 'references[%u].picture' to use a 'VIDEO_REFERENCE_ONLY' texture", i);
     }
+
+    NRI_RETURN_ON_FAILURE(&m_Device, !capabilities.decodeReferenceOnlyRequired || !videoDecodeDesc.setupPicture || ((VideoPictureVal*)videoDecodeDesc.setupPicture)->IsReferenceOnly(), ReturnVoid(), "the video session requires 'setupPicture' to use a 'VIDEO_REFERENCE_ONLY' texture");
 
     const VideoPictureVal* effectiveSetupPictureVal = videoDecodeDesc.setupPicture ? (const VideoPictureVal*)videoDecodeDesc.setupPicture : &dstPictureVal;
     NRI_RETURN_ON_FAILURE(&m_Device, IsVideoDpbTextureArrayValid(effectiveSetupPictureVal, videoDecodeDesc.references, videoDecodeDesc.referenceNum, capabilities), ReturnVoid(), "the session requires all decode DPB pictures to use a texture array with at least 'VideoCapabilities::dpbTextureArrayMinLayerNum' layers");
@@ -1776,9 +1832,10 @@ NRI_INLINE void CommandBufferVal::EncodeVideo(const VideoEncodeDesc& videoEncode
         && videoEncodeDesc.dstBitstream.size <= dstBitstreamDesc.size - videoEncodeDesc.dstBitstream.offset
         && (capabilities.encodeBitstreamRangeSizeSupported || videoEncodeDesc.dstBitstream.size == dstBitstreamDesc.size - videoEncodeDesc.dstBitstream.offset)
         && videoEncodeDesc.bitstreamMetadataSize <= videoEncodeDesc.dstBitstream.size
+        && videoEncodeDesc.dstBitstream.size <= capabilities.bitstreamSizeMax
         && IsAligned(videoEncodeDesc.dstBitstream.offset, capabilities.bitstreamOffsetAlignment)
         && IsAligned(videoEncodeDesc.dstBitstream.size, capabilities.bitstreamSizeAlignment);
-    NRI_RETURN_ON_FAILURE(&m_Device, isDstBitstreamRangeValid, ReturnVoid(), "'dstBitstream' must be an aligned VIDEO_ENCODE buffer range containing 'bitstreamMetadataSize'; this session may require the range to extend to the end of the buffer");
+    NRI_RETURN_ON_FAILURE(&m_Device, isDstBitstreamRangeValid, ReturnVoid(), "'dstBitstream' must be an aligned VIDEO_ENCODE buffer range containing 'bitstreamMetadataSize' and within 'bitstreamSizeMax'; this session may require the range to extend to the end of the buffer");
     NRI_RETURN_ON_FAILURE(&m_Device, !capabilities.metadataSize || metadataVal, ReturnVoid(), "'metadata' is required by the video session");
 
     if (metadataVal) {
@@ -1789,6 +1846,15 @@ NRI_INLINE void CommandBufferVal::EncodeVideo(const VideoEncodeDesc& videoEncode
     NRI_RETURN_ON_FAILURE(&m_Device, &parametersVal.GetSession() == &sessionVal, ReturnVoid(), "'parameters' must belong to 'session'");
     NRI_RETURN_ON_FAILURE(&m_Device, !videoEncodeDesc.h264PictureDesc || sessionVal.GetDesc().codec == VideoCodec::H264, ReturnVoid(), "'h264PictureDesc' requires an H.264 session");
     NRI_RETURN_ON_FAILURE(&m_Device, !videoEncodeDesc.h265ReferenceDescs || sessionVal.GetDesc().codec == VideoCodec::H265, ReturnVoid(), "'h265ReferenceDescs' require an H.265 session");
+    NRI_RETURN_ON_FAILURE(&m_Device, !videoEncodeDesc.h265PictureDesc || sessionVal.GetDesc().codec == VideoCodec::H265, ReturnVoid(), "'h265PictureDesc' requires an H.265 session");
+
+    if (sessionVal.GetDesc().codec == VideoCodec::H265) {
+        const VideoH265EncodePictureDesc h265PictureDesc = videoEncodeDesc.h265PictureDesc ? *videoEncodeDesc.h265PictureDesc : VideoH265EncodePictureDesc{};
+        const bool isParameterSetValid = parametersVal.HasH265Parameters()
+            ? parametersVal.IsH265ParameterSetValid(h265PictureDesc.videoParameterSetId, h265PictureDesc.sequenceParameterSetId, h265PictureDesc.pictureParameterSetId)
+            : (h265PictureDesc.videoParameterSetId == 0 && h265PictureDesc.sequenceParameterSetId == 0 && h265PictureDesc.pictureParameterSetId == 0);
+        NRI_RETURN_ON_FAILURE(&m_Device, isParameterSetValid, ReturnVoid(), "'h265PictureDesc' must select a matching VPS/SPS/PPS chain from 'parameters' (all ids must be 0 for internal default parameters)");
+    }
     NRI_RETURN_ON_FAILURE(&m_Device, !videoEncodeDesc.av1PictureDesc || sessionVal.GetDesc().codec == VideoCodec::AV1, ReturnVoid(), "'av1PictureDesc' requires an AV1 session");
     const uint8_t h264SequenceParameterSetId = videoEncodeDesc.h264PictureDesc ? videoEncodeDesc.h264PictureDesc->sequenceParameterSetId : 0;
     const uint8_t h264PictureParameterSetId = videoEncodeDesc.h264PictureDesc ? videoEncodeDesc.h264PictureDesc->pictureParameterSetId : 0;
@@ -1820,6 +1886,7 @@ NRI_INLINE void CommandBufferVal::EncodeVideo(const VideoEncodeDesc& videoEncode
     NRI_RETURN_ON_FAILURE(&m_Device, IsVideoEncodeDpbLayoutValid(videoEncodeDesc, sessionVal.GetDesc().maxReferenceNum), ReturnVoid(), "'references' exceed the session capacity or contain duplicate slots");
 
     for (uint32_t i = 0; i < videoEncodeDesc.referenceNum; i++) {
+        NRI_RETURN_ON_FAILURE(&m_Device, !videoEncodeDesc.reconstructedPicture || videoEncodeDesc.reconstructedSlot != videoEncodeDesc.references[i].slot, ReturnVoid(), "'reconstructedSlot' must not match 'references[%u].slot'", i);
         NRI_RETURN_ON_FAILURE(&m_Device, videoEncodeDesc.references[i].picture, ReturnVoid(), "'references[%u].picture' is NULL", i);
 
         VideoPictureVal& pictureVal = *(VideoPictureVal*)videoEncodeDesc.references[i].picture;
@@ -1869,8 +1936,20 @@ NRI_INLINE void CommandBufferVal::EncodeVideo(const VideoEncodeDesc& videoEncode
     }
 
     if (sessionVal.GetDesc().codec == VideoCodec::H265 && videoEncodeDesc.referenceNum && !IsVideoEncodeH265ReferenceListValid(videoEncodeDesc, frameType)) {
-        NRI_REPORT_ERROR(&m_Device, "'h265ReferenceDescs' must describe every H.265 reference and B frames require List0 and List1 references");
+        NRI_REPORT_ERROR(&m_Device, "'h265ReferenceDescs' must describe every H.265 reference with short-term references only (long-term encode references are unsupported) and B frames require List0 and List1 references");
         return;
+    }
+
+    // Without "lists_modification_present_flag" only the initial lists can be signaled (internal default parameters signal it)
+    const uint8_t h265PpsId = videoEncodeDesc.h265PictureDesc ? videoEncodeDesc.h265PictureDesc->pictureParameterSetId : 0;
+    const int32_t pictureOrderCount = videoEncodeDesc.pictureDesc ? videoEncodeDesc.pictureDesc->pictureOrderCount : 0;
+    if (sessionVal.GetDesc().codec == VideoCodec::H265 && videoEncodeDesc.referenceNum > 1 && parametersVal.HasH265Parameters() && !parametersVal.IsH265ListsModificationPresent(h265PpsId)) {
+        video::h265::EncodeReferenceLists lists = {};
+        video::h265::EncodeInitialLists initialLists = {};
+        const bool isInitial = video::h265::BuildEncodeReferenceLists(videoEncodeDesc.references, videoEncodeDesc.h265ReferenceDescs, videoEncodeDesc.referenceNum, frameType, pictureOrderCount, false, lists)
+            && video::h265::BuildEncodeInitialLists(videoEncodeDesc.references, videoEncodeDesc.h265ReferenceDescs, videoEncodeDesc.referenceNum, pictureOrderCount, lists, initialLists)
+            && video::h265::AreEncodeListsInitial(lists, initialLists);
+        NRI_RETURN_ON_FAILURE(&m_Device, isInitial, ReturnVoid(), "the PPS has no 'LISTS_MODIFICATION_PRESENT': H.265 List0/List1 must be in the initial reference picture list order (preceding pictures by descending, following pictures by ascending picture order count)");
     }
 
     if (videoEncodeDesc.av1PictureDesc && !IsVideoAV1EncodePictureDescValid(videoEncodeDesc)) {
@@ -1878,7 +1957,8 @@ NRI_INLINE void CommandBufferVal::EncodeVideo(const VideoEncodeDesc& videoEncode
         return;
     }
 
-    NRI_RETURN_ON_FAILURE(&m_Device, sessionVal.GetDesc().codec != VideoCodec::AV1 || videoEncodeDesc.av1PictureDesc || !sessionVal.GetDesc().maxReferenceNum || videoEncodeDesc.reconstructedPicture, ReturnVoid(), "default AV1 key frames in sessions with DPB slots require 'reconstructedPicture'");
+    // The setup slot is always written (VUID-vkCmdEncodeVideoKHR-pEncodeInfo-08377), also for non-reference pictures (B frames, AV1 "refreshFrameFlags = 0")
+    NRI_RETURN_ON_FAILURE(&m_Device, !sessionVal.GetDesc().maxReferenceNum || videoEncodeDesc.reconstructedPicture, ReturnVoid(), "'reconstructedPicture' is required in sessions with DPB slots ('maxReferenceNum' > 0), also for non-reference pictures");
 
     VideoEncodeDesc videoEncodeDescImpl = videoEncodeDesc;
     videoEncodeDescImpl.session = videoEncodeDesc.session ? ((VideoSessionVal*)videoEncodeDesc.session)->GetImpl() : nullptr;

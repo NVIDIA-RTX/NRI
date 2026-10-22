@@ -31,6 +31,19 @@ struct VideoSessionD3D12 final : public DebugNameBase {
         return m_AV1FeatureFlags;
     }
 
+    inline uint32_t GetAV1RequiredFeatureFlags() const {
+        return m_AV1RequiredFeatureFlags;
+    }
+
+    // "D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT_H264_FLAGS" or "D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT_HEVC_FLAGS"
+    inline uint32_t GetCodecConfigurationSupportFlags() const {
+        return m_CodecConfigurationSupportFlags;
+    }
+
+    inline uint32_t GetEncodeSupportFlags(VideoEncodeRateControlMode rateControlMode) const {
+        return m_EncodeSupportFlags[(size_t)rateControlMode];
+    }
+
     inline uint32_t GetRateControlModes() const {
         return m_RateControlModes;
     }
@@ -86,6 +99,9 @@ private:
     ComPtr<ID3D12Pageable> m_Heap;
     VideoSessionDesc m_Desc = {};
     uint32_t m_AV1FeatureFlags = 0;
+    uint32_t m_AV1RequiredFeatureFlags = 0;
+    uint32_t m_CodecConfigurationSupportFlags = 0;
+    std::array<uint32_t, (size_t)VideoEncodeRateControlMode::MAX_NUM> m_EncodeSupportFlags = {}; // "D3D12_VIDEO_ENCODER_SUPPORT_FLAGS" per rate-control mode
     uint32_t m_RateControlModes = 0;
     bool m_BFrameSupported = false;
 };

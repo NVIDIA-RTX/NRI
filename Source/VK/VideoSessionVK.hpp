@@ -55,7 +55,7 @@ static void* FillVideoProfileCodecInfo(const VideoSessionDesc& videoSessionDesc,
                 VkVideoDecodeAV1ProfileInfoKHR& info = *(VkVideoDecodeAV1ProfileInfoKHR*)storage;
                 info = {VK_STRUCTURE_TYPE_VIDEO_DECODE_AV1_PROFILE_INFO_KHR};
                 info.stdProfile = STD_VIDEO_AV1_PROFILE_MAIN;
-                info.filmGrainSupport = VK_FALSE;
+                info.filmGrainSupport = videoSessionDesc.av1FilmGrain ? VK_TRUE : VK_FALSE;
                 return &info;
             }
             default:
@@ -136,17 +136,15 @@ static inline VkVideoComponentBitDepthFlagsKHR GetVideoBitDepth(Format format) {
     return (format == Format::P010_UNORM || format == Format::P016_UNORM) ? VK_VIDEO_COMPONENT_BIT_DEPTH_10_BIT_KHR : VK_VIDEO_COMPONENT_BIT_DEPTH_8_BIT_KHR;
 }
 
-static Result IsVideoFormatSupported(DeviceVK& device, const VideoSessionDesc& videoSessionDesc, const VkVideoProfileInfoKHR& profile, bool& isSupported) {
+static Result IsVideoFormatSupported(DeviceVK& device, const VideoSessionDesc& videoSessionDesc, const VkVideoProfileInfoKHR& profile, VkImageUsageFlags videoUsage, bool& isSupported) {
     isSupported = false;
 
     VkVideoProfileListInfoKHR profileList = {VK_STRUCTURE_TYPE_VIDEO_PROFILE_LIST_INFO_KHR};
     profileList.profileCount = 1;
     profileList.pProfiles = &profile;
 
+    // Matches "GetImageUsageFlags"
     constexpr VkImageUsageFlags transferUsage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-    const VkImageUsageFlags videoUsage = videoSessionDesc.type == VideoSessionType::DECODE
-        ? VK_IMAGE_USAGE_VIDEO_DECODE_DST_BIT_KHR | VK_IMAGE_USAGE_VIDEO_DECODE_DPB_BIT_KHR
-        : VK_IMAGE_USAGE_VIDEO_ENCODE_SRC_BIT_KHR | VK_IMAGE_USAGE_VIDEO_ENCODE_DPB_BIT_KHR;
 
     VkPhysicalDeviceVideoFormatInfoKHR formatInfo = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VIDEO_FORMAT_INFO_KHR};
     formatInfo.pNext = &profileList;
@@ -155,6 +153,9 @@ static Result IsVideoFormatSupported(DeviceVK& device, const VideoSessionDesc& v
     const auto& vk = device.GetDispatchTable();
     uint32_t formatNum = 0;
     VkResult vkResult = vk.GetPhysicalDeviceVideoFormatPropertiesKHR(device, &formatInfo, &formatNum, nullptr);
+
+    if (vkResult == VK_ERROR_IMAGE_USAGE_NOT_SUPPORTED_KHR || vkResult == VK_ERROR_FORMAT_NOT_SUPPORTED)
+        return Result::SUCCESS; // the usage combination is not supported
     NRI_RETURN_ON_BAD_VKRESULT(&device, vkResult, "vkGetPhysicalDeviceVideoFormatPropertiesKHR");
 
     if (!formatNum)
@@ -269,20 +270,48 @@ static Result GetVideoCapabilities(DeviceVK& deviceVK, const VideoSessionDesc& v
     VkResult vkResult = vk.GetPhysicalDeviceVideoCapabilitiesKHR(deviceVK, &profile, &capabilities);
     NRI_RETURN_ON_BAD_VKRESULT(&deviceVK, vkResult, "vkGetPhysicalDeviceVideoCapabilitiesKHR");
 
-    bool isVideoFormatSupported = false;
-    Result result = IsVideoFormatSupported(deviceVK, videoSessionDesc, profile, isVideoFormatSupported);
+    // Output/input ("VIDEO_OUTPUT_ONLY") and DPB ("VIDEO_REFERENCE_ONLY") textures are checked separately, the combined usage ("VIDEO_DECODE" or "VIDEO_ENCODE" alone) too.
+    // Decode: coincide mode needs the combined usage, distinct mode the separate ones. Encode: either is enough
+    const bool isDecode = videoSessionDesc.type == VideoSessionType::DECODE;
+    const VkImageUsageFlags outputUsage = isDecode ? VK_IMAGE_USAGE_VIDEO_DECODE_DST_BIT_KHR : VK_IMAGE_USAGE_VIDEO_ENCODE_SRC_BIT_KHR;
+    const VkImageUsageFlags dpbUsage = isDecode ? VK_IMAGE_USAGE_VIDEO_DECODE_DPB_BIT_KHR : VK_IMAGE_USAGE_VIDEO_ENCODE_DPB_BIT_KHR;
+
+    bool isOutputSupported = false;
+    Result result = IsVideoFormatSupported(deviceVK, videoSessionDesc, profile, outputUsage, isOutputSupported);
     if (result != Result::SUCCESS)
         return result;
-    if (!isVideoFormatSupported)
+
+    bool isDpbSupported = false;
+    result = IsVideoFormatSupported(deviceVK, videoSessionDesc, profile, dpbUsage, isDpbSupported);
+    if (result != Result::SUCCESS)
+        return result;
+
+    bool isOutputAndDpbSupported = false;
+    if (!isDecode || (decodeCapabilities.flags & VK_VIDEO_DECODE_CAPABILITY_DPB_AND_OUTPUT_COINCIDE_BIT_KHR)) {
+        result = IsVideoFormatSupported(deviceVK, videoSessionDesc, profile, outputUsage | dpbUsage, isOutputAndDpbSupported);
+        if (result != Result::SUCCESS)
+            return result;
+    }
+
+    const bool isSeparateSupported = isOutputSupported && isDpbSupported;
+    if (!isDecode && !isOutputAndDpbSupported && !isSeparateSupported)
         return Result::UNSUPPORTED;
 
     FillVideoCapabilities(videoCapabilities, videoSessionDesc, capabilities);
-    if (videoSessionDesc.type == VideoSessionType::DECODE) {
-        videoCapabilities.decodeDpbAndOutputCoincide = (decodeCapabilities.flags & VK_VIDEO_DECODE_CAPABILITY_DPB_AND_OUTPUT_COINCIDE_BIT_KHR) != 0;
-        videoCapabilities.decodeDpbAndOutputDistinct = (decodeCapabilities.flags & VK_VIDEO_DECODE_CAPABILITY_DPB_AND_OUTPUT_DISTINCT_BIT_KHR) != 0;
+
+    // WORKAROUND: NVIDIA encode feedback is read as 32-bit (see "VideoSessionVK::GetEncodeFeedback")
+    if (!isDecode && deviceVK.GetDesc().adapterDesc.vendor == Vendor::NVIDIA)
+        videoCapabilities.bitstreamSizeMax = UINT32_MAX;
+
+    if (isDecode) {
+        videoCapabilities.decodeDpbAndOutputCoincide = isOutputAndDpbSupported;
+        videoCapabilities.decodeDpbAndOutputDistinct = isSeparateSupported && (decodeCapabilities.flags & VK_VIDEO_DECODE_CAPABILITY_DPB_AND_OUTPUT_DISTINCT_BIT_KHR) != 0;
+
+        if (!videoCapabilities.decodeDpbAndOutputCoincide && !videoCapabilities.decodeDpbAndOutputDistinct)
+            return Result::UNSUPPORTED;
     } else if ((encodeCapabilities.supportedEncodeFeedbackFlags & VIDEO_ENCODE_REQUIRED_FEEDBACK_FLAGS) == VIDEO_ENCODE_REQUIRED_FEEDBACK_FLAGS) {
         videoCapabilities.resolvedMetadataOffsetAlignment = 8;
-        videoCapabilities.resolvedMetadataSize = sizeof(VideoEncodeFeedback) + sizeof(uint64_t) * 3 + sizeof(uint32_t);
+        videoCapabilities.resolvedMetadataSize = sizeof(VideoEncodeFeedback) + sizeof(uint32_t); // + query index
         videoCapabilities.resolvedMetadataState = {AccessBits::COPY_DESTINATION, StageBits::COPY};
         videoCapabilities.resolvedMetadataQueueType = QueueType::GRAPHICS;
         videoCapabilities.encodeFeedbackMaxPendingNum = VIDEO_ENCODE_FEEDBACK_QUERY_NUM;
@@ -405,20 +434,40 @@ NRI_INLINE Result VideoSessionVK::GetEncodeFeedback(BufferVK& resolvedMetadataRe
     if (m_EncodeFeedbackQueryPool == VK_NULL_HANDLE)
         return Result::UNSUPPORTED;
 
-    constexpr uint64_t queryPayloadSize = sizeof(uint64_t) * 3 + sizeof(uint32_t);
+    constexpr uint64_t queryPayloadSize = sizeof(uint32_t);
     const uint64_t queryPayloadOffset = resolvedMetadataOffset + sizeof(VideoEncodeFeedback);
+    NRI_CHECK(resolvedMetadataReadback.GetMappedMemory(), "'resolvedMetadataReadback' must be CPU-visible");
+
     const uint8_t* queryPayload = (const uint8_t*)resolvedMetadataReadback.Map(queryPayloadOffset, queryPayloadSize);
     if (!queryPayload)
         return Result::FAILURE;
 
-    const uint64_t* queryResult = (const uint64_t*)queryPayload;
-    const uint32_t queryIndex = *(const uint32_t*)(queryPayload + sizeof(uint64_t) * 3);
+    const uint32_t queryIndex = *(const uint32_t*)queryPayload;
     if (queryIndex >= VIDEO_ENCODE_FEEDBACK_QUERY_NUM)
         return Result::FAILURE;
 
     const EncodeFeedbackPayloadReadback& payloadReadback = m_EncodeFeedbackPayloadReadbacks[queryIndex];
     if (!payloadReadback.active || !payloadReadback.resolvedByCommand)
         return Result::FAILURE;
+
+    // WORKAROUND: host readback (see "CommandBufferVK::ResolveVideoEncodeFeedback")
+    uint64_t queryResult[3] = {};
+    const auto& vk = m_Device.GetDispatchTable();
+    VkResult vkResult = VK_SUCCESS;
+    if (m_Device.GetDesc().adapterDesc.vendor == Vendor::NVIDIA) {
+        // WORKAROUND: NVIDIA (610.57) packs the offset and the size as 32-bit values with "64_BIT", read them as 32-bit ("bitstreamSizeMax" keeps them in range)
+        uint32_t queryResult32[3] = {};
+        vkResult = vk.GetQueryPoolResults(m_Device, m_EncodeFeedbackQueryPool, queryIndex, 1, sizeof(queryResult32), queryResult32, sizeof(queryResult32), VK_QUERY_RESULT_WITH_STATUS_BIT_KHR);
+        queryResult[0] = queryResult32[0];
+        queryResult[1] = queryResult32[1];
+        queryResult[2] = (uint64_t)(int64_t)(int32_t)queryResult32[2]; // the status is signed
+    } else
+        vkResult = vk.GetQueryPoolResults(m_Device, m_EncodeFeedbackQueryPool, queryIndex, 1, sizeof(queryResult), queryResult, sizeof(queryResult), VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WITH_STATUS_BIT_KHR);
+
+    if (vkResult == VK_NOT_READY)
+        return Result::FAILURE;
+
+    NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkGetQueryPoolResults");
 
     FillVideoEncodeFeedback(feedback, queryResult);
     ClearEncodeFeedbackQuery(queryIndex);
@@ -529,10 +578,14 @@ Result VideoSessionVK::Create(const VideoSessionDesc& videoSessionDesc) {
         if (videoSessionDesc.codec == VideoCodec::H264) {
             m_H264MaxBPictureL0ReferenceCount = encodeH264Capabilities.maxBPictureL0ReferenceCount;
             m_H264MaxL1ReferenceCount = encodeH264Capabilities.maxL1ReferenceCount;
+            m_EncodeQpMin = encodeH264Capabilities.minQp;
+            m_EncodeQpMax = encodeH264Capabilities.maxQp;
         }
         if (videoSessionDesc.codec == VideoCodec::H265) {
             m_H265MaxBPictureL0ReferenceCount = encodeH265Capabilities.maxBPictureL0ReferenceCount;
             m_H265MaxL1ReferenceCount = encodeH265Capabilities.maxL1ReferenceCount;
+            m_EncodeQpMin = encodeH265Capabilities.minQp;
+            m_EncodeQpMax = encodeH265Capabilities.maxQp;
         }
         if (videoSessionDesc.codec == VideoCodec::AV1) {
             m_AV1CapabilityFlags = encodeAV1Capabilities.flags;
@@ -547,6 +600,8 @@ Result VideoSessionVK::Create(const VideoSessionDesc& videoSessionDesc) {
             m_AV1MaxTileSize = encodeAV1Capabilities.maxTileSize;
             m_AV1MinQIndex = encodeAV1Capabilities.minQIndex;
             m_AV1MaxQIndex = encodeAV1Capabilities.maxQIndex;
+            m_EncodeQpMin = (int32_t)encodeAV1Capabilities.minQIndex;
+            m_EncodeQpMax = (int32_t)encodeAV1Capabilities.maxQIndex;
             m_AV1RequiresGopRemainingFrames = encodeAV1Capabilities.requiresGopRemainingFrames != VK_FALSE;
         }
     }

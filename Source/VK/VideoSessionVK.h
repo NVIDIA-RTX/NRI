@@ -108,12 +108,29 @@ struct VideoSessionVK final : public DebugNameBase {
         return m_H265MaxL1ReferenceCount;
     }
 
+    // Codec QP range of the implementation (H.264/H.265 QP, AV1 Q index)
+    inline int32_t GetEncodeQpMin() const {
+        return m_EncodeQpMin;
+    }
+
+    inline int32_t GetEncodeQpMax() const {
+        return m_EncodeQpMax;
+    }
+
     inline bool IsResetRecorded() const {
         return m_ResetRecorded;
     }
 
     inline void SetResetRecorded() {
         m_ResetRecorded = true;
+    }
+
+    inline const VideoEncodeRateControlDesc& GetRateControl() const {
+        return m_RateControl;
+    }
+
+    inline void SetRateControl(const VideoEncodeRateControlDesc& rateControlDesc) {
+        m_RateControl = rateControlDesc;
     }
 
     inline VkQueryPool GetEncodeFeedbackQueryPool() const {
@@ -164,6 +181,7 @@ private:
     std::array<EncodeFeedbackPayloadReadback, VIDEO_ENCODE_FEEDBACK_QUERY_NUM> m_EncodeFeedbackPayloadReadbacks = {};
     Vector<VkDeviceMemory> m_Memory;
     VideoSessionDesc m_Desc = {};
+    VideoEncodeRateControlDesc m_RateControl = {}; // recorded rate control state, valid if "m_ResetRecorded" is true
     uint32_t m_BitstreamOffsetAlignment = 1;
     uint32_t m_BitstreamSizeAlignment = 1;
     uint32_t m_RateControlModes = 0;
@@ -182,6 +200,8 @@ private:
     bool m_AV1RequiresGopRemainingFrames = false;
     bool m_ResetRecorded = false;
     bool m_UseInlineSessionParameters = false;
+    int32_t m_EncodeQpMin = 0;
+    int32_t m_EncodeQpMax = 51;
     uint32_t m_H264MaxBPictureL0ReferenceCount = 0;
     uint32_t m_H264MaxL1ReferenceCount = 0;
     uint32_t m_H265MaxBPictureL0ReferenceCount = 0;
