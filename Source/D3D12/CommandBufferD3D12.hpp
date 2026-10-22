@@ -1393,7 +1393,7 @@ NRI_INLINE void CommandBufferD3D12::DecodeVideo(const VideoDecodeDesc& videoDeco
 
 NRI_INLINE void CommandBufferD3D12::EncodeVideo(const VideoEncodeDesc& videoEncodeDesc) {
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
-    const VideoSessionD3D12& session = *(VideoSessionD3D12*)videoEncodeDesc.session;
+    VideoSessionD3D12& session = *(VideoSessionD3D12*)videoEncodeDesc.session;
     const VideoSessionDesc& sessionDesc = session.GetDesc();
 
     BufferD3D12& dstBitstream = *(BufferD3D12*)videoEncodeDesc.dstBitstream.buffer;
@@ -1879,6 +1879,7 @@ NRI_INLINE void CommandBufferD3D12::EncodeVideo(const VideoEncodeDesc& videoEnco
 
     VideoPictureD3D12& srcPicture = *(VideoPictureD3D12*)videoEncodeDesc.srcPicture;
 
+    sequenceControl.Flags |= session.UpdateEncodeGop(gop, rateControlDesc.mode);
     input.SequenceControlDesc = sequenceControl;
     input.PictureControlDesc = pictureControl;
     input.CurrentFrameBitstreamMetadataSize = (UINT)videoEncodeDesc.bitstreamMetadataSize;

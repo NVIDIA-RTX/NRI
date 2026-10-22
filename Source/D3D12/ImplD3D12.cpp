@@ -1205,7 +1205,8 @@ static void NRI_CALL DestroyVideoSession(VideoSession* videoSession) {
     Destroy((VideoSessionD3D12*)videoSession);
 }
 
-static void NRI_CALL ResetVideoSession(VideoSession&) {
+static void NRI_CALL ResetVideoSession(VideoSession& videoSession) {
+    ((VideoSessionD3D12&)videoSession).Reset();
 }
 
 static Result NRI_CALL CreateVideoSessionParameters(Device& device, const VideoSessionParametersDesc& videoSessionParametersDesc, VideoSessionParameters*& videoSessionParameters) {

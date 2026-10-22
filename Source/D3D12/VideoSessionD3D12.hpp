@@ -320,6 +320,36 @@ static Result GetVideoAV1EncodeDecodeInfo(const VideoSessionD3D12& session, Buff
 #endif
 }
 
+void VideoSessionD3D12::Reset() {
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
+    m_EncodeGopChangePending = m_EncodeGopChangePending || m_EncodeGopInitialized;
+    m_EncodeGopInitialized = false;
+#endif
+}
+
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
+D3D12_VIDEO_ENCODER_SEQUENCE_CONTROL_FLAGS VideoSessionD3D12::UpdateEncodeGop(const D3D12_VIDEO_ENCODER_SEQUENCE_GOP_STRUCTURE& gop, VideoEncodeRateControlMode rateControlMode) {
+    std::array<uint32_t, 5> state = {};
+    if (m_Desc.codec == VideoCodec::H264) {
+        const D3D12_VIDEO_ENCODER_SEQUENCE_GOP_STRUCTURE_H264& h264 = *gop.pH264GroupOfPictures;
+        state = {h264.GOPLength, h264.PPicturePeriod, h264.pic_order_cnt_type, h264.log2_max_frame_num_minus4, h264.log2_max_pic_order_cnt_lsb_minus4};
+    } else if (m_Desc.codec == VideoCodec::H265) {
+        const D3D12_VIDEO_ENCODER_SEQUENCE_GOP_STRUCTURE_HEVC& h265 = *gop.pHEVCGroupOfPictures;
+        state = {h265.GOPLength, h265.PPicturePeriod, 0, 0, h265.log2_max_pic_order_cnt_lsb_minus4};
+    } else
+        return D3D12_VIDEO_ENCODER_SEQUENCE_CONTROL_FLAG_NONE; // AV1 uses a fixed sequence structure
+
+    // Reset may discard recorded changes that never reached the encoder. Reassert the GOP if native reconfiguration is supported.
+    const bool forceUpdate = m_EncodeGopChangePending && (GetEncodeSupportFlags(rateControlMode) & D3D12_VIDEO_ENCODER_SUPPORT_FLAG_SEQUENCE_GOP_RECONFIGURATION_AVAILABLE);
+    const bool changed = forceUpdate || (m_EncodeGopInitialized && state != m_EncodeGop);
+    m_EncodeGop = state;
+    m_EncodeGopInitialized = true;
+    m_EncodeGopChangePending = false;
+
+    return changed ? D3D12_VIDEO_ENCODER_SEQUENCE_CONTROL_FLAG_GOP_SEQUENCE_CHANGE : D3D12_VIDEO_ENCODER_SEQUENCE_CONTROL_FLAG_NONE;
+}
+#endif
+
 Result VideoSessionD3D12::Create(const VideoSessionDesc& videoSessionDesc) {
     m_BFrameSupported = false;
 
