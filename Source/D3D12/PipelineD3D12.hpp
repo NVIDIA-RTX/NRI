@@ -507,8 +507,7 @@ Result PipelineD3D12::Create(const ComputePipelineDesc& computePipelineDesc) {
     if (lib) {
         ExclusiveScope lock(cache->GetStoreLock());
 
-        hr = lib->StorePipeline(cacheName, m_PipelineState);
-        NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12PipelineLibrary::StorePipeline");
+        lib->StorePipeline(cacheName, m_PipelineState); // ignore failures (e.g., name already present), fallback PSO is still valid
     }
 
     return Result::SUCCESS;
