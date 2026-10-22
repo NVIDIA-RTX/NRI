@@ -52,6 +52,7 @@ static inline uint8_t GetMemoryTypeScore(MemoryLocation memoryLocation, VkMemory
         case MemoryLocation::HOST_UPLOAD:
             return !isDeviceLocal * 4 + isHostCoherent * 2 + !isHostCached;
         case MemoryLocation::HOST_READBACK:
+            // TODO: Cached noncoherent memory can perform better; benchmark the coherence preference
             return !isDeviceLocal * 4 + isHostCached * 2 + isHostCoherent;
         default:
             return 0;
@@ -1893,6 +1894,7 @@ bool DeviceVK::GetMemoryDesc(MemoryLocation memoryLocation, const VkMemoryRequir
         if ((flags & requiredFlags) != requiredFlags)
             continue;
 
+        // TODO: Exclude DEVICE_COHERENT_BIT_AMD types when deviceCoherentMemory is disabled; scoring can override Vulkan's ordering that places AMD device-coherent/uncached types last
         const uint8_t score = GetMemoryTypeScore(memoryLocation, flags);
         if (memoryTypeIndex == UINT32_MAX || score > bestScore) {
             memoryTypeIndex = i;
