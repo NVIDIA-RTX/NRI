@@ -16,7 +16,8 @@ struct InputAttachmentRange {
 struct CommandBufferVK final : public DebugNameBase {
     inline CommandBufferVK(DeviceVK& device)
         : m_Device(device)
-        , m_InputAttachmentRanges(device.GetStdAllocator()) {
+        , m_InputAttachmentRanges(device.GetStdAllocator())
+        , m_VideoStorage(device.GetStdAllocator()) {
     }
 
     inline operator VkCommandBuffer() const {
@@ -99,10 +100,35 @@ struct CommandBufferVK final : public DebugNameBase {
     void ResolveVideoEncodeFeedback(VideoSession& videoSession, Buffer& resolvedMetadata, uint64_t resolvedMetadataOffset);
 
 private:
+    void FreeVideoStorage();
+
+    // WORKAROUND: NVIDIA (610.57) reads the codec picture structures of a video command after "vkCmdDecodeVideoKHR" returned (crash with 3 or more H.264 references),
+    // so the memory chained into video commands lives until the command buffer is re-recorded or destroyed
+    template <typename T>
+    inline T& PersistVideoStorage(const T& value) {
+        T* storage = (T*)AllocateVideoStorage(sizeof(T), alignof(T));
+        *storage = value;
+
+        return *storage;
+    }
+
+    template <typename T>
+    inline T* PersistVideoStorageArray(size_t num) {
+        T* storage = num ? (T*)AllocateVideoStorage(sizeof(T) * num, alignof(T)) : nullptr;
+        for (size_t i = 0; i < num; i++)
+            storage[i] = T{};
+
+        return storage;
+    }
+
+    void* AllocateVideoStorage(size_t size, size_t alignment);
+
+private:
     DeviceVK& m_Device;
     const PipelineLayoutVK* m_PipelineLayout = nullptr;
     const DescriptorVK* m_DepthStencil = nullptr;
     Vector<InputAttachmentRange> m_InputAttachmentRanges;
+    Vector<void*> m_VideoStorage;
     VkCommandBuffer m_Handle = VK_NULL_HANDLE;
     VkCommandPool m_CommandPool = VK_NULL_HANDLE;
     QueueType m_Type = (QueueType)0;

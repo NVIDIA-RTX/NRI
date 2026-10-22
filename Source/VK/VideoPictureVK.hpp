@@ -25,7 +25,10 @@ NRI_INLINE Result VideoPictureVK::Create(const VideoPictureDesc& videoPictureDes
 
     switch (videoPictureDesc.usage) {
         case VideoPictureUsage::DECODE_OUTPUT:
-            usageInfo.usage |= VK_IMAGE_USAGE_VIDEO_DECODE_DST_BIT_KHR | VK_IMAGE_USAGE_VIDEO_DECODE_DPB_BIT_KHR;
+            usageInfo.usage |= VK_IMAGE_USAGE_VIDEO_DECODE_DST_BIT_KHR;
+
+            if (!(textureDesc.usage & TextureUsageBits::VIDEO_OUTPUT_ONLY))
+                usageInfo.usage |= VK_IMAGE_USAGE_VIDEO_DECODE_DPB_BIT_KHR; // coincide mode: the output is also the setup picture
             break;
         case VideoPictureUsage::DECODE_REFERENCE:
             usageInfo.usage |= VK_IMAGE_USAGE_VIDEO_DECODE_DPB_BIT_KHR;
