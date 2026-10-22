@@ -51,7 +51,19 @@ static Result GetVideoCapabilities(DeviceD3D12& device, const VideoSessionDesc& 
         if ((decodeSupport.SupportFlags & D3D12_VIDEO_DECODE_SUPPORT_FLAG_SUPPORTED) == 0)
             return Result::UNSUPPORTED;
 
-        if (decodeSupport.ConfigurationFlags & D3D12_VIDEO_DECODE_CONFIGURATION_FLAG_REFERENCE_ONLY_ALLOCATIONS_REQUIRED)
+        // Reference-only allocations rule out coincide mode, distinct mode needs decode conversion support
+        const bool isReferenceOnlyRequired = (decodeSupport.ConfigurationFlags & D3D12_VIDEO_DECODE_CONFIGURATION_FLAG_REFERENCE_ONLY_ALLOCATIONS_REQUIRED) != 0;
+        videoCapabilities.decodeDpbAndOutputCoincide = !isReferenceOnlyRequired;
+        videoCapabilities.decodeDpbAndOutputDistinct = IsVideoDecodeConversionSupported(videoDevice.GetInterface(), configuration, videoSessionDesc.width, videoSessionDesc.height, videoSessionDesc.format);
+        videoCapabilities.decodeReferenceOnlyRequired = isReferenceOnlyRequired;
+
+        // Tier 1: reference pictures must be layers of one texture array
+        if (decodeSupport.DecodeTier == D3D12_VIDEO_DECODE_TIER_1) {
+            videoCapabilities.dpbTextureArrayRequired = true;
+            videoCapabilities.dpbTextureArrayMinLayerNum = videoSessionDesc.maxReferenceNum + 1;
+        }
+
+        if (!videoCapabilities.decodeDpbAndOutputCoincide && !videoCapabilities.decodeDpbAndOutputDistinct)
             return Result::UNSUPPORTED;
 
         return CanCreateVideoDecodeSession(videoDevice.GetInterface(), videoSessionDesc, configuration) ? Result::SUCCESS : Result::UNSUPPORTED;
@@ -318,8 +330,8 @@ Result VideoSessionD3D12::Create(const VideoSessionDesc& videoSessionDesc) {
             NRI_REPORT_WARNING(&m_Device, "D3D12 video decode support rejected: supportFlags=0x%X configurationFlags=0x%X decodeTier=0x%X", decodeSupport.SupportFlags, decodeSupport.ConfigurationFlags, decodeSupport.DecodeTier);
             return Result::UNSUPPORTED;
         }
-        if (decodeSupport.ConfigurationFlags & D3D12_VIDEO_DECODE_CONFIGURATION_FLAG_REFERENCE_ONLY_ALLOCATIONS_REQUIRED) {
-            NRI_REPORT_WARNING(&m_Device, "D3D12 video decode support requires reference-only allocations, which are not exposed by the current NRIVideo texture usage flags");
+        if ((decodeSupport.ConfigurationFlags & D3D12_VIDEO_DECODE_CONFIGURATION_FLAG_REFERENCE_ONLY_ALLOCATIONS_REQUIRED) && !IsVideoDecodeConversionSupported(videoDevice.GetInterface(), configuration, videoSessionDesc.width, videoSessionDesc.height, videoSessionDesc.format)) {
+            NRI_REPORT_WARNING(&m_Device, "D3D12 video decode requires reference-only allocations, but distinct decode output is not supported");
             return Result::UNSUPPORTED;
         }
 
