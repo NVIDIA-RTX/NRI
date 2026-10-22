@@ -268,7 +268,7 @@ NriBits(VideoAV1PictureBits, uint32_t,
     USES_CHROMA_LR                          = NriBit(27),
     SHOW_FRAME                              = NriBit(28),
     SHOWABLE_FRAME                          = NriBit(29),
-    APPLY_GRAIN                             = NriBit(30)  // TODO: currently unsupported for decode
+    APPLY_GRAIN                             = NriBit(30)  // decode: requires "VideoSessionDesc::av1FilmGrain"
 );
 
 NriStruct(VideoSessionDesc) {
@@ -278,6 +278,7 @@ NriStruct(VideoSessionDesc) {
     uint32_t width;
     uint32_t height;
     uint32_t maxReferenceNum;
+    bool av1FilmGrain; // AV1 decode: frames may apply film grain ("APPLY_GRAIN", into a distinct "setupPicture"); textures need "TextureDesc::videoAV1FilmGrain"; UNSUPPORTED if not available
 };
 
 NriStruct(VideoCapabilities) {
@@ -795,6 +796,21 @@ NriStruct(VideoAV1FilmGrainDesc) {
     int16_t crOffset;
 };
 
+// State of a reference frame that later frame headers can depend on ("RefUpscaledWidth", "load_previous", "load_grain_params")
+NriStruct(VideoAV1SavedFrameState) {
+    Nri(VideoAV1LoopFilterDesc) loopFilter;     // "refDeltas" and "modeDeltas"
+    Nri(VideoAV1SegmentationDesc) segmentation; // "FeatureEnabled" and "FeatureData"
+    Nri(VideoAV1GlobalMotionDesc) globalMotion; // "gm_params"
+    Nri(VideoAV1FilmGrainDesc) filmGrain;       // all zero if no grain is applied
+    uint16_t upscaledWidthMinus1;
+    uint16_t frameHeightMinus1;
+    uint16_t renderWidthMinus1;
+    uint16_t renderHeightMinus1;
+    uint8_t orderHint;
+    uint8_t applyGrain; // "apply_grain" ("load_grain_params" restores it)
+    uint8_t valid;      // 0 if the frame inherited state that was not provided
+};
+
 NriStruct(VideoAV1EncodePictureDesc) {
     uint32_t currentFrameId;
     uint8_t orderHint;
@@ -857,7 +873,7 @@ NriStruct(VideoAV1DecodePictureDesc) {
     NriOptional const NriPtr(VideoAV1SegmentationDesc) segmentation;
     NriOptional const NriPtr(VideoAV1LoopRestorationDesc) loopRestoration;
     NriOptional const NriPtr(VideoAV1GlobalMotionDesc) globalMotion;
-    NriOptional const NriPtr(VideoAV1FilmGrainDesc) filmGrain; // used with "APPLY_GRAIN"; TODO: currently unsupported for decode
+    NriOptional const NriPtr(VideoAV1FilmGrainDesc) filmGrain; // used with "APPLY_GRAIN": resolved parameters ("load_grain_params" applied, e.g. "VideoAV1EncodeDecodeInfo::filmGrain")
     NriOptional const uint8_t* orderHints;                     // 8 entries indexed like AV1 "OrderHints[]" by reference frame name: 0 = INTRA_FRAME, 1..7 = LAST..ALTREF; named reference entries are overridden by "references[].orderHint"
     Nri(VideoAV1ReferenceName) skipModeFrames[2]; // "SkipModeFrame[0..1]" used with "SKIP_MODE_PRESENT"
     const NriPtr(VideoAV1DecodeTileDesc) tiles;
@@ -905,6 +921,7 @@ NriStruct(VideoAV1EncodeDecodeInfoDesc) {
     NriOptional uint32_t referenceNum;
     NriOptional const NriPtr(VideoEncodePictureDesc) pictureDesc;       // submitted picture description; required if "encodedPayloadHeader" is not provided
     NriOptional const NriPtr(VideoAV1EncodePictureDesc) av1PictureDesc; // submitted AV1 picture description; required if "encodedPayloadHeader" is not provided
+    NriOptional const NriPtr(VideoAV1SavedFrameState) savedFrameStates;  // 8 entries indexed by "refFrameIndex": the "savedFrameState" of the frame that last refreshed each slot; required for headers that inherit state
 };
 
 NriStruct(VideoAV1EncodeDecodeInfo) {
@@ -925,6 +942,8 @@ NriStruct(VideoAV1EncodeDecodeInfo) {
     Nri(VideoAV1SegmentationDesc) segmentation;
     Nri(VideoAV1LoopRestorationDesc) loopRestoration;
     Nri(VideoAV1GlobalMotionDesc) globalMotion;
+    Nri(VideoAV1FilmGrainDesc) filmGrain;            // resolved parameters ("load_grain_params" applied)
+    Nri(VideoAV1SavedFrameState) savedFrameState;    // store into "savedFrameStates[i]" for every slot "i" in "picture.refreshFrameFlags"
 };
 
 NriStruct(VideoEncodeDesc) {
