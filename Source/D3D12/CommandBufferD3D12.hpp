@@ -1566,14 +1566,8 @@ NRI_INLINE void CommandBufferD3D12::EncodeVideo(const VideoEncodeDesc& videoEnco
         if (pps && isInterPicture) {
             const bool isL0Different = h264List0ReferenceNum != pps->refIndexL0DefaultActiveMinus1 + 1u;
             const bool isL1Different = pictureDesc.frameType == VideoFrameType::B && h264List1ReferenceNum != pps->refIndexL1DefaultActiveMinus1 + 1u;
-            if (isL0Different || isL1Different) {
-                if (!(session.GetCodecConfigurationSupportFlags() & D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT_H264_FLAG_NUM_REF_IDX_ACTIVE_OVERRIDE_FLAG_SLICE_SUPPORT)) {
-                    NRI_REPORT_ERROR(&m_Device, "D3D12 H.264 encode doesn't support 'num_ref_idx_active_override_flag': the active reference counts must match the PPS defaults");
-                    return;
-                }
-
+            if (isL0Different || isL1Different)
                 h264Picture.Flags |= D3D12_VIDEO_ENCODER_PICTURE_CONTROL_CODEC_DATA_H264_FLAG_REQUEST_NUM_REF_IDX_ACTIVE_OVERRIDE_FLAG_SLICE;
-            }
         }
     }
     h264Picture.ReferenceFramesReconPictureDescriptorsCount = videoEncodeDesc.referenceNum;
@@ -1675,22 +1669,14 @@ NRI_INLINE void CommandBufferD3D12::EncodeVideo(const VideoEncodeDesc& videoEnco
         hevcPicture.pList1ReferenceFrames = hevcReferenceLists.list1Num ? (UINT*)hevcList1References : nullptr;
         hevcPicture.num_ref_idx_l0_active_minus1 = hevcReferenceLists.list0Num ? hevcReferenceLists.list0Num - 1 : 0;
         hevcPicture.num_ref_idx_l1_active_minus1 = hevcReferenceLists.list1Num ? hevcReferenceLists.list1Num - 1 : 0;
-        if (encodeParameters && encodeParameters->GetH265Parameters()) {
-            const VideoH265SessionParametersDesc& parameters = *encodeParameters->GetH265Parameters();
-            const VideoH265PictureParameterSetDesc* pps = video::FindParameterSet(parameters.pictureParameterSets, parameters.pictureParameterSetNum, &VideoH265PictureParameterSetDesc::pictureParameterSetId, (uint8_t)hevcPicture.slice_pic_parameter_set_id);
-            const bool isInterPicture = pictureDesc.frameType == VideoFrameType::P || pictureDesc.frameType == VideoFrameType::B;
-            if (pps && isInterPicture) {
-                const bool isL0Different = hevcReferenceLists.list0Num != pps->refIndexL0DefaultActiveMinus1 + 1u;
-                const bool isL1Different = pictureDesc.frameType == VideoFrameType::B && hevcReferenceLists.list1Num != pps->refIndexL1DefaultActiveMinus1 + 1u;
-                if (isL0Different || isL1Different) {
-                    if (!(session.GetCodecConfigurationSupportFlags() & D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT_HEVC_FLAG_NUM_REF_IDX_ACTIVE_OVERRIDE_FLAG_SLICE_SUPPORT)) {
-                        NRI_REPORT_ERROR(&m_Device, "D3D12 H.265 encode doesn't support 'num_ref_idx_active_override_flag': the active reference counts must match the PPS defaults");
-                        return;
-                    }
-
-                    hevcPicture.Flags |= D3D12_VIDEO_ENCODER_PICTURE_CONTROL_CODEC_DATA_HEVC_FLAG_REQUEST_NUM_REF_IDX_ACTIVE_OVERRIDE_FLAG_SLICE;
-                }
-            }
+        const bool isInterPicture = pictureDesc.frameType == VideoFrameType::P || pictureDesc.frameType == VideoFrameType::B;
+        if (isInterPicture) {
+            const uint32_t l0Default = hevcPps ? hevcPps->refIndexL0DefaultActiveMinus1 + 1u : 1;
+            const uint32_t l1Default = hevcPps ? hevcPps->refIndexL1DefaultActiveMinus1 + 1u : 1;
+            const bool isL0Different = hevcReferenceLists.list0Num != l0Default;
+            const bool isL1Different = pictureDesc.frameType == VideoFrameType::B && hevcReferenceLists.list1Num != l1Default;
+            if (isL0Different || isL1Different)
+                hevcPicture.Flags |= D3D12_VIDEO_ENCODER_PICTURE_CONTROL_CODEC_DATA_HEVC_FLAG_REQUEST_NUM_REF_IDX_ACTIVE_OVERRIDE_FLAG_SLICE;
         }
         hevcPicture.ReferenceFramesReconPictureDescriptorsCount = videoEncodeDesc.referenceNum;
         hevcPicture.pReferenceFramesReconPictureDescriptors = videoEncodeDesc.referenceNum ? (D3D12_VIDEO_ENCODER_REFERENCE_PICTURE_DESCRIPTOR_HEVC*)hevcReferenceDescriptors : nullptr;

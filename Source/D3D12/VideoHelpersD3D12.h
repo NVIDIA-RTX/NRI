@@ -366,6 +366,18 @@ static bool IsVideoEncodeSessionSupported(ID3D12VideoDevice* videoDevice, const 
     hevcConfig.max_transform_hierarchy_depth_inter = 3;
     hevcConfig.max_transform_hierarchy_depth_intra = 3;
 
+    bool referenceCountOverrideSupported = false;
+    if (codec == VideoCodec::H264 && videoCapabilities) {
+        D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT_H264 h264Caps = {};
+        D3D12_FEATURE_DATA_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT h264ConfigSupport = {};
+        h264ConfigSupport.Codec = d3d12Codec;
+        h264ConfigSupport.Profile = profile;
+        h264ConfigSupport.CodecSupportLimits.DataSize = sizeof(h264Caps);
+        h264ConfigSupport.CodecSupportLimits.pH264Support = &h264Caps;
+        if (SUCCEEDED(videoDevice->CheckFeatureSupport(D3D12_FEATURE_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT, &h264ConfigSupport, sizeof(h264ConfigSupport))) && h264ConfigSupport.IsSupported)
+            referenceCountOverrideSupported = (h264Caps.SupportFlags & D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT_H264_FLAG_NUM_REF_IDX_ACTIVE_OVERRIDE_FLAG_SLICE_SUPPORT) != 0;
+    }
+
     if (codec == VideoCodec::H265) {
         D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT_HEVC hevcCaps = {};
         hevcCaps.MinLumaCodingUnitSize = hevcConfig.MinLumaCodingUnitSize;
@@ -383,6 +395,8 @@ static bool IsVideoEncodeSessionSupported(ID3D12VideoDevice* videoDevice, const 
         HRESULT hr = videoDevice->CheckFeatureSupport(D3D12_FEATURE_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT, &hevcConfigSupport, sizeof(hevcConfigSupport));
         if (FAILED(hr) || !hevcConfigSupport.IsSupported)
             return false;
+
+        referenceCountOverrideSupported = (hevcCaps.SupportFlags & D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT_HEVC_FLAG_NUM_REF_IDX_ACTIVE_OVERRIDE_FLAG_SLICE_SUPPORT) != 0;
 
         if (hevcCaps.SupportFlags & D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT_HEVC_FLAG_ASYMETRIC_MOTION_PARTITION_SUPPORT || hevcCaps.SupportFlags & D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT_HEVC_FLAG_ASYMETRIC_MOTION_PARTITION_REQUIRED)
             hevcConfig.ConfigurationFlags |= D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_HEVC_FLAG_USE_ASYMETRIC_MOTION_PARTITION;
@@ -582,6 +596,7 @@ static bool IsVideoEncodeSessionSupported(ID3D12VideoDevice* videoDevice, const 
 
     if (videoCapabilities) {
         FillVideoCapabilities(*videoCapabilities, videoSessionDesc);
+        videoCapabilities->encodeReferenceCountOverrideSupported = referenceCountOverrideSupported;
         if (!FillVideoEncodeResourceCapabilities(videoDevice, videoSessionDesc, d3d12Codec, profile, *videoCapabilities))
             return false;
     }

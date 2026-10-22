@@ -309,6 +309,7 @@ NriStruct(VideoCapabilities) {
     bool encodeBitstreamRangeSizeSupported;      // if false, encode output ranges must extend to the end of the buffer
     bool encodeFeedbackSupported;
     bool encodeFeedbackResolveRequired;          // if true, call "CmdResolveVideoEncodeFeedback" after the encode
+    bool encodeReferenceCountOverrideSupported;  // H.264/H.265: if false, active L0 (P/B) and L1 (B) counts must match PPS defaults (1 per list for default H.265 parameters)
 };
 
 NriStruct(VideoAV1Capabilities) {

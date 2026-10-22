@@ -7,6 +7,7 @@ NRI_INLINE VideoSessionParametersVal::VideoSessionParametersVal(DeviceVal& devic
         for (uint32_t i = 0; i < desc.h264Parameters->pictureParameterSetNum; i++) {
             const VideoH264PictureParameterSetDesc& pictureParameterSet = desc.h264Parameters->pictureParameterSets[i];
             m_H264PpsToSpsPlusOne[pictureParameterSet.pictureParameterSetId] = (uint8_t)(pictureParameterSet.sequenceParameterSetId + 1);
+            m_ReferenceIndexDefaults[pictureParameterSet.pictureParameterSetId] = {pictureParameterSet.refIndexL0DefaultActiveMinus1, pictureParameterSet.refIndexL1DefaultActiveMinus1};
         }
     }
 
@@ -18,6 +19,7 @@ NRI_INLINE VideoSessionParametersVal::VideoSessionParametersVal(DeviceVal& devic
             m_H265PpsToSpsPlusOne[pictureParameterSet.pictureParameterSetId] = (uint8_t)(pictureParameterSet.sequenceParameterSetId + 1);
             m_H265PpsToVpsPlusOne[pictureParameterSet.pictureParameterSetId] = (uint8_t)(pictureParameterSet.videoParameterSetId + 1);
             m_H265PpsListsModification[pictureParameterSet.pictureParameterSetId] = !!(pictureParameterSet.flags & VideoH265PictureParameterSetBits::LISTS_MODIFICATION_PRESENT);
+            m_ReferenceIndexDefaults[pictureParameterSet.pictureParameterSetId] = {pictureParameterSet.refIndexL0DefaultActiveMinus1, pictureParameterSet.refIndexL1DefaultActiveMinus1};
         }
     }
 }
@@ -50,4 +52,9 @@ NRI_INLINE bool VideoSessionParametersVal::IsH265ParameterSetValid(uint8_t video
         return false;
 
     return m_H265PpsToSpsPlusOne[pictureParameterSetId] == sequenceParameterSetId + 1 && m_H265PpsToVpsPlusOne[pictureParameterSetId] == videoParameterSetId + 1;
+}
+
+NRI_INLINE bool VideoSessionParametersVal::AreEncodeReferenceCountsValid(uint8_t pictureParameterSetId, uint32_t list0ReferenceNum, uint32_t list1ReferenceNum, bool isBFrame) const {
+    const std::array<uint8_t, 2>& defaults = m_ReferenceIndexDefaults[pictureParameterSetId];
+    return list0ReferenceNum == defaults[0] + 1u && (!isBFrame || list1ReferenceNum == defaults[1] + 1u);
 }

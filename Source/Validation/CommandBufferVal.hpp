@@ -359,13 +359,13 @@ static inline bool HasVideoAV1ReferenceName(const VideoAV1ReferenceDesc* referen
     return false;
 }
 
-static inline bool IsVideoEncodeH264ReferenceListValid(const VideoEncodeDesc& videoEncodeDesc, VideoFrameType frameType) {
+static inline bool IsVideoEncodeH264ReferenceListValid(const VideoEncodeDesc& videoEncodeDesc, VideoFrameType frameType, uint32_t& list0ReferenceNum, uint32_t& list1ReferenceNum) {
     const VideoH264EncodePictureDesc* h264PictureDesc = videoEncodeDesc.h264PictureDesc;
     if (!h264PictureDesc || h264PictureDesc->referenceNum != videoEncodeDesc.referenceNum || videoEncodeDesc.referenceNum > 16)
         return false;
 
-    uint32_t list0ReferenceNum = 0;
-    uint32_t list1ReferenceNum = 0;
+    list0ReferenceNum = 0;
+    list1ReferenceNum = 0;
     for (uint32_t i = 0; i < h264PictureDesc->referenceNum; i++) {
         const VideoH264EncodeReferenceDesc& reference = h264PictureDesc->references[i];
         if (!IsVideoFrameTypeValid(reference.frameType) || !video::HasReferenceSlot(videoEncodeDesc.references, videoEncodeDesc.referenceNum, reference.slot))
@@ -382,12 +382,12 @@ static inline bool IsVideoEncodeH264ReferenceListValid(const VideoEncodeDesc& vi
     return frameType != VideoFrameType::B || (list0ReferenceNum != 0 && list1ReferenceNum != 0);
 }
 
-static inline bool IsVideoEncodeH265ReferenceListValid(const VideoEncodeDesc& videoEncodeDesc, VideoFrameType frameType) {
+static inline bool IsVideoEncodeH265ReferenceListValid(const VideoEncodeDesc& videoEncodeDesc, VideoFrameType frameType, uint32_t& list0ReferenceNum, uint32_t& list1ReferenceNum) {
     if (!videoEncodeDesc.h265ReferenceDescs || videoEncodeDesc.referenceNum > 15)
         return false;
 
-    uint32_t list0ReferenceNum = 0;
-    uint32_t list1ReferenceNum = 0;
+    list0ReferenceNum = 0;
+    list1ReferenceNum = 0;
     for (uint32_t i = 0; i < videoEncodeDesc.referenceNum; i++) {
         const VideoH265ReferenceDesc* reference = video::FindReferenceDesc(videoEncodeDesc.h265ReferenceDescs, videoEncodeDesc.referenceNum, videoEncodeDesc.references[i].slot);
         if (!reference || !IsVideoFrameTypeValid(reference->frameType) || reference->longTerm)
@@ -1930,14 +1930,21 @@ NRI_INLINE void CommandBufferVal::EncodeVideo(const VideoEncodeDesc& videoEncode
         return;
     }
 
-    if (sessionVal.GetDesc().codec == VideoCodec::H264 && videoEncodeDesc.referenceNum && !IsVideoEncodeH264ReferenceListValid(videoEncodeDesc, frameType)) {
+    uint32_t list0ReferenceNum = 0;
+    uint32_t list1ReferenceNum = 0;
+    if (sessionVal.GetDesc().codec == VideoCodec::H264 && videoEncodeDesc.referenceNum && !IsVideoEncodeH264ReferenceListValid(videoEncodeDesc, frameType, list0ReferenceNum, list1ReferenceNum)) {
         NRI_REPORT_ERROR(&m_Device, "'h264PictureDesc->references' must describe every H.264 reference and B frames require List0 and List1 references");
         return;
     }
 
-    if (sessionVal.GetDesc().codec == VideoCodec::H265 && videoEncodeDesc.referenceNum && !IsVideoEncodeH265ReferenceListValid(videoEncodeDesc, frameType)) {
+    if (sessionVal.GetDesc().codec == VideoCodec::H265 && videoEncodeDesc.referenceNum && !IsVideoEncodeH265ReferenceListValid(videoEncodeDesc, frameType, list0ReferenceNum, list1ReferenceNum)) {
         NRI_REPORT_ERROR(&m_Device, "'h265ReferenceDescs' must describe every H.265 reference with short-term references only (long-term encode references are unsupported) and B frames require List0 and List1 references");
         return;
+    }
+
+    if (!capabilities.encodeReferenceCountOverrideSupported && (sessionVal.GetDesc().codec == VideoCodec::H264 || sessionVal.GetDesc().codec == VideoCodec::H265) && (frameType == VideoFrameType::P || frameType == VideoFrameType::B)) {
+        const uint8_t ppsId = sessionVal.GetDesc().codec == VideoCodec::H264 ? h264PictureParameterSetId : (videoEncodeDesc.h265PictureDesc ? videoEncodeDesc.h265PictureDesc->pictureParameterSetId : 0);
+        NRI_RETURN_ON_FAILURE(&m_Device, parametersVal.AreEncodeReferenceCountsValid(ppsId, list0ReferenceNum, list1ReferenceNum, frameType == VideoFrameType::B), ReturnVoid(), "'encodeReferenceCountOverrideSupported' is false: active reference counts must match the selected PPS defaults");
     }
 
     // Without "lists_modification_present_flag" only the initial lists can be signaled (internal default parameters signal it)

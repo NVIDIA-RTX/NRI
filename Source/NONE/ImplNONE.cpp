@@ -1168,6 +1168,7 @@ static Result NRI_CALL GetVideoCapabilities(const Device&, const VideoSessionDes
     videoCapabilities.decodeNativeArgumentsSupported = true;
     videoCapabilities.encodeBitstreamRangeSizeSupported = true;
     videoCapabilities.encodeFeedbackSupported = true;
+    videoCapabilities.encodeReferenceCountOverrideSupported = true;
 
     return Result::SUCCESS;
 }

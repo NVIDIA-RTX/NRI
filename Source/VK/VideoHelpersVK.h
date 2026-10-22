@@ -158,6 +158,7 @@ static inline void FillVideoCapabilities(VideoCapabilities& videoCapabilities, c
     videoCapabilities.resolvedMetadataOffsetAlignment = 4;
     videoCapabilities.decodeBitstreamSourceMask = videoSessionDesc.type == VideoSessionType::DECODE ? VideoDecodeBitstreamSourceBits::BUFFER : VideoDecodeBitstreamSourceBits::NONE;
     videoCapabilities.encodeBitstreamRangeSizeSupported = true;
+    videoCapabilities.encodeReferenceCountOverrideSupported = videoSessionDesc.type == VideoSessionType::ENCODE && (videoSessionDesc.codec == VideoCodec::H264 || videoSessionDesc.codec == VideoCodec::H265);
 
     if (!(capabilities.flags & VK_VIDEO_CAPABILITY_SEPARATE_REFERENCE_IMAGES_BIT_KHR)) {
         videoCapabilities.dpbTextureArrayMinLayerNum = videoSessionDesc.maxReferenceNum + 1;
