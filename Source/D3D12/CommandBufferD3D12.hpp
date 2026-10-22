@@ -1589,6 +1589,7 @@ NRI_INLINE void CommandBufferD3D12::EncodeVideo(const VideoEncodeDesc& videoEnco
     const uint32_t h265ReferenceNum = sessionDesc.codec == VideoCodec::H265 ? videoEncodeDesc.referenceNum : 0;
     Scratch<UINT> hevcList0References = NRI_ALLOCATE_SCRATCH(m_Device, UINT, h265ReferenceNum);
     Scratch<UINT> hevcList1References = NRI_ALLOCATE_SCRATCH(m_Device, UINT, h265ReferenceNum);
+    video::h265::EncodeInitialLists hevcInitialLists = {};
     Scratch<D3D12_VIDEO_ENCODER_REFERENCE_PICTURE_DESCRIPTOR_HEVC> hevcReferenceDescriptors = NRI_ALLOCATE_SCRATCH(m_Device, D3D12_VIDEO_ENCODER_REFERENCE_PICTURE_DESCRIPTOR_HEVC, h265ReferenceNum);
     if (sessionDesc.codec == VideoCodec::H265) {
         video::h265::EncodeReferenceLists hevcReferenceLists = {};
@@ -1601,6 +1602,48 @@ NRI_INLINE void CommandBufferD3D12::EncodeVideo(const VideoEncodeDesc& videoEnco
             hevcList0References[i] = hevcReferenceLists.list0[i];
         for (uint32_t i = 0; i < hevcReferenceLists.list1Num; i++)
             hevcList1References[i] = hevcReferenceLists.list1[i];
+
+        if (!video::h265::BuildEncodeInitialLists(videoEncodeDesc.references, videoEncodeDesc.h265ReferenceDescs, videoEncodeDesc.referenceNum, pictureDesc.pictureOrderCount, hevcReferenceLists, hevcInitialLists)) {
+            NRI_CHECK(false, "Failed to build D3D12 H.265 initial reference picture lists from validated descriptors");
+            return;
+        }
+
+        // D3D12 takes the initial lists in "pList*ReferenceFrames" and applies "pList*RefPicModifications" to them, and the driver writes
+        // "ref_pic_lists_modification" only for given modifications. If the PPS signals list modifications, they are required whenever
+        // "NumPicTotalCurr > 1" (all references are used by the current picture) and keep the application's order. Otherwise the initial
+        // order replaces it, which only renumbers "ref_idx"
+        const VideoH265PictureParameterSetDesc* hevcPps = nullptr;
+        if (encodeParameters && encodeParameters->GetH265Parameters()) {
+            const VideoH265SessionParametersDesc& parameters = *encodeParameters->GetH265Parameters();
+            const uint8_t ppsId = videoEncodeDesc.h265PictureDesc ? videoEncodeDesc.h265PictureDesc->pictureParameterSetId : 0;
+            hevcPps = video::FindParameterSet(parameters.pictureParameterSets, parameters.pictureParameterSetNum, &VideoH265PictureParameterSetDesc::pictureParameterSetId, ppsId);
+        }
+
+        for (uint32_t i = 0; i < hevcReferenceLists.list0Num; i++) {
+            // Short-term references only (validated): List0 holds the preceding, List1 the following pictures, the first entries of the initial lists
+            const bool isPrefix = hevcInitialLists.list0Entries[i] < hevcReferenceLists.list0Num;
+            NRI_CHECK(isPrefix, "D3D12 H.265 encode 'List0' doesn't hold the first entries of the initial reference picture list");
+            if (!isPrefix)
+                return;
+
+            hevcList0References[i] = hevcInitialLists.temp0[i];
+        }
+        for (uint32_t i = 0; i < hevcReferenceLists.list1Num; i++) {
+            // Short-term references only (validated): List0 holds the preceding, List1 the following pictures, the first entries of the initial lists
+            const bool isPrefix = hevcInitialLists.list1Entries[i] < hevcReferenceLists.list1Num;
+            NRI_CHECK(isPrefix, "D3D12 H.265 encode 'List1' doesn't hold the first entries of the initial reference picture list");
+            if (!isPrefix)
+                return;
+
+            hevcList1References[i] = hevcInitialLists.temp1[i];
+        }
+
+        if (hevcPps && (hevcPps->flags & VideoH265PictureParameterSetBits::LISTS_MODIFICATION_PRESENT) && videoEncodeDesc.referenceNum > 1) {
+            hevcPicture.List0RefPicModificationsCount = hevcReferenceLists.list0Num;
+            hevcPicture.pList0RefPicModifications = hevcReferenceLists.list0Num ? (UINT*)hevcInitialLists.list0Entries.data() : nullptr;
+            hevcPicture.List1RefPicModificationsCount = hevcReferenceLists.list1Num;
+            hevcPicture.pList1RefPicModifications = hevcReferenceLists.list1Num ? (UINT*)hevcInitialLists.list1Entries.data() : nullptr;
+        }
 
         for (uint32_t i = 0; i < videoEncodeDesc.referenceNum; i++) {
             const VideoH265ReferenceDesc* referenceDesc = video::FindReferenceDesc(videoEncodeDesc.h265ReferenceDescs, videoEncodeDesc.referenceNum, videoEncodeDesc.references[i].slot);
