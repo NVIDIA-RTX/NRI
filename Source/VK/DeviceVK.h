@@ -272,6 +272,14 @@ struct DeviceVK final : public DeviceBase {
 
     void CopyDescriptorRanges(const CopyDescriptorRangeDesc* copyDescriptorRangeDescs, uint32_t copyDescriptorRangeDescNum);
     void UpdateDescriptorRanges(const UpdateDescriptorRangeDesc* updateDescriptorRangeDescs, uint32_t updateDescriptorRangeDescNum);
+    Result CreateCommittedBufferVK(MemoryLocation memoryLocation, float priority, const BufferDesc& bufferDesc, Buffer*& buffer);
+    Result CreateCommittedTextureVK(MemoryLocation memoryLocation, float priority, const TextureDesc& textureDesc, Texture*& texture);
+    Result CreatePlacedBufferVK(Memory* memory, uint64_t offset, const BufferDesc& bufferDesc, Buffer*& buffer);
+    Result CreatePlacedTextureVK(Memory* memory, uint64_t offset, const TextureDesc& textureDesc, Texture*& texture);
+    Result CreateCommittedAccelerationStructureVK(MemoryLocation memoryLocation, float priority, const AccelerationStructureDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure);
+    Result CreateCommittedMicromapVK(MemoryLocation memoryLocation, float priority, const MicromapDesc& micromapDesc, Micromap*& micromap);
+    Result CreatePlacedAccelerationStructureVK(Memory* memory, uint64_t offset, const AccelerationStructureDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure);
+    Result CreatePlacedMicromapVK(Memory* memory, uint64_t offset, const MicromapDesc& micromapDesc, Micromap*& micromap);
     Result GetQueue(QueueType queueType, uint32_t queueIndex, Queue*& queue);
     VkVideoCodecOperationFlagsKHR GetVideoCodecOperations(bool decode, bool encode) const;
     Result WaitIdle();

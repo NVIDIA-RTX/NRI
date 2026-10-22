@@ -22,8 +22,11 @@ Result TextureVK::Create(const TextureDesc& textureDesc) {
     m_Device.AppendVideoProfileList(m_Desc, info, videoProfiles);
 
     const auto& vk = m_Device.GetDispatchTable();
-    VkResult vkResult = vk.CreateImage(m_Device, &info, m_Device.GetVkAllocationCallbacks(), &m_Handle);
+    VkImage handle = VK_NULL_HANDLE;
+    VkResult vkResult = vk.CreateImage(m_Device, &info, m_Device.GetVkAllocationCallbacks(), &handle);
     NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateImage");
+
+    m_Handle = handle;
 
     return Result::SUCCESS;
 }

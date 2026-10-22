@@ -21,8 +21,11 @@ Result BufferVK::Create(const BufferDesc& bufferDesc) {
     FillCreateInfo(info);
 
     const auto& vk = m_Device.GetDispatchTable();
-    VkResult vkResult = vk.CreateBuffer(m_Device, &info, m_Device.GetVkAllocationCallbacks(), &m_Handle);
+    VkBuffer handle = VK_NULL_HANDLE;
+    VkResult vkResult = vk.CreateBuffer(m_Device, &info, m_Device.GetVkAllocationCallbacks(), &handle);
     NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateBuffer");
+
+    m_Handle = handle;
 
     return Result::SUCCESS;
 }
@@ -50,8 +53,11 @@ Result BufferVK::CreateDescriptorHeap(uint64_t size, uint64_t alignment) {
     FillCreateInfo(info);
 
     const auto& vk = m_Device.GetDispatchTable();
-    VkResult vkResult = vk.CreateBuffer(m_Device, &info, m_Device.GetVkAllocationCallbacks(), &m_Handle);
+    VkBuffer handle = VK_NULL_HANDLE;
+    VkResult vkResult = vk.CreateBuffer(m_Device, &info, m_Device.GetVkAllocationCallbacks(), &handle);
     NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateBuffer");
+
+    m_Handle = handle;
 
     return AllocateAndBindMemory(MemoryLocation::DEVICE_UPLOAD, 1.0f, true);
 }

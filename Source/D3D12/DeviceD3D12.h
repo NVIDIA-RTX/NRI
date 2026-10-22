@@ -151,6 +151,14 @@ struct DeviceD3D12 final : public DeviceBase {
     // NRI
     //================================================================================================================
 
+    Result CreateCommittedBufferD3D12(MemoryLocation memoryLocation, float priority, const BufferDesc& bufferDesc, Buffer*& buffer);
+    Result CreateCommittedTextureD3D12(MemoryLocation memoryLocation, float priority, const TextureDesc& textureDesc, Texture*& texture);
+    Result CreatePlacedBufferD3D12(Memory* memory, uint64_t offset, const BufferDesc& bufferDesc, Buffer*& buffer);
+    Result CreatePlacedTextureD3D12(Memory* memory, uint64_t offset, const TextureDesc& textureDesc, Texture*& texture);
+    Result CreateCommittedAccelerationStructureD3D12(MemoryLocation memoryLocation, float priority, const AccelerationStructureDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure);
+    Result CreateCommittedMicromapD3D12(MemoryLocation memoryLocation, float priority, const MicromapDesc& micromapDesc, Micromap*& micromap);
+    Result CreatePlacedAccelerationStructureD3D12(Memory* memory, uint64_t offset, const AccelerationStructureDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure);
+    Result CreatePlacedMicromapD3D12(Memory* memory, uint64_t offset, const MicromapDesc& micromapDesc, Micromap*& micromap);
     Result GetQueue(QueueType queueType, uint32_t queueIndex, Queue*& queue);
     Result WaitIdle();
     Result UploadHostMemoryToTexture(QueueD3D12& queue, const UploadHostMemoryToTextureDesc* copyDescs, uint32_t copyDescNum);
