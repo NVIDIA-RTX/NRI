@@ -254,8 +254,8 @@ static inline bool HasUniqueVideoReferenceSlots(const VideoReference* references
 }
 
 // Several AV1 reference names may share one "ref_frame_idx" and DPB slot, so the session capacity bounds distinct slots, not entries
-static inline bool IsVideoAV1ReferenceLayoutValid(const VideoAV1ReferenceDesc* references, uint32_t referenceNum, uint32_t maxReferenceNum) {
-    if (referenceNum > video::av1::REFERENCE_FRAME_NUM || (referenceNum && !references))
+static inline bool IsVideoAV1ReferenceLayoutValid(const VideoAV1ReferenceDesc* references, uint32_t referenceNum, uint32_t maxReferenceNum, uint32_t maxEntryNum) {
+    if (referenceNum > maxEntryNum || (referenceNum && !references))
         return false;
 
     uint32_t slotNum = 0;
@@ -307,7 +307,7 @@ static inline bool IsVideoDecodeDpbLayoutValid(const VideoDecodeDesc& desc, uint
         }
     }
 
-    if (desc.av1PictureDesc && !IsVideoAV1ReferenceLayoutValid(desc.av1PictureDesc->references, desc.av1PictureDesc->referenceNum, maxReferenceNum))
+    if (desc.av1PictureDesc && !IsVideoAV1ReferenceLayoutValid(desc.av1PictureDesc->references, desc.av1PictureDesc->referenceNum, maxReferenceNum, video::av1::DECODE_REFERENCE_DESC_MAX_NUM))
         return false;
 
     return true;
@@ -341,7 +341,7 @@ static inline bool IsVideoEncodeDpbLayoutValid(const VideoEncodeDesc& desc, uint
         }
     }
 
-    if (desc.av1PictureDesc && !IsVideoAV1ReferenceLayoutValid(desc.av1PictureDesc->references, desc.av1PictureDesc->referenceNum, maxReferenceNum))
+    if (desc.av1PictureDesc && !IsVideoAV1ReferenceLayoutValid(desc.av1PictureDesc->references, desc.av1PictureDesc->referenceNum, maxReferenceNum, video::av1::REFERENCE_FRAME_NUM))
         return false;
 
     return true;

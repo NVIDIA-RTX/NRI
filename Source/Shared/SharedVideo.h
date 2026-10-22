@@ -689,6 +689,7 @@ namespace av1 {
 
 constexpr uint32_t REFERENCE_NAME_NUM = 7;
 constexpr uint32_t REFERENCE_FRAME_NUM = 8;
+constexpr uint32_t DECODE_REFERENCE_DESC_MAX_NUM = 7 + REFERENCE_FRAME_NUM; // named entries + "NONE" entries of the reference frame map
 
 static constexpr VideoAV1PictureBits GetDefaultPictureFlags() {
     return VideoAV1PictureBits::ERROR_RESILIENT_MODE | VideoAV1PictureBits::DISABLE_CDF_UPDATE | VideoAV1PictureBits::ALLOW_SCREEN_CONTENT_TOOLS | VideoAV1PictureBits::FORCE_INTEGER_MV | VideoAV1PictureBits::SHOW_FRAME | VideoAV1PictureBits::SHOWABLE_FRAME;
@@ -1003,6 +1004,20 @@ static inline bool BuildInterFrameReferences(const VideoAV1EncodeDecodeInfoDesc&
 
         info.references[referenceNum] = *reference;
         info.references[referenceNum].name = GetReferenceNameFromReferenceIndex(i);
+        referenceNum++;
+    }
+
+    // The rest of the reference frame map (D3D12 decode needs the complete map)
+    for (uint32_t i = 0; i < desc.referenceNum; i++) {
+        const VideoAV1ReferenceDesc& reference = desc.references[i];
+        if (reference.refFrameIndex >= REFERENCE_FRAME_NUM)
+            return false;
+
+        if (FindReferenceByRefFrameIndex(info.references, referenceNum, reference.refFrameIndex))
+            continue;
+
+        info.references[referenceNum] = reference;
+        info.references[referenceNum].name = VideoAV1ReferenceName::NONE;
         referenceNum++;
     }
 
