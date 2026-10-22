@@ -299,6 +299,10 @@ static Result GetVideoCapabilities(DeviceVK& deviceVK, const VideoSessionDesc& v
 
     FillVideoCapabilities(videoCapabilities, videoSessionDesc, capabilities);
 
+    // WORKAROUND: NVIDIA encode feedback is read as 32-bit (see "VideoSessionVK::GetEncodeFeedback")
+    if (!isDecode && deviceVK.GetDesc().adapterDesc.vendor == Vendor::NVIDIA)
+        videoCapabilities.bitstreamSizeMax = UINT32_MAX;
+
     if (isDecode) {
         videoCapabilities.decodeDpbAndOutputCoincide = isOutputAndDpbSupported;
         videoCapabilities.decodeDpbAndOutputDistinct = isSeparateSupported && (decodeCapabilities.flags & VK_VIDEO_DECODE_CAPABILITY_DPB_AND_OUTPUT_DISTINCT_BIT_KHR) != 0;
@@ -307,7 +311,7 @@ static Result GetVideoCapabilities(DeviceVK& deviceVK, const VideoSessionDesc& v
             return Result::UNSUPPORTED;
     } else if ((encodeCapabilities.supportedEncodeFeedbackFlags & VIDEO_ENCODE_REQUIRED_FEEDBACK_FLAGS) == VIDEO_ENCODE_REQUIRED_FEEDBACK_FLAGS) {
         videoCapabilities.resolvedMetadataOffsetAlignment = 8;
-        videoCapabilities.resolvedMetadataSize = sizeof(VideoEncodeFeedback) + sizeof(uint64_t) * 3 + sizeof(uint32_t);
+        videoCapabilities.resolvedMetadataSize = sizeof(VideoEncodeFeedback) + sizeof(uint32_t); // + query index
         videoCapabilities.resolvedMetadataState = {AccessBits::COPY_DESTINATION, StageBits::COPY};
         videoCapabilities.resolvedMetadataQueueType = QueueType::GRAPHICS;
         videoCapabilities.encodeFeedbackMaxPendingNum = VIDEO_ENCODE_FEEDBACK_QUERY_NUM;
@@ -430,7 +434,7 @@ NRI_INLINE Result VideoSessionVK::GetEncodeFeedback(BufferVK& resolvedMetadataRe
     if (m_EncodeFeedbackQueryPool == VK_NULL_HANDLE)
         return Result::UNSUPPORTED;
 
-    constexpr uint64_t queryPayloadSize = sizeof(uint64_t) * 3 + sizeof(uint32_t);
+    constexpr uint64_t queryPayloadSize = sizeof(uint32_t);
     const uint64_t queryPayloadOffset = resolvedMetadataOffset + sizeof(VideoEncodeFeedback);
     NRI_CHECK(resolvedMetadataReadback.GetMappedMemory(), "'resolvedMetadataReadback' must be CPU-visible");
 
@@ -438,14 +442,32 @@ NRI_INLINE Result VideoSessionVK::GetEncodeFeedback(BufferVK& resolvedMetadataRe
     if (!queryPayload)
         return Result::FAILURE;
 
-    const uint64_t* queryResult = (const uint64_t*)queryPayload;
-    const uint32_t queryIndex = *(const uint32_t*)(queryPayload + sizeof(uint64_t) * 3);
+    const uint32_t queryIndex = *(const uint32_t*)queryPayload;
     if (queryIndex >= VIDEO_ENCODE_FEEDBACK_QUERY_NUM)
         return Result::FAILURE;
 
     const EncodeFeedbackPayloadReadback& payloadReadback = m_EncodeFeedbackPayloadReadbacks[queryIndex];
     if (!payloadReadback.active || !payloadReadback.resolvedByCommand)
         return Result::FAILURE;
+
+    // WORKAROUND: host readback (see "CommandBufferVK::ResolveVideoEncodeFeedback")
+    uint64_t queryResult[3] = {};
+    const auto& vk = m_Device.GetDispatchTable();
+    VkResult vkResult = VK_SUCCESS;
+    if (m_Device.GetDesc().adapterDesc.vendor == Vendor::NVIDIA) {
+        // WORKAROUND: NVIDIA (610.57) packs the offset and the size as 32-bit values with "64_BIT", read them as 32-bit ("bitstreamSizeMax" keeps them in range)
+        uint32_t queryResult32[3] = {};
+        vkResult = vk.GetQueryPoolResults(m_Device, m_EncodeFeedbackQueryPool, queryIndex, 1, sizeof(queryResult32), queryResult32, sizeof(queryResult32), VK_QUERY_RESULT_WITH_STATUS_BIT_KHR);
+        queryResult[0] = queryResult32[0];
+        queryResult[1] = queryResult32[1];
+        queryResult[2] = (uint64_t)(int64_t)(int32_t)queryResult32[2]; // the status is signed
+    } else
+        vkResult = vk.GetQueryPoolResults(m_Device, m_EncodeFeedbackQueryPool, queryIndex, 1, sizeof(queryResult), queryResult, sizeof(queryResult), VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WITH_STATUS_BIT_KHR);
+
+    if (vkResult == VK_NOT_READY)
+        return Result::FAILURE;
+
+    NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkGetQueryPoolResults");
 
     FillVideoEncodeFeedback(feedback, queryResult);
     ClearEncodeFeedbackQuery(queryIndex);
