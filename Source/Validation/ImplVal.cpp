@@ -221,7 +221,7 @@ static inline bool IsVideoPictureDescValid(const VideoPictureDesc& desc, const T
 }
 
 static inline bool IsVideoPictureRoleCompatible(VideoPictureUsage usage, bool isOutputOnly, VideoPictureRole role) {
-    if ((uint8_t)role >= (uint8_t)VideoPictureRole::MAX_NUM)
+    if ((uint8_t)role >= (uint8_t)VideoPictureRole::MAX_NUM || (isOutputOnly && role == VideoPictureRole::DECODE_OUTPUT_AND_SETUP))
         return false;
 
     // A decode output picture (coincide mode) is also the DPB picture, as accepted by "CmdDecodeVideo"
