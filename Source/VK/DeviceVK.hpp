@@ -2902,6 +2902,146 @@ NRI_INLINE void DeviceVK::DestroyFramebuffers(VkImageView imageView) {
     }
 }
 
+NRI_INLINE Result DeviceVK::CreateCommittedBuffer(MemoryLocation memoryLocation, float priority, const BufferDesc& bufferDesc, Buffer*& buffer) {
+    Result result = CreateImplementation<BufferVK>(buffer, bufferDesc);
+
+    if (result != Result::SUCCESS)
+        return result;
+
+    result = ((BufferVK*)buffer)->AllocateAndBindMemory(memoryLocation, priority, true);
+
+    if (result != Result::SUCCESS) {
+        Destroy((BufferVK*)buffer);
+        buffer = nullptr;
+    }
+
+    return result;
+}
+
+NRI_INLINE Result DeviceVK::CreateCommittedTexture(MemoryLocation memoryLocation, float priority, const TextureDesc& textureDesc, Texture*& texture) {
+    Result result = CreateImplementation<TextureVK>(texture, textureDesc);
+
+    if (result != Result::SUCCESS)
+        return result;
+
+    result = ((TextureVK*)texture)->AllocateAndBindMemory(memoryLocation, priority, true);
+
+    if (result != Result::SUCCESS) {
+        Destroy((TextureVK*)texture);
+        texture = nullptr;
+    }
+
+    return result;
+}
+
+NRI_INLINE Result DeviceVK::CreatePlacedBuffer(Memory* memory, uint64_t offset, const BufferDesc& bufferDesc, Buffer*& buffer) {
+    Result result = CreateImplementation<BufferVK>(buffer, bufferDesc);
+
+    if (result != Result::SUCCESS)
+        return result;
+
+    if (memory)
+        result = ((BufferVK*)buffer)->BindMemory(*(MemoryVK*)memory, offset, true);
+    else
+        result = ((BufferVK*)buffer)->AllocateAndBindMemory((MemoryLocation)offset, 0.0f, false);
+
+    if (result != Result::SUCCESS) {
+        Destroy((BufferVK*)buffer);
+        buffer = nullptr;
+    }
+
+    return result;
+}
+
+NRI_INLINE Result DeviceVK::CreatePlacedTexture(Memory* memory, uint64_t offset, const TextureDesc& textureDesc, Texture*& texture) {
+    Result result = CreateImplementation<TextureVK>(texture, textureDesc);
+
+    if (result != Result::SUCCESS)
+        return result;
+
+    if (memory)
+        result = ((TextureVK*)texture)->BindMemory(*(MemoryVK*)memory, offset);
+    else
+        result = ((TextureVK*)texture)->AllocateAndBindMemory((MemoryLocation)offset, 0.0f, false);
+
+    if (result != Result::SUCCESS) {
+        Destroy((TextureVK*)texture);
+        texture = nullptr;
+    }
+
+    return result;
+}
+
+NRI_INLINE Result DeviceVK::CreateCommittedAccelerationStructure(MemoryLocation memoryLocation, float priority, const AccelerationStructureDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure) {
+    Result result = CreateImplementation<AccelerationStructureVK>(accelerationStructure, accelerationStructureDesc);
+
+    if (result != Result::SUCCESS)
+        return result;
+
+    result = ((AccelerationStructureVK*)accelerationStructure)->AllocateAndBindMemory(memoryLocation, priority, true);
+
+    if (result != Result::SUCCESS) {
+        Destroy((AccelerationStructureVK*)accelerationStructure);
+        accelerationStructure = nullptr;
+    }
+
+    return result;
+}
+
+NRI_INLINE Result DeviceVK::CreateCommittedMicromap(MemoryLocation memoryLocation, float priority, const MicromapDesc& micromapDesc, Micromap*& micromap) {
+    Result result = CreateImplementation<MicromapVK>(micromap, micromapDesc);
+
+    if (result != Result::SUCCESS)
+        return result;
+
+    result = ((MicromapVK*)micromap)->AllocateAndBindMemory(memoryLocation, priority, true);
+
+    if (result != Result::SUCCESS) {
+        Destroy((MicromapVK*)micromap);
+        micromap = nullptr;
+    }
+
+    return result;
+}
+
+NRI_INLINE Result DeviceVK::CreatePlacedAccelerationStructure(Memory* memory, uint64_t offset, const AccelerationStructureDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure) {
+    Result result = CreateImplementation<AccelerationStructureVK>(accelerationStructure, accelerationStructureDesc);
+
+    if (result != Result::SUCCESS)
+        return result;
+
+    if (memory)
+        result = ((AccelerationStructureVK*)accelerationStructure)->BindMemory((MemoryVK*)memory, offset);
+    else
+        result = ((AccelerationStructureVK*)accelerationStructure)->AllocateAndBindMemory((MemoryLocation)offset, 0.0f, false);
+
+    if (result != Result::SUCCESS) {
+        Destroy((AccelerationStructureVK*)accelerationStructure);
+        accelerationStructure = nullptr;
+    }
+
+    return result;
+}
+
+NRI_INLINE Result DeviceVK::CreatePlacedMicromap(Memory* memory, uint64_t offset, const MicromapDesc& micromapDesc, Micromap*& micromap) {
+    Result result = CreateImplementation<MicromapVK>(micromap, micromapDesc);
+
+    if (result != Result::SUCCESS)
+        return result;
+
+    if (memory)
+        result = ((MicromapVK*)micromap)->BindMemory((MemoryVK*)memory, offset);
+    else
+        result = ((MicromapVK*)micromap)->AllocateAndBindMemory((MemoryLocation)offset, 0.0f, false);
+
+    if (result != Result::SUCCESS) {
+        Destroy((MicromapVK*)micromap);
+        micromap = nullptr;
+    }
+
+    return result;
+}
+
 NRI_INLINE Result DeviceVK::GetQueue(QueueType queueType, uint32_t queueIndex, Queue*& queue) {
     const auto& queueFamily = m_QueueFamilies[(uint32_t)queueType];
     if (queueFamily.empty())

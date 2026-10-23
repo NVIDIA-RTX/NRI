@@ -83,8 +83,11 @@ Result AccelerationStructureVK::BindMemory(const MemoryVK* memory, uint64_t offs
         createInfo.buffer = m_Buffer->GetHandle();
 
         const auto& vk = m_Device.GetDispatchTable();
-        VkResult vkResult = vk.CreateAccelerationStructureKHR(m_Device, &createInfo, m_Device.GetVkAllocationCallbacks(), &m_Handle);
+        VkAccelerationStructureKHR handle = VK_NULL_HANDLE;
+        VkResult vkResult = vk.CreateAccelerationStructureKHR(m_Device, &createInfo, m_Device.GetVkAllocationCallbacks(), &handle);
         NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateAccelerationStructureKHR");
+
+        m_Handle = handle;
     }
 
     { // Get device address

@@ -1852,6 +1852,146 @@ void DeviceD3D12::Destruct() {
     Destroy(GetAllocationCallbacks(), this);
 }
 
+NRI_INLINE Result DeviceD3D12::CreateCommittedBuffer(MemoryLocation memoryLocation, float priority, const BufferDesc& bufferDesc, Buffer*& buffer) {
+    Result result = CreateImplementation<BufferD3D12>(buffer, bufferDesc);
+
+    if (result != Result::SUCCESS)
+        return result;
+
+    result = ((BufferD3D12*)buffer)->Allocate(memoryLocation, priority, true);
+
+    if (result != Result::SUCCESS) {
+        Destroy((BufferD3D12*)buffer);
+        buffer = nullptr;
+    }
+
+    return result;
+}
+
+NRI_INLINE Result DeviceD3D12::CreateCommittedTexture(MemoryLocation memoryLocation, float priority, const TextureDesc& textureDesc, Texture*& texture) {
+    Result result = CreateImplementation<TextureD3D12>(texture, textureDesc);
+
+    if (result != Result::SUCCESS)
+        return result;
+
+    result = ((TextureD3D12*)texture)->Allocate(memoryLocation, priority, true);
+
+    if (result != Result::SUCCESS) {
+        Destroy((TextureD3D12*)texture);
+        texture = nullptr;
+    }
+
+    return result;
+}
+
+NRI_INLINE Result DeviceD3D12::CreatePlacedBuffer(Memory* memory, uint64_t offset, const BufferDesc& bufferDesc, Buffer*& buffer) {
+    Result result = CreateImplementation<BufferD3D12>(buffer, bufferDesc);
+
+    if (result != Result::SUCCESS)
+        return result;
+
+    if (memory)
+        result = ((BufferD3D12*)buffer)->BindMemory(*(MemoryD3D12*)memory, offset);
+    else
+        result = ((BufferD3D12*)buffer)->Allocate((MemoryLocation)offset, 0.0f, false);
+
+    if (result != Result::SUCCESS) {
+        Destroy((BufferD3D12*)buffer);
+        buffer = nullptr;
+    }
+
+    return result;
+}
+
+NRI_INLINE Result DeviceD3D12::CreatePlacedTexture(Memory* memory, uint64_t offset, const TextureDesc& textureDesc, Texture*& texture) {
+    Result result = CreateImplementation<TextureD3D12>(texture, textureDesc);
+
+    if (result != Result::SUCCESS)
+        return result;
+
+    if (memory)
+        result = ((TextureD3D12*)texture)->BindMemory(*(MemoryD3D12*)memory, offset);
+    else
+        result = ((TextureD3D12*)texture)->Allocate((MemoryLocation)offset, 0.0f, false);
+
+    if (result != Result::SUCCESS) {
+        Destroy((TextureD3D12*)texture);
+        texture = nullptr;
+    }
+
+    return result;
+}
+
+NRI_INLINE Result DeviceD3D12::CreateCommittedAccelerationStructure(MemoryLocation memoryLocation, float priority, const AccelerationStructureDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure) {
+    Result result = CreateImplementation<AccelerationStructureD3D12>(accelerationStructure, accelerationStructureDesc);
+
+    if (result != Result::SUCCESS)
+        return result;
+
+    result = ((AccelerationStructureD3D12*)accelerationStructure)->Allocate(memoryLocation, priority, true);
+
+    if (result != Result::SUCCESS) {
+        Destroy((AccelerationStructureD3D12*)accelerationStructure);
+        accelerationStructure = nullptr;
+    }
+
+    return result;
+}
+
+NRI_INLINE Result DeviceD3D12::CreateCommittedMicromap(MemoryLocation memoryLocation, float priority, const MicromapDesc& micromapDesc, Micromap*& micromap) {
+    Result result = CreateImplementation<MicromapD3D12>(micromap, micromapDesc);
+
+    if (result != Result::SUCCESS)
+        return result;
+
+    result = ((MicromapD3D12*)micromap)->Allocate(memoryLocation, priority, true);
+
+    if (result != Result::SUCCESS) {
+        Destroy((MicromapD3D12*)micromap);
+        micromap = nullptr;
+    }
+
+    return result;
+}
+
+NRI_INLINE Result DeviceD3D12::CreatePlacedAccelerationStructure(Memory* memory, uint64_t offset, const AccelerationStructureDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure) {
+    Result result = CreateImplementation<AccelerationStructureD3D12>(accelerationStructure, accelerationStructureDesc);
+
+    if (result != Result::SUCCESS)
+        return result;
+
+    if (memory)
+        result = ((AccelerationStructureD3D12*)accelerationStructure)->BindMemory(*(MemoryD3D12*)memory, offset);
+    else
+        result = ((AccelerationStructureD3D12*)accelerationStructure)->Allocate((MemoryLocation)offset, 0.0f, false);
+
+    if (result != Result::SUCCESS) {
+        Destroy((AccelerationStructureD3D12*)accelerationStructure);
+        accelerationStructure = nullptr;
+    }
+
+    return result;
+}
+
+NRI_INLINE Result DeviceD3D12::CreatePlacedMicromap(Memory* memory, uint64_t offset, const MicromapDesc& micromapDesc, Micromap*& micromap) {
+    Result result = CreateImplementation<MicromapD3D12>(micromap, micromapDesc);
+
+    if (result != Result::SUCCESS)
+        return result;
+
+    if (memory)
+        result = ((MicromapD3D12*)micromap)->BindMemory(*(MemoryD3D12*)memory, offset);
+    else
+        result = ((MicromapD3D12*)micromap)->Allocate((MemoryLocation)offset, 0.0f, false);
+
+    if (result != Result::SUCCESS) {
+        Destroy((MicromapD3D12*)micromap);
+        micromap = nullptr;
+    }
+
+    return result;
+}
+
 NRI_INLINE Result DeviceD3D12::GetQueue(QueueType queueType, uint32_t queueIndex, Queue*& queue) {
     const auto& queueFamily = m_QueueFamilies[(uint32_t)queueType];
     if (queueFamily.empty())

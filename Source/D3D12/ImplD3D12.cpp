@@ -257,53 +257,19 @@ static void NRI_CALL GetTextureMemoryDesc2(const Device& device, const TextureDe
 }
 
 static Result NRI_CALL CreateCommittedBuffer(Device& device, MemoryLocation memoryLocation, float priority, const BufferDesc& bufferDesc, Buffer*& buffer) {
-    DeviceD3D12& deviceD3D12 = (DeviceD3D12&)device;
-
-    Result result = deviceD3D12.CreateImplementation<BufferD3D12>(buffer, bufferDesc);
-    if (result != Result::SUCCESS)
-        return result;
-
-    return ((BufferD3D12*)buffer)->Allocate(memoryLocation, priority, true);
+    return ((DeviceD3D12&)device).CreateCommittedBuffer(memoryLocation, priority, bufferDesc, buffer);
 }
 
 static Result NRI_CALL CreateCommittedTexture(Device& device, MemoryLocation memoryLocation, float priority, const TextureDesc& textureDesc, Texture*& texture) {
-    DeviceD3D12& deviceD3D12 = (DeviceD3D12&)device;
-
-    Result result = deviceD3D12.CreateImplementation<TextureD3D12>(texture, textureDesc);
-    if (result != Result::SUCCESS)
-        return result;
-
-    return ((TextureD3D12*)texture)->Allocate(memoryLocation, priority, true);
+    return ((DeviceD3D12&)device).CreateCommittedTexture(memoryLocation, priority, textureDesc, texture);
 }
 
 static Result NRI_CALL CreatePlacedBuffer(Device& device, Memory* memory, uint64_t offset, const BufferDesc& bufferDesc, Buffer*& buffer) {
-    DeviceD3D12& deviceD3D12 = (DeviceD3D12&)device;
-
-    Result result = deviceD3D12.CreateImplementation<BufferD3D12>(buffer, bufferDesc);
-    if (result != Result::SUCCESS)
-        return result;
-
-    if (memory)
-        result = ((BufferD3D12*)buffer)->BindMemory(*(MemoryD3D12*)memory, offset);
-    else
-        result = ((BufferD3D12*)buffer)->Allocate((MemoryLocation)offset, 0.0f, false);
-
-    return result;
+    return ((DeviceD3D12&)device).CreatePlacedBuffer(memory, offset, bufferDesc, buffer);
 }
 
 static Result NRI_CALL CreatePlacedTexture(Device& device, Memory* memory, uint64_t offset, const TextureDesc& textureDesc, Texture*& texture) {
-    DeviceD3D12& deviceD3D12 = (DeviceD3D12&)device;
-
-    Result result = deviceD3D12.CreateImplementation<TextureD3D12>(texture, textureDesc);
-    if (result != Result::SUCCESS)
-        return result;
-
-    if (memory)
-        result = ((TextureD3D12*)texture)->BindMemory(*(MemoryD3D12*)memory, offset);
-    else
-        result = ((TextureD3D12*)texture)->Allocate((MemoryLocation)offset, 0.0f, false);
-
-    return result;
+    return ((DeviceD3D12&)device).CreatePlacedTexture(memory, offset, textureDesc, texture);
 }
 
 static Result NRI_CALL AllocateDescriptorSets(DescriptorPool& descriptorPool, const PipelineLayout& pipelineLayout, uint32_t setIndex, DescriptorSet** descriptorSets, uint32_t instanceNum, uint32_t variableDescriptorNum) {
@@ -1039,53 +1005,19 @@ static void NRI_CALL GetMicromapMemoryDesc2(const Device& device, const Micromap
 }
 
 static Result NRI_CALL CreateCommittedAccelerationStructure(Device& device, MemoryLocation memoryLocation, float priority, const AccelerationStructureDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure) {
-    DeviceD3D12& deviceD3D12 = (DeviceD3D12&)device;
-
-    Result result = deviceD3D12.CreateImplementation<AccelerationStructureD3D12>(accelerationStructure, accelerationStructureDesc);
-    if (result != Result::SUCCESS)
-        return result;
-
-    return ((AccelerationStructureD3D12*)accelerationStructure)->Allocate(memoryLocation, priority, true);
+    return ((DeviceD3D12&)device).CreateCommittedAccelerationStructure(memoryLocation, priority, accelerationStructureDesc, accelerationStructure);
 }
 
 static Result NRI_CALL CreateCommittedMicromap(Device& device, MemoryLocation memoryLocation, float priority, const MicromapDesc& micromapDesc, Micromap*& micromap) {
-    DeviceD3D12& deviceD3D12 = (DeviceD3D12&)device;
-
-    Result result = deviceD3D12.CreateImplementation<MicromapD3D12>(micromap, micromapDesc);
-    if (result != Result::SUCCESS)
-        return result;
-
-    return ((MicromapD3D12*)micromap)->Allocate(memoryLocation, priority, true);
+    return ((DeviceD3D12&)device).CreateCommittedMicromap(memoryLocation, priority, micromapDesc, micromap);
 }
 
 static Result NRI_CALL CreatePlacedAccelerationStructure(Device& device, Memory* memory, uint64_t offset, const AccelerationStructureDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure) {
-    DeviceD3D12& deviceD3D12 = (DeviceD3D12&)device;
-
-    Result result = deviceD3D12.CreateImplementation<AccelerationStructureD3D12>(accelerationStructure, accelerationStructureDesc);
-    if (result != Result::SUCCESS)
-        return result;
-
-    if (memory)
-        result = ((AccelerationStructureD3D12*)accelerationStructure)->BindMemory(*(MemoryD3D12*)memory, offset);
-    else
-        result = ((AccelerationStructureD3D12*)accelerationStructure)->Allocate((MemoryLocation)offset, 0.0f, false);
-
-    return result;
+    return ((DeviceD3D12&)device).CreatePlacedAccelerationStructure(memory, offset, accelerationStructureDesc, accelerationStructure);
 }
 
 static Result NRI_CALL CreatePlacedMicromap(Device& device, Memory* memory, uint64_t offset, const MicromapDesc& micromapDesc, Micromap*& micromap) {
-    DeviceD3D12& deviceD3D12 = (DeviceD3D12&)device;
-
-    Result result = deviceD3D12.CreateImplementation<MicromapD3D12>(micromap, micromapDesc);
-    if (result != Result::SUCCESS)
-        return result;
-
-    if (memory)
-        result = ((MicromapD3D12*)micromap)->BindMemory(*(MemoryD3D12*)memory, offset);
-    else
-        result = ((MicromapD3D12*)micromap)->Allocate((MemoryLocation)offset, 0.0f, false);
-
-    return result;
+    return ((DeviceD3D12&)device).CreatePlacedMicromap(memory, offset, micromapDesc, micromap);
 }
 
 static Result NRI_CALL WriteShaderGroupIdentifiers(const Pipeline& pipeline, uint32_t baseShaderGroupIndex, uint32_t shaderGroupNum, uint32_t dstStride, void* dst) {

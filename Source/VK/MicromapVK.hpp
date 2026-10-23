@@ -75,8 +75,11 @@ Result MicromapVK::BindMemory(const MemoryVK* memory, uint64_t offset) {
         createInfo.buffer = m_Buffer->GetHandle();
 
         const auto& vk = m_Device.GetDispatchTable();
-        VkResult vkResult = vk.CreateMicromapEXT(m_Device, &createInfo, m_Device.GetVkAllocationCallbacks(), &m_Handle);
+        VkMicromapEXT handle = VK_NULL_HANDLE;
+        VkResult vkResult = vk.CreateMicromapEXT(m_Device, &createInfo, m_Device.GetVkAllocationCallbacks(), &handle);
         NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateMicromapEXT");
+
+        m_Handle = handle;
     }
 
     return Result::SUCCESS;

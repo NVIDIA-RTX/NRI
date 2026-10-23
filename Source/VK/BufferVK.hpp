@@ -21,8 +21,11 @@ Result BufferVK::Create(const BufferDesc& bufferDesc) {
     FillCreateInfo(info);
 
     const auto& vk = m_Device.GetDispatchTable();
-    VkResult vkResult = vk.CreateBuffer(m_Device, &info, m_Device.GetVkAllocationCallbacks(), &m_Handle);
+    VkBuffer handle = VK_NULL_HANDLE;
+    VkResult vkResult = vk.CreateBuffer(m_Device, &info, m_Device.GetVkAllocationCallbacks(), &handle);
     NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateBuffer");
+
+    m_Handle = handle;
 
     return Result::SUCCESS;
 }
@@ -50,8 +53,11 @@ Result BufferVK::CreateDescriptorHeap(uint64_t size, uint64_t alignment) {
     FillCreateInfo(info);
 
     const auto& vk = m_Device.GetDispatchTable();
-    VkResult vkResult = vk.CreateBuffer(m_Device, &info, m_Device.GetVkAllocationCallbacks(), &m_Handle);
+    VkBuffer handle = VK_NULL_HANDLE;
+    VkResult vkResult = vk.CreateBuffer(m_Device, &info, m_Device.GetVkAllocationCallbacks(), &handle);
     NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateBuffer");
+
+    m_Handle = handle;
 
     return AllocateAndBindMemory(MemoryLocation::DEVICE_UPLOAD, 1.0f, true);
 }
@@ -90,10 +96,16 @@ Result BufferVK::AllocateAndBindMemory(MemoryLocation memoryLocation, float prio
         allocationCreateInfo.memoryTypeBits = 1 << memoryTypeInfo.index;
         allocationCreateInfo.minAlignment = memoryDesc.alignment;
 
+        // Receive outputs locally: a failed VMA call may leave the handle undefined
+        VkBuffer handle = VK_NULL_HANDLE;
+        VmaAllocation allocation = nullptr;
         VmaAllocationInfo allocationInfo = {};
 
-        VkResult vkResult = vmaCreateBuffer(m_Device.GetVma(), &info, &allocationCreateInfo, &m_Handle, &m_VmaAllocation, &allocationInfo);
+        VkResult vkResult = vmaCreateBuffer(m_Device.GetVma(), &info, &allocationCreateInfo, &handle, &allocation, &allocationInfo);
         NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vmaCreateBuffer");
+
+        m_Handle = handle;
+        m_VmaAllocation = allocation;
 
         if (IsHostVisibleMemory(memoryTypeInfo.location)) {
             m_MappedMemory = (uint8_t*)allocationInfo.pMappedData;
