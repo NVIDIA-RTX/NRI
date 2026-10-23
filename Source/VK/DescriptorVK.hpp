@@ -110,17 +110,18 @@ DescriptorVK::~DescriptorVK() {
 Result DescriptorVK::Create(const TextureViewDesc& textureViewDesc) {
     const TextureVK& textureVK = *(TextureVK*)textureViewDesc.texture;
     const TextureDesc& textureDesc = textureVK.GetDesc();
-    Dim_t mipNum = textureViewDesc.mipNum == REMAINING ? (textureDesc.mipNum - textureViewDesc.mipOffset) : textureViewDesc.mipNum;
-    Dim_t layerNum = textureViewDesc.layerNum == REMAINING ? (textureDesc.layerNum - textureViewDesc.layerOffset) : textureViewDesc.layerNum;
-    Dim_t sliceNum = textureViewDesc.sliceNum == REMAINING ? (textureDesc.depth - textureViewDesc.sliceOffset) : textureViewDesc.sliceNum;
+    const TextureViewDesc textureViewDescFixed = FixTextureViewDesc(textureViewDesc, textureDesc);
+    Dim_t mipNum = textureViewDescFixed.mipNum == REMAINING ? (textureDesc.mipNum - textureViewDescFixed.mipOffset) : textureViewDescFixed.mipNum;
+    Dim_t layerNum = textureViewDescFixed.layerNum == REMAINING ? (textureDesc.layerNum - textureViewDescFixed.layerOffset) : textureViewDescFixed.layerNum;
+    Dim_t sliceNum = textureViewDescFixed.sliceNum == REMAINING ? (textureDesc.depth - textureViewDescFixed.sliceOffset) : textureViewDescFixed.sliceNum;
 
     VkImageViewSlicedCreateInfoEXT slicesInfo = {VK_STRUCTURE_TYPE_IMAGE_VIEW_SLICED_CREATE_INFO_EXT};
-    slicesInfo.sliceOffset = textureViewDesc.sliceOffset;
+    slicesInfo.sliceOffset = textureViewDescFixed.sliceOffset;
     slicesInfo.sliceCount = sliceNum;
 
     VkImageViewUsageCreateInfo usageInfo = {VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO};
-    usageInfo.usage = GetImageViewUsage(textureViewDesc.type);
-    if (textureViewDesc.type == TextureView::COLOR_ATTACHMENT && (textureDesc.usage & TextureUsageBits::INPUT_ATTACHMENT))
+    usageInfo.usage = GetImageViewUsage(textureViewDescFixed.type);
+    if (textureViewDescFixed.type == TextureView::COLOR_ATTACHMENT && (textureDesc.usage & TextureUsageBits::INPUT_ATTACHMENT))
         usageInfo.usage |= VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
 
     if (textureDesc.type == TextureType::TEXTURE_3D && m_Device.m_IsSupported.imageSlicedView)
@@ -128,47 +129,47 @@ Result DescriptorVK::Create(const TextureViewDesc& textureViewDesc) {
 
     // Depth-stencil attachments expose all format aspects; default subpass inputs preserve legacy aspect selection
     // Explicit subpass inputs and sampled views expose the requested planes
-    const bool isAspectSensitiveAttachment = textureViewDesc.type == TextureView::DEPTH_STENCIL_ATTACHMENT
-        || (textureViewDesc.type == TextureView::SUBPASS_INPUT && textureViewDesc.layout == Layout::UNDEFINED);
-    const VkImageAspectFlags aspectMask = GetImageAspectFlags(isAspectSensitiveAttachment ? PlaneBits::ALL : textureViewDesc.planes, textureViewDesc.format);
+    const bool isAspectSensitiveAttachment = textureViewDescFixed.type == TextureView::DEPTH_STENCIL_ATTACHMENT
+        || (textureViewDescFixed.type == TextureView::SUBPASS_INPUT && textureViewDescFixed.layout == Layout::UNDEFINED);
+    const VkImageAspectFlags aspectMask = GetImageAspectFlags(isAspectSensitiveAttachment ? PlaneBits::ALL : textureViewDescFixed.planes, textureViewDescFixed.format);
 
     VkImageSubresourceRange subresourceRange = {
         aspectMask,
-        textureViewDesc.mipOffset,
+        textureViewDescFixed.mipOffset,
         mipNum,
-        textureViewDesc.layerOffset,
+        textureViewDescFixed.layerOffset,
         layerNum,
     };
 
     VkImageViewCreateInfo createInfo = {VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
     createInfo.pNext = &usageInfo;
     createInfo.image = textureVK.GetHandle();
-    createInfo.viewType = GetImageViewType(textureDesc.type, textureViewDesc.type, subresourceRange.layerCount);
-    createInfo.format = GetVkFormat(textureViewDesc.format);
+    createInfo.viewType = GetImageViewType(textureDesc.type, textureViewDescFixed.type, subresourceRange.layerCount);
+    createInfo.format = GetVkFormat(textureViewDescFixed.format);
     createInfo.subresourceRange = subresourceRange;
-    createInfo.components.r = GetComponentSwizzle(textureViewDesc.components.r);
-    createInfo.components.g = GetComponentSwizzle(textureViewDesc.components.g);
-    createInfo.components.b = GetComponentSwizzle(textureViewDesc.components.b);
-    createInfo.components.a = GetComponentSwizzle(textureViewDesc.components.a);
+    createInfo.components.r = GetComponentSwizzle(textureViewDescFixed.components.r);
+    createInfo.components.g = GetComponentSwizzle(textureViewDescFixed.components.g);
+    createInfo.components.b = GetComponentSwizzle(textureViewDescFixed.components.b);
+    createInfo.components.a = GetComponentSwizzle(textureViewDescFixed.components.a);
 
     const auto& vk = m_Device.GetDispatchTable();
     VkResult vkResult = vk.CreateImageView(m_Device, &createInfo, m_Device.GetVkAllocationCallbacks(), &m_View.image);
     NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateImageView");
 
-    m_Type = GetImageViewDescriptorType(textureViewDesc.type);
-    m_Format = textureViewDesc.format;
-    m_TextureView = textureViewDesc.type;
-    m_TextureComponents = textureViewDesc.components;
+    m_Type = GetImageViewDescriptorType(textureViewDescFixed.type);
+    m_Format = textureViewDescFixed.format;
+    m_TextureView = textureViewDescFixed.type;
+    m_TextureComponents = textureViewDescFixed.components;
 
     m_ViewDesc.texture = {};
     m_ViewDesc.texture.texture = &textureVK;
-    m_ViewDesc.texture.expectedLayout = GetImageLayout(GetTextureViewLayout(textureViewDesc));
+    m_ViewDesc.texture.expectedLayout = GetImageLayout(GetTextureViewLayout(textureViewDescFixed));
     m_ViewDesc.texture.aspectMask = subresourceRange.aspectMask;
-    m_ViewDesc.texture.layerOrSliceOffset = textureDesc.type == TextureType::TEXTURE_3D ? textureViewDesc.sliceOffset : textureViewDesc.layerOffset;
+    m_ViewDesc.texture.layerOrSliceOffset = textureDesc.type == TextureType::TEXTURE_3D ? textureViewDescFixed.sliceOffset : textureViewDescFixed.layerOffset;
     m_ViewDesc.texture.layerOrSliceNum = textureDesc.type == TextureType::TEXTURE_3D ? sliceNum : layerNum;
-    m_ViewDesc.texture.mipOffset = textureViewDesc.mipOffset;
+    m_ViewDesc.texture.mipOffset = textureViewDescFixed.mipOffset;
     m_ViewDesc.texture.mipNum = mipNum;
-    m_ViewDesc.texture.hasExplicitLayout = textureViewDesc.layout != Layout::UNDEFINED;
+    m_ViewDesc.texture.hasExplicitLayout = textureViewDescFixed.layout != Layout::UNDEFINED;
 
     return Result::SUCCESS;
 }

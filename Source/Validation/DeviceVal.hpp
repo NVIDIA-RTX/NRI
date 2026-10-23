@@ -420,52 +420,53 @@ NRI_INLINE Result DeviceVal::CreateDescriptor(const BufferViewDesc& bufferViewDe
 
 NRI_INLINE Result DeviceVal::CreateDescriptor(const TextureViewDesc& textureViewDesc, Descriptor*& textureView) {
     NRI_RETURN_ON_FAILURE(this, textureViewDesc.texture != nullptr, Result::INVALID_ARGUMENT, "'texture' is NULL");
-    NRI_RETURN_ON_FAILURE(this, textureViewDesc.type < TextureView::MAX_NUM, Result::INVALID_ARGUMENT, "'viewType' is invalid");
-    NRI_RETURN_ON_FAILURE(this, textureViewDesc.format > Format::UNKNOWN && textureViewDesc.format < Format::MAX_NUM, Result::INVALID_ARGUMENT, "'format' is invalid");
-    NRI_RETURN_ON_FAILURE(this, textureViewDesc.components.r < ComponentSwizzle::MAX_NUM, Result::INVALID_ARGUMENT, "'components.r' is invalid");
-    NRI_RETURN_ON_FAILURE(this, textureViewDesc.components.g < ComponentSwizzle::MAX_NUM, Result::INVALID_ARGUMENT, "'components.g' is invalid");
-    NRI_RETURN_ON_FAILURE(this, textureViewDesc.components.b < ComponentSwizzle::MAX_NUM, Result::INVALID_ARGUMENT, "'components.b' is invalid");
-    NRI_RETURN_ON_FAILURE(this, textureViewDesc.components.a < ComponentSwizzle::MAX_NUM, Result::INVALID_ARGUMENT, "'components.a' is invalid");
-
-    bool hasComponentSwizzle = textureViewDesc.components.r != ComponentSwizzle::IDENTITY || textureViewDesc.components.g != ComponentSwizzle::IDENTITY
-        || textureViewDesc.components.b != ComponentSwizzle::IDENTITY || textureViewDesc.components.a != ComponentSwizzle::IDENTITY;
-    if (hasComponentSwizzle)
-        NRI_RETURN_ON_FAILURE(this, GetDesc().features.componentSwizzle, Result::INVALID_ARGUMENT, "'features.componentSwizzle' is false");
 
     const TextureVal& textureVal = *(TextureVal*)textureViewDesc.texture;
     const TextureDesc& textureDesc = textureVal.GetDesc();
+    const TextureViewDesc textureViewDescFixed = FixTextureViewDesc(textureViewDesc, textureDesc);
+    NRI_RETURN_ON_FAILURE(this, textureViewDescFixed.type < TextureView::MAX_NUM, Result::INVALID_ARGUMENT, "'viewType' is invalid");
+    NRI_RETURN_ON_FAILURE(this, textureViewDescFixed.format > Format::UNKNOWN && textureViewDescFixed.format < Format::MAX_NUM, Result::INVALID_ARGUMENT, "'format' is invalid");
+    NRI_RETURN_ON_FAILURE(this, textureViewDescFixed.components.r < ComponentSwizzle::MAX_NUM, Result::INVALID_ARGUMENT, "'components.r' is invalid");
+    NRI_RETURN_ON_FAILURE(this, textureViewDescFixed.components.g < ComponentSwizzle::MAX_NUM, Result::INVALID_ARGUMENT, "'components.g' is invalid");
+    NRI_RETURN_ON_FAILURE(this, textureViewDescFixed.components.b < ComponentSwizzle::MAX_NUM, Result::INVALID_ARGUMENT, "'components.b' is invalid");
+    NRI_RETURN_ON_FAILURE(this, textureViewDescFixed.components.a < ComponentSwizzle::MAX_NUM, Result::INVALID_ARGUMENT, "'components.a' is invalid");
 
-    NRI_RETURN_ON_FAILURE(this, IsTextureViewLayoutValid(textureViewDesc, textureDesc), Result::INVALID_ARGUMENT, "'layout' is incompatible with the view type, format, planes or texture usage");
+    bool hasComponentSwizzle = textureViewDescFixed.components.r != ComponentSwizzle::IDENTITY || textureViewDescFixed.components.g != ComponentSwizzle::IDENTITY
+        || textureViewDescFixed.components.b != ComponentSwizzle::IDENTITY || textureViewDescFixed.components.a != ComponentSwizzle::IDENTITY;
+    if (hasComponentSwizzle)
+        NRI_RETURN_ON_FAILURE(this, GetDesc().features.componentSwizzle, Result::INVALID_ARGUMENT, "'features.componentSwizzle' is false");
 
-    const bool isSampled = textureViewDesc.type <= TextureView::TEXTURE_CUBE_ARRAY;
-    const bool isMixedDepthStencil = textureViewDesc.layout == Layout::DEPTH_READONLY_STENCIL_ATTACHMENT || textureViewDesc.layout == Layout::DEPTH_ATTACHMENT_STENCIL_READONLY;
+    NRI_RETURN_ON_FAILURE(this, IsTextureViewLayoutValid(textureViewDescFixed, textureDesc), Result::INVALID_ARGUMENT, "'layout' is incompatible with the view type, format, planes or texture usage");
+
+    const bool isSampled = textureViewDescFixed.type <= TextureView::TEXTURE_CUBE_ARRAY;
+    const bool isMixedDepthStencil = textureViewDescFixed.layout == Layout::DEPTH_READONLY_STENCIL_ATTACHMENT || textureViewDescFixed.layout == Layout::DEPTH_ATTACHMENT_STENCIL_READONLY;
     NRI_RETURN_ON_FAILURE(this, GetDesc().graphicsAPI != GraphicsAPI::WGPU || !isSampled || !isMixedDepthStencil, Result::UNSUPPORTED, "WGPU sampled views don't support mixed depth-stencil layouts; use 'DEPTH_STENCIL_READONLY'");
 
-    Dim_t mipNum = textureViewDesc.mipNum == REMAINING ? (textureDesc.mipNum - textureViewDesc.mipOffset) : textureViewDesc.mipNum;
-    Dim_t layerNum = textureViewDesc.layerNum == REMAINING ? (textureDesc.layerNum - textureViewDesc.layerOffset) : textureViewDesc.layerNum;
-    Dim_t sliceNum = textureViewDesc.sliceNum == REMAINING ? (textureDesc.depth - textureViewDesc.sliceOffset) : textureViewDesc.sliceNum;
+    Dim_t mipNum = textureViewDescFixed.mipNum == REMAINING ? (textureDesc.mipNum - textureViewDescFixed.mipOffset) : textureViewDescFixed.mipNum;
+    Dim_t layerNum = textureViewDescFixed.layerNum == REMAINING ? (textureDesc.layerNum - textureViewDescFixed.layerOffset) : textureViewDescFixed.layerNum;
+    Dim_t sliceNum = textureViewDescFixed.sliceNum == REMAINING ? (textureDesc.depth - textureViewDescFixed.sliceOffset) : textureViewDescFixed.sliceNum;
 
     NRI_RETURN_ON_FAILURE(this, textureVal.IsBoundToMemory(), Result::INVALID_ARGUMENT, "'textureViewDesc.texture' is not bound to memory");
-    NRI_RETURN_ON_FAILURE(this, IsViewTypeSupported(textureDesc, textureViewDesc.type), Result::INVALID_ARGUMENT, "'viewType' is not supported by the texture (type or usage)");
+    NRI_RETURN_ON_FAILURE(this, IsViewTypeSupported(textureDesc, textureViewDescFixed.type), Result::INVALID_ARGUMENT, "'viewType' is not supported by the texture (type or usage)");
 
-    NRI_RETURN_ON_FAILURE(this, textureViewDesc.mipOffset + mipNum <= textureDesc.mipNum, Result::INVALID_ARGUMENT,
-        "'mipOffset=%u' + 'mipNum=%u' must be <= texture 'mipNum=%u'", textureViewDesc.mipOffset, mipNum, textureDesc.mipNum);
+    NRI_RETURN_ON_FAILURE(this, textureViewDescFixed.mipOffset + mipNum <= textureDesc.mipNum, Result::INVALID_ARGUMENT,
+        "'mipOffset=%u' + 'mipNum=%u' must be <= texture 'mipNum=%u'", textureViewDescFixed.mipOffset, mipNum, textureDesc.mipNum);
 
-    NRI_RETURN_ON_FAILURE(this, textureViewDesc.layerOffset + layerNum <= textureDesc.layerNum, Result::INVALID_ARGUMENT,
-        "'layerOffset=%u' + 'layerNum=%u' must be <= texture 'layerNum=%u'", textureViewDesc.layerOffset, layerNum, textureDesc.layerNum);
+    NRI_RETURN_ON_FAILURE(this, textureViewDescFixed.layerOffset + layerNum <= textureDesc.layerNum, Result::INVALID_ARGUMENT,
+        "'layerOffset=%u' + 'layerNum=%u' must be <= texture 'layerNum=%u'", textureViewDescFixed.layerOffset, layerNum, textureDesc.layerNum);
 
-    NRI_RETURN_ON_FAILURE(this, textureViewDesc.sliceOffset + sliceNum <= textureDesc.depth, Result::INVALID_ARGUMENT,
-        "'sliceOffset=%u' + 'sliceNum=%u' must be <= texture 'depth=%u'", textureViewDesc.sliceOffset, sliceNum, textureDesc.depth);
+    NRI_RETURN_ON_FAILURE(this, textureViewDescFixed.sliceOffset + sliceNum <= textureDesc.depth, Result::INVALID_ARGUMENT,
+        "'sliceOffset=%u' + 'sliceNum=%u' must be <= texture 'depth=%u'", textureViewDescFixed.sliceOffset, sliceNum, textureDesc.depth);
 
-    auto textureViewDescImpl = textureViewDesc;
-    textureViewDescImpl.texture = NRI_GET_IMPL(Texture, textureViewDesc.texture);
+    auto textureViewDescImpl = textureViewDescFixed;
+    textureViewDescImpl.texture = NRI_GET_IMPL(Texture, textureViewDescFixed.texture);
 
     Descriptor* descriptorImpl = nullptr;
     Result result = m_iCoreImpl.CreateTextureView(textureViewDescImpl, descriptorImpl);
 
     textureView = nullptr;
     if (result == Result::SUCCESS)
-        textureView = (Descriptor*)Allocate<DescriptorVal>(GetAllocationCallbacks(), *this, descriptorImpl, textureViewDesc);
+        textureView = (Descriptor*)Allocate<DescriptorVal>(GetAllocationCallbacks(), *this, descriptorImpl, textureViewDescFixed);
 
     return result;
 }

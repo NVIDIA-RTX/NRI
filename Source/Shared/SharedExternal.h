@@ -631,6 +631,22 @@ constexpr std::array<Layout, (size_t)TextureView::MAX_NUM> g_TextureViewLayouts 
 };
 NRI_VALIDATE_ARRAY(g_TextureViewLayouts);
 
+static inline TextureViewDesc FixTextureViewDesc(const TextureViewDesc& textureViewDesc, const TextureDesc& textureDesc) {
+    TextureViewDesc desc = textureViewDesc;
+    desc.format = desc.format == Format::UNKNOWN ? textureDesc.format : desc.format;
+
+    return desc;
+}
+
+static inline bool HasUpdateAfterSetRanges(const DescriptorSetDesc& descriptorSetDesc) {
+    for (uint32_t i = 0; i < descriptorSetDesc.rangeNum; i++) {
+        if (descriptorSetDesc.ranges[i].flags & DescriptorRangeBits::ALLOW_UPDATE_AFTER_SET)
+            return true;
+    }
+
+    return false;
+}
+
 static inline Layout GetTextureViewLayout(const TextureViewDesc& desc) {
     if (desc.layout != Layout::UNDEFINED)
         return desc.layout;

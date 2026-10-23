@@ -425,7 +425,7 @@ void PipelineLayoutVK::CreateSetLayout(VkDescriptorSetLayout* setLayout, const D
     info.pNext = &bindingFlagsInfo;
     info.bindingCount = bindingNum;
     info.pBindings = bindings;
-    info.flags = (descriptorSetDesc.flags & DescriptorSetBits::ALLOW_UPDATE_AFTER_SET) ? VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT : 0;
+    info.flags = HasUpdateAfterSetRanges(descriptorSetDesc) ? VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT : 0;
 
     if (isPush)
         info.flags |= VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT;

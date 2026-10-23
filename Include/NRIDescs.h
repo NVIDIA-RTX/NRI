@@ -958,7 +958,7 @@ NriStruct(ComponentMapping) {
 NriStruct(TextureViewDesc) {
     const NriPtr(Texture) texture;
     Nri(TextureView) type;
-    Nri(Format) format;
+    NriOptional Nri(Format) format;         // inherits "TextureDesc::format" if "UNKNOWN"
     Nri(Dim_t) mipOffset;
     Nri(Dim_t) mipNum;                      // can be "REMAINING"
     Nri(Dim_t) layerOffset;
@@ -1038,13 +1038,8 @@ NriBits(PipelineLayoutBits, uint8_t,
 
 NriBits(DescriptorPoolBits, uint8_t,
     NONE                                    = 0,
-    ALLOW_UPDATE_AFTER_SET                  = NriBit(0),    // allows "DescriptorSetBits::ALLOW_UPDATE_AFTER_SET"
+    ALLOW_UPDATE_AFTER_SET                  = NriBit(0),    // required by sets containing "DescriptorRangeBits::ALLOW_UPDATE_AFTER_SET" ranges
     COPY_SOURCE                             = NriBit(1)     // allows allocated descriptor sets to be used as sources in "CopyDescriptorRanges"; such sets can't be bound
-);
-
-NriBits(DescriptorSetBits, uint8_t,
-    NONE                                    = 0,
-    ALLOW_UPDATE_AFTER_SET                  = NriBit(0)     // allows "DescriptorRangeBits::ALLOW_UPDATE_AFTER_SET"
 );
 
 // https://docs.vulkan.org/refpages/latest/refpages/source/VkDescriptorBindingFlagBits.html
@@ -1105,7 +1100,6 @@ NriStruct(DescriptorSetDesc) {
     uint32_t registerSpace;             // must be unique, avoid big gaps
     const NriPtr(DescriptorRangeDesc) ranges;
     uint32_t rangeNum;
-    Nri(DescriptorSetBits) flags;
 };
 
 // "PipelineLayout" consists of "DescriptorSet" descriptions and root parameters

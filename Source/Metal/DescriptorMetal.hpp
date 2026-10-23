@@ -115,8 +115,7 @@ Result DescriptorMetal::Create(const BufferViewDesc& desc) {
 
 Result DescriptorMetal::Create(const TextureViewDesc& desc) {
     m_Texture = (TextureMetal*)desc.texture;
-    m_TextureViewDesc = desc;
-    m_TextureViewDesc.format = desc.format == Format::UNKNOWN ? m_Texture->GetDesc().format : desc.format;
+    m_TextureViewDesc = FixTextureViewDesc(desc, m_Texture->GetDesc());
     m_TextureViewDesc.layout = GetTextureViewLayout(m_TextureViewDesc);
     m_Format = m_TextureViewDesc.format;
 

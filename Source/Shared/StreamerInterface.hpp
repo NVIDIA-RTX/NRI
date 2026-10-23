@@ -227,6 +227,9 @@ BufferOffset StreamerImpl::StreamTextureData(const StreamTextureDataDesc& stream
         rowNum = (h + formatProps.blockHeight - 1) / formatProps.blockHeight;
     }
 
+    const uint32_t dataRowPitch = streamTextureDataDesc.dataRowPitch ? streamTextureDataDesc.dataRowPitch : rowPitch;
+    const uint64_t dataSlicePitch = streamTextureDataDesc.dataSlicePitch ? streamTextureDataDesc.dataSlicePitch : uint64_t(dataRowPitch) * rowNum;
+
     uint32_t alignedRowPitch = Align(rowPitch, deviceDesc.memoryAlignment.uploadBufferTextureRow);
     uint32_t alignedSlicePitch = Align(alignedRowPitch * rowNum, deviceDesc.memoryAlignment.uploadBufferTextureSlice);
     uint64_t dataSize = alignedSlicePitch * d;
@@ -249,7 +252,7 @@ BufferOffset StreamerImpl::StreamTextureData(const StreamTextureDataDesc& stream
         for (uint32_t z = 0; z < d; z++) {
             for (uint32_t y = 0; y < rowNum; y++) {
                 uint8_t* dstRow = dst + z * alignedSlicePitch + y * alignedRowPitch;
-                const uint8_t* srcRow = (uint8_t*)streamTextureDataDesc.data + z * streamTextureDataDesc.dataSlicePitch + y * streamTextureDataDesc.dataRowPitch;
+                const uint8_t* srcRow = (uint8_t*)streamTextureDataDesc.data + z * dataSlicePitch + y * dataRowPitch;
                 memcpy(dstRow, srcRow, rowPitch);
             }
         }

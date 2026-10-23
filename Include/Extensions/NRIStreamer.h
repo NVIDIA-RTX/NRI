@@ -54,8 +54,8 @@ NriStruct(StreamBufferDataDesc) {
 NriStruct(StreamTextureDataDesc) {
     // Data to upload
     const void* data;
-    uint32_t dataRowPitch;
-    uint32_t dataSlicePitch;
+    NriOptional uint32_t dataRowPitch;             // 0 means tightly packed rows
+    NriOptional uint32_t dataSlicePitch;           // 0 means effective row pitch * number of texel-block rows
 
     // Destination
     Nri(StreamerCopyBatch) copyBatch;

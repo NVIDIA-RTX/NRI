@@ -60,6 +60,10 @@ NRI_INLINE Result DescriptorPoolVal::AllocateDescriptorSets(const PipelineLayout
     }
 
     if (!m_SkipValidation) {
+        const bool allowUpdateAfterSet = HasUpdateAfterSetRanges(descriptorSetDesc);
+        NRI_RETURN_ON_FAILURE(&m_Device, !allowUpdateAfterSet || (m_Desc.flags & DescriptorPoolBits::ALLOW_UPDATE_AFTER_SET), Result::INVALID_ARGUMENT,
+            "'descriptorPoolDesc.flags' must include 'ALLOW_UPDATE_AFTER_SET' for this descriptor set");
+
         for (uint32_t j = 0; j < descriptorSetDesc.rangeNum; j++) {
             const DescriptorRangeDesc& rangeDesc = descriptorSetDesc.ranges[j];
             NRI_RETURN_ON_FAILURE(&m_Device, (uint32_t)rangeDesc.descriptorType < (uint32_t)DescriptorType::MAX_NUM, Result::INVALID_ARGUMENT, "Invalid DescriptorType=%u", (uint32_t)rangeDesc.descriptorType);

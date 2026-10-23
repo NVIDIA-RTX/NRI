@@ -875,7 +875,6 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
                 descriptorSetDescs[1].registerSpace = NRI_NIS_SET_DYNAMIC;
                 descriptorSetDescs[1].ranges = descriptorSet1Ranges;
                 descriptorSetDescs[1].rangeNum = GetCountOf(descriptorSet1Ranges);
-                descriptorSetDescs[1].flags = DescriptorSetBits::ALLOW_UPDATE_AFTER_SET;
             }
 
             PipelineLayoutDesc pipelineLayoutDesc = {};

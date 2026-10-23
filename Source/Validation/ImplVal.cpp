@@ -2150,8 +2150,6 @@ static BufferOffset NRI_CALL StreamTextureData(Streamer& streamer, const StreamT
     StreamerImpl* streamerImpl = streamerVal.GetImpl();
 
     NRI_RETURN_ON_FAILURE(&deviceVal, streamTextureDataDesc.dstTexture, {}, "'streamTextureDataDesc.dstTexture' is NULL");
-    NRI_RETURN_ON_FAILURE(&deviceVal, streamTextureDataDesc.dataRowPitch, {}, "'streamTextureDataDesc.dataRowPitch' must be > 0");
-    NRI_RETURN_ON_FAILURE(&deviceVal, streamTextureDataDesc.dataSlicePitch, {}, "'streamTextureDataDesc.dataSlicePitch' must be > 0");
     NRI_RETURN_ON_FAILURE(&deviceVal, streamTextureDataDesc.data, {}, "'streamTextureDataDesc.data' is NULL");
 
     ExclusiveScope lock(streamerVal.m_Lock);
