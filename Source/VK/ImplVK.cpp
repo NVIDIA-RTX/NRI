@@ -244,19 +244,19 @@ static void NRI_CALL GetTextureMemoryDesc2(const Device& device, const TextureDe
 }
 
 static Result NRI_CALL CreateCommittedBuffer(Device& device, MemoryLocation memoryLocation, float priority, const BufferDesc& bufferDesc, Buffer*& buffer) {
-    return ((DeviceVK&)device).CreateCommittedBufferVK(memoryLocation, priority, bufferDesc, buffer);
+    return ((DeviceVK&)device).CreateCommittedBuffer(memoryLocation, priority, bufferDesc, buffer);
 }
 
 static Result NRI_CALL CreateCommittedTexture(Device& device, MemoryLocation memoryLocation, float priority, const TextureDesc& textureDesc, Texture*& texture) {
-    return ((DeviceVK&)device).CreateCommittedTextureVK(memoryLocation, priority, textureDesc, texture);
+    return ((DeviceVK&)device).CreateCommittedTexture(memoryLocation, priority, textureDesc, texture);
 }
 
 static Result NRI_CALL CreatePlacedBuffer(Device& device, Memory* memory, uint64_t offset, const BufferDesc& bufferDesc, Buffer*& buffer) {
-    return ((DeviceVK&)device).CreatePlacedBufferVK(memory, offset, bufferDesc, buffer);
+    return ((DeviceVK&)device).CreatePlacedBuffer(memory, offset, bufferDesc, buffer);
 }
 
 static Result NRI_CALL CreatePlacedTexture(Device& device, Memory* memory, uint64_t offset, const TextureDesc& textureDesc, Texture*& texture) {
-    return ((DeviceVK&)device).CreatePlacedTextureVK(memory, offset, textureDesc, texture);
+    return ((DeviceVK&)device).CreatePlacedTexture(memory, offset, textureDesc, texture);
 }
 
 static Result NRI_CALL AllocateDescriptorSets(DescriptorPool& descriptorPool, const PipelineLayout& pipelineLayout, uint32_t setIndex, DescriptorSet** descriptorSets, uint32_t instanceNum, uint32_t variableDescriptorNum) {
@@ -1010,19 +1010,19 @@ static void NRI_CALL GetMicromapMemoryDesc2(const Device& device, const Micromap
 }
 
 static Result NRI_CALL CreateCommittedAccelerationStructure(Device& device, MemoryLocation memoryLocation, float priority, const AccelerationStructureDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure) {
-    return ((DeviceVK&)device).CreateCommittedAccelerationStructureVK(memoryLocation, priority, accelerationStructureDesc, accelerationStructure);
+    return ((DeviceVK&)device).CreateCommittedAccelerationStructure(memoryLocation, priority, accelerationStructureDesc, accelerationStructure);
 }
 
 static Result NRI_CALL CreateCommittedMicromap(Device& device, MemoryLocation memoryLocation, float priority, const MicromapDesc& micromapDesc, Micromap*& micromap) {
-    return ((DeviceVK&)device).CreateCommittedMicromapVK(memoryLocation, priority, micromapDesc, micromap);
+    return ((DeviceVK&)device).CreateCommittedMicromap(memoryLocation, priority, micromapDesc, micromap);
 }
 
 static Result NRI_CALL CreatePlacedAccelerationStructure(Device& device, Memory* memory, uint64_t offset, const AccelerationStructureDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure) {
-    return ((DeviceVK&)device).CreatePlacedAccelerationStructureVK(memory, offset, accelerationStructureDesc, accelerationStructure);
+    return ((DeviceVK&)device).CreatePlacedAccelerationStructure(memory, offset, accelerationStructureDesc, accelerationStructure);
 }
 
 static Result NRI_CALL CreatePlacedMicromap(Device& device, Memory* memory, uint64_t offset, const MicromapDesc& micromapDesc, Micromap*& micromap) {
-    return ((DeviceVK&)device).CreatePlacedMicromapVK(memory, offset, micromapDesc, micromap);
+    return ((DeviceVK&)device).CreatePlacedMicromap(memory, offset, micromapDesc, micromap);
 }
 
 static Result NRI_CALL WriteShaderGroupIdentifiers(const Pipeline& pipeline, uint32_t baseShaderGroupIndex, uint32_t shaderGroupNum, uint32_t dstStride, void* dst) {

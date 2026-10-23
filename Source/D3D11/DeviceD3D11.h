@@ -159,10 +159,10 @@ struct DeviceD3D11 final : public DeviceBase {
     // NRI
     //================================================================================================================
 
-    Result CreateCommittedBufferD3D11(MemoryLocation memoryLocation, float priority, const BufferDesc& bufferDesc, Buffer*& buffer);
-    Result CreateCommittedTextureD3D11(MemoryLocation memoryLocation, float priority, const TextureDesc& textureDesc, Texture*& texture);
-    Result CreatePlacedBufferD3D11(Memory* memory, uint64_t offset, const BufferDesc& bufferDesc, Buffer*& buffer);
-    Result CreatePlacedTextureD3D11(Memory* memory, uint64_t offset, const TextureDesc& textureDesc, Texture*& texture);
+    Result CreateCommittedBuffer(MemoryLocation memoryLocation, float priority, const BufferDesc& bufferDesc, Buffer*& buffer);
+    Result CreateCommittedTexture(MemoryLocation memoryLocation, float priority, const TextureDesc& textureDesc, Texture*& texture);
+    Result CreatePlacedBuffer(Memory* memory, uint64_t offset, const BufferDesc& bufferDesc, Buffer*& buffer);
+    Result CreatePlacedTexture(Memory* memory, uint64_t offset, const TextureDesc& textureDesc, Texture*& texture);
     Result GetQueue(QueueType queueType, uint32_t queueIndex, Queue*& queue);
     Result WaitIdle();
     Result UploadHostMemoryToTexture(QueueD3D11& queue, const UploadHostMemoryToTextureDesc* copyDescs, uint32_t copyDescNum);

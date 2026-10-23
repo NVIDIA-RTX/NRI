@@ -230,19 +230,19 @@ static void NRI_CALL GetTextureMemoryDesc2(const Device& device, const TextureDe
 }
 
 static Result NRI_CALL CreateCommittedBuffer(Device& device, MemoryLocation memoryLocation, float priority, const BufferDesc& bufferDesc, Buffer*& buffer) {
-    return ((DeviceD3D11&)device).CreateCommittedBufferD3D11(memoryLocation, priority, bufferDesc, buffer);
+    return ((DeviceD3D11&)device).CreateCommittedBuffer(memoryLocation, priority, bufferDesc, buffer);
 }
 
 static Result NRI_CALL CreateCommittedTexture(Device& device, MemoryLocation memoryLocation, float priority, const TextureDesc& textureDesc, Texture*& texture) {
-    return ((DeviceD3D11&)device).CreateCommittedTextureD3D11(memoryLocation, priority, textureDesc, texture);
+    return ((DeviceD3D11&)device).CreateCommittedTexture(memoryLocation, priority, textureDesc, texture);
 }
 
 static Result NRI_CALL CreatePlacedBuffer(Device& device, Memory* memory, uint64_t offset, const BufferDesc& bufferDesc, Buffer*& buffer) {
-    return ((DeviceD3D11&)device).CreatePlacedBufferD3D11(memory, offset, bufferDesc, buffer);
+    return ((DeviceD3D11&)device).CreatePlacedBuffer(memory, offset, bufferDesc, buffer);
 }
 
 static Result NRI_CALL CreatePlacedTexture(Device& device, Memory* memory, uint64_t offset, const TextureDesc& textureDesc, Texture*& texture) {
-    return ((DeviceD3D11&)device).CreatePlacedTextureD3D11(memory, offset, textureDesc, texture);
+    return ((DeviceD3D11&)device).CreatePlacedTexture(memory, offset, textureDesc, texture);
 }
 
 static Result NRI_CALL AllocateDescriptorSets(DescriptorPool& descriptorPool, const PipelineLayout& pipelineLayout, uint32_t setIndex, DescriptorSet** descriptorSets, uint32_t instanceNum, uint32_t variableDescriptorNum) {

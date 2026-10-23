@@ -771,7 +771,7 @@ void DeviceD3D11::Destruct() {
     Destroy(GetAllocationCallbacks(), this);
 }
 
-NRI_INLINE Result DeviceD3D11::CreateCommittedBufferD3D11(MemoryLocation memoryLocation, float priority, const BufferDesc& bufferDesc, Buffer*& buffer) {
+NRI_INLINE Result DeviceD3D11::CreateCommittedBuffer(MemoryLocation memoryLocation, float priority, const BufferDesc& bufferDesc, Buffer*& buffer) {
     Result result = CreateImplementation<BufferD3D11>(buffer, bufferDesc);
 
     if (result != Result::SUCCESS)
@@ -787,7 +787,7 @@ NRI_INLINE Result DeviceD3D11::CreateCommittedBufferD3D11(MemoryLocation memoryL
     return result;
 }
 
-NRI_INLINE Result DeviceD3D11::CreateCommittedTextureD3D11(MemoryLocation memoryLocation, float priority, const TextureDesc& textureDesc, Texture*& texture) {
+NRI_INLINE Result DeviceD3D11::CreateCommittedTexture(MemoryLocation memoryLocation, float priority, const TextureDesc& textureDesc, Texture*& texture) {
     Result result = CreateImplementation<TextureD3D11>(texture, textureDesc);
 
     if (result != Result::SUCCESS)
@@ -803,7 +803,7 @@ NRI_INLINE Result DeviceD3D11::CreateCommittedTextureD3D11(MemoryLocation memory
     return result;
 }
 
-NRI_INLINE Result DeviceD3D11::CreatePlacedBufferD3D11(Memory* memory, uint64_t offset, const BufferDesc& bufferDesc, Buffer*& buffer) {
+NRI_INLINE Result DeviceD3D11::CreatePlacedBuffer(Memory* memory, uint64_t offset, const BufferDesc& bufferDesc, Buffer*& buffer) {
     MemoryLocation memoryLocation = (MemoryLocation)offset;
     float priority = 0.0f;
 
@@ -812,10 +812,10 @@ NRI_INLINE Result DeviceD3D11::CreatePlacedBufferD3D11(Memory* memory, uint64_t 
         priority = ((MemoryD3D11*)memory)->GetPriority();
     }
 
-    return CreateCommittedBufferD3D11(memoryLocation, priority, bufferDesc, buffer);
+    return CreateCommittedBuffer(memoryLocation, priority, bufferDesc, buffer);
 }
 
-NRI_INLINE Result DeviceD3D11::CreatePlacedTextureD3D11(Memory* memory, uint64_t offset, const TextureDesc& textureDesc, Texture*& texture) {
+NRI_INLINE Result DeviceD3D11::CreatePlacedTexture(Memory* memory, uint64_t offset, const TextureDesc& textureDesc, Texture*& texture) {
     MemoryLocation memoryLocation = (MemoryLocation)offset;
     float priority = 0.0f;
 
@@ -824,7 +824,7 @@ NRI_INLINE Result DeviceD3D11::CreatePlacedTextureD3D11(Memory* memory, uint64_t
         priority = ((MemoryD3D11*)memory)->GetPriority();
     }
 
-    return CreateCommittedTextureD3D11(memoryLocation, priority, textureDesc, texture);
+    return CreateCommittedTexture(memoryLocation, priority, textureDesc, texture);
 }
 
 NRI_INLINE Result DeviceD3D11::GetQueue(QueueType queueType, uint32_t queueIndex, Queue*& queue) {

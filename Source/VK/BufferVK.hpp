@@ -96,10 +96,16 @@ Result BufferVK::AllocateAndBindMemory(MemoryLocation memoryLocation, float prio
         allocationCreateInfo.memoryTypeBits = 1 << memoryTypeInfo.index;
         allocationCreateInfo.minAlignment = memoryDesc.alignment;
 
+        // Receive outputs locally: a failed VMA call may leave the handle undefined
+        VkBuffer handle = VK_NULL_HANDLE;
+        VmaAllocation allocation = nullptr;
         VmaAllocationInfo allocationInfo = {};
 
-        VkResult vkResult = vmaCreateBuffer(m_Device.GetVma(), &info, &allocationCreateInfo, &m_Handle, &m_VmaAllocation, &allocationInfo);
+        VkResult vkResult = vmaCreateBuffer(m_Device.GetVma(), &info, &allocationCreateInfo, &handle, &allocation, &allocationInfo);
         NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vmaCreateBuffer");
+
+        m_Handle = handle;
+        m_VmaAllocation = allocation;
 
         if (IsHostVisibleMemory(memoryTypeInfo.location)) {
             m_MappedMemory = (uint8_t*)allocationInfo.pMappedData;
