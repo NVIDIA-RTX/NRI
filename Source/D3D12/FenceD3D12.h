@@ -18,8 +18,9 @@ struct FenceD3D12 final : public DebugNameBase {
         return m_Device;
     }
 
-    Result Create(uint64_t initialValue);
+    Result Create(const FenceDesc& fenceDesc);
     Result Create(const FenceD3D12Desc& fenceD3D12Desc);
+    Result GetSharedHandle(SharedHandle& sharedHandle) const;
 
     //================================================================================================================
     // DebugNameBase
@@ -42,6 +43,7 @@ private:
     DeviceD3D12& m_Device;
     ComPtr<ID3D12Fence> m_Fence;
     HANDLE m_Event = 0;
+    bool m_IsShared = false;
 };
 
 } // namespace nri

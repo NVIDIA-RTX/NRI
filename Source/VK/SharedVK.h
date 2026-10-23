@@ -194,6 +194,15 @@ struct VideoResourceProfileListVK {
     }
 };
 
+// Shared handles: the one handle type of the platform
+#ifdef VK_USE_PLATFORM_WIN32_KHR
+constexpr VkExternalMemoryHandleTypeFlagBits SHARED_MEMORY_HANDLE_TYPE = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT;
+constexpr VkExternalSemaphoreHandleTypeFlagBits SHARED_SEMAPHORE_HANDLE_TYPE = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_WIN32_BIT;
+#else
+constexpr VkExternalMemoryHandleTypeFlagBits SHARED_MEMORY_HANDLE_TYPE = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
+constexpr VkExternalSemaphoreHandleTypeFlagBits SHARED_SEMAPHORE_HANDLE_TYPE = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT;
+#endif
+
 } // namespace nri
 
 #include "DeviceVK.h"

@@ -1305,8 +1305,10 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
                 result = m_iCore.CreateCommandAllocator(*graphicsQueue, commandAllocator);
             if (result == Result::SUCCESS)
                 result = m_iCore.CreateCommandBuffer(*commandAllocator, commandBuffer);
-            if (result == Result::SUCCESS)
-                result = m_iCore.CreateFence(m_Device, 0, fence);
+            if (result == Result::SUCCESS) {
+                FenceDesc fenceDesc = {};
+                result = m_iCore.CreateFence(m_Device, fenceDesc, fence);
+            }
             if (result == Result::SUCCESS)
                 result = m_iCore.BeginCommandBuffer(*commandBuffer, nullptr);
         }

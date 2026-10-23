@@ -595,6 +595,15 @@ void DeviceVK::ProcessDeviceExtensions(Vector<const char*>& desiredDeviceExts, b
 
     APPEND_EXT(deviceLostInfoLevel != DeviceLostInfoLevel::NONE, VK_EXT_DEVICE_FAULT_EXTENSION_NAME);
 
+    // Shared handles (skipped if the app already asked for them via "vkExtensions")
+#ifdef VK_USE_PLATFORM_WIN32_KHR
+    APPEND_EXT(!IsExtensionSupported(VK_KHR_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME, desiredDeviceExts), VK_KHR_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME);
+    APPEND_EXT(!IsExtensionSupported(VK_KHR_EXTERNAL_SEMAPHORE_WIN32_EXTENSION_NAME, desiredDeviceExts), VK_KHR_EXTERNAL_SEMAPHORE_WIN32_EXTENSION_NAME);
+#else
+    APPEND_EXT(!IsExtensionSupported(VK_KHR_EXTERNAL_MEMORY_FD_EXTENSION_NAME, desiredDeviceExts), VK_KHR_EXTERNAL_MEMORY_FD_EXTENSION_NAME);
+    APPEND_EXT(!IsExtensionSupported(VK_KHR_EXTERNAL_SEMAPHORE_FD_EXTENSION_NAME, desiredDeviceExts), VK_KHR_EXTERNAL_SEMAPHORE_FD_EXTENSION_NAME);
+#endif
+
     APPEND_EXT(true, VK_KHR_COMPUTE_SHADER_DERIVATIVES_EXTENSION_NAME);
     APPEND_EXT(true, VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
     APPEND_EXT(true, VK_KHR_FRAGMENT_SHADER_BARYCENTRIC_EXTENSION_NAME);
@@ -1633,6 +1642,13 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         m_Desc.features.constantAlphaBlendFactors = true;
         m_Desc.features.logicOp = features.features.logicOp;
         m_Desc.features.depthBoundsTest = features.features.depthBounds;
+#ifdef VK_USE_PLATFORM_WIN32_KHR
+        m_Desc.features.sharedResources = IsExtensionSupported(VK_KHR_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME, desiredDeviceExts);
+        m_Desc.features.sharedFences = IsExtensionSupported(VK_KHR_EXTERNAL_SEMAPHORE_WIN32_EXTENSION_NAME, desiredDeviceExts);
+#else
+        m_Desc.features.sharedResources = IsExtensionSupported(VK_KHR_EXTERNAL_MEMORY_FD_EXTENSION_NAME, desiredDeviceExts);
+        m_Desc.features.sharedFences = IsExtensionSupported(VK_KHR_EXTERNAL_SEMAPHORE_FD_EXTENSION_NAME, desiredDeviceExts);
+#endif
         m_Desc.features.drawIndirectCount = features12.drawIndirectCount;
         m_Desc.features.lineSmoothing = features14.smoothLines;
         m_Desc.features.meshShaderPipelineStats = MeshShaderFeatures.meshShaderQueries == VK_TRUE;
@@ -2434,6 +2450,18 @@ Result DeviceVK::ResolveDispatchTable(const Vector<const char*>& desiredDeviceEx
         GET_DEVICE_FUNC(GetMemoryWin32HandlePropertiesKHR);
 #endif
 
+#ifdef VK_USE_PLATFORM_WIN32_KHR
+    if (IsExtensionSupported(VK_KHR_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME, desiredDeviceExts))
+        GET_DEVICE_FUNC(GetMemoryWin32HandleKHR);
+    if (IsExtensionSupported(VK_KHR_EXTERNAL_SEMAPHORE_WIN32_EXTENSION_NAME, desiredDeviceExts))
+        GET_DEVICE_FUNC(GetSemaphoreWin32HandleKHR);
+#else
+    if (IsExtensionSupported(VK_KHR_EXTERNAL_MEMORY_FD_EXTENSION_NAME, desiredDeviceExts))
+        GET_DEVICE_FUNC(GetMemoryFdKHR);
+    if (IsExtensionSupported(VK_KHR_EXTERNAL_SEMAPHORE_FD_EXTENSION_NAME, desiredDeviceExts))
+        GET_DEVICE_FUNC(GetSemaphoreFdKHR);
+#endif
+
     if (IsExtensionSupported(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME, desiredDeviceExts)) {
         GET_DEVICE_FUNC(CreateAccelerationStructureKHR);
         GET_DEVICE_FUNC(DestroyAccelerationStructureKHR);
@@ -2900,6 +2928,73 @@ NRI_INLINE void DeviceVK::DestroyFramebuffers(VkImageView imageView) {
             entry.desc.attachments.clear();
         }
     }
+}
+
+// Shared resources are dedicated allocations outside VMA, so the export info can be chained
+Result DeviceVK::AllocateSharedMemory(const MemoryDesc& memoryDesc, float priority, VkBuffer buffer, VkImage image, VkDeviceMemory& memory) {
+    MemoryTypeInfo memoryTypeInfo = Unpack(memoryDesc.type);
+
+    VkExportMemoryAllocateInfo exportInfo = {VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO};
+    exportInfo.handleTypes = SHARED_MEMORY_HANDLE_TYPE;
+
+    VkMemoryPriorityAllocateInfoEXT priorityInfo = {VK_STRUCTURE_TYPE_MEMORY_PRIORITY_ALLOCATE_INFO_EXT};
+    priorityInfo.pNext = &exportInfo;
+    priorityInfo.priority = priority * 0.5f + 0.5f;
+
+    VkMemoryDedicatedAllocateInfo dedicatedInfo = {VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO};
+    dedicatedInfo.pNext = m_IsSupported.memoryPriority ? (const void*)&priorityInfo : (const void*)&exportInfo;
+    dedicatedInfo.buffer = buffer;
+    dedicatedInfo.image = image;
+
+    VkMemoryAllocateFlagsInfo flagsInfo = {VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO};
+    flagsInfo.pNext = &dedicatedInfo;
+    flagsInfo.flags = VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT;
+
+    VkMemoryAllocateInfo allocateInfo = {VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
+    allocateInfo.pNext = (buffer && m_IsSupported.deviceAddress) ? (const void*)&flagsInfo : (const void*)&dedicatedInfo; // buffers get "VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT" (see "FillCreateInfo")
+    allocateInfo.allocationSize = memoryDesc.size;
+    allocateInfo.memoryTypeIndex = memoryTypeInfo.index;
+
+    VkDeviceMemory handle = VK_NULL_HANDLE;
+    VkResult vkResult = m_VK.AllocateMemory(m_Device, &allocateInfo, m_AllocationCallbackPtr, &handle);
+    NRI_RETURN_ON_BAD_VKRESULT(this, vkResult, "vkAllocateMemory");
+
+    memory = handle;
+
+    return Result::SUCCESS;
+}
+
+Result DeviceVK::GetSharedMemoryHandle(VkDeviceMemory memory, uint64_t size, SharedHandle& sharedHandle) {
+    sharedHandle = {};
+
+    NRI_RETURN_ON_FAILURE(this, memory != VK_NULL_HANDLE, Result::INVALID_ARGUMENT, "'shared' is false");
+
+#ifdef VK_USE_PLATFORM_WIN32_KHR
+    VkMemoryGetWin32HandleInfoKHR getInfo = {VK_STRUCTURE_TYPE_MEMORY_GET_WIN32_HANDLE_INFO_KHR};
+    getInfo.memory = memory;
+    getInfo.handleType = SHARED_MEMORY_HANDLE_TYPE;
+
+    HANDLE handle = nullptr;
+    VkResult vkResult = m_VK.GetMemoryWin32HandleKHR(m_Device, &getInfo, &handle);
+    NRI_RETURN_ON_BAD_VKRESULT(this, vkResult, "vkGetMemoryWin32HandleKHR");
+
+    sharedHandle.handle = handle;
+    sharedHandle.type = SharedHandleType::OPAQUE_WIN32;
+#else
+    VkMemoryGetFdInfoKHR getInfo = {VK_STRUCTURE_TYPE_MEMORY_GET_FD_INFO_KHR};
+    getInfo.memory = memory;
+    getInfo.handleType = SHARED_MEMORY_HANDLE_TYPE;
+
+    int fd = -1;
+    VkResult vkResult = m_VK.GetMemoryFdKHR(m_Device, &getInfo, &fd);
+    NRI_RETURN_ON_BAD_VKRESULT(this, vkResult, "vkGetMemoryFdKHR");
+
+    sharedHandle.handle = (void*)(intptr_t)fd;
+    sharedHandle.type = SharedHandleType::OPAQUE_FD;
+#endif
+    sharedHandle.size = size;
+
+    return Result::SUCCESS;
 }
 
 NRI_INLINE Result DeviceVK::CreateCommittedBuffer(MemoryLocation memoryLocation, float priority, const BufferDesc& bufferDesc, Buffer*& buffer) {

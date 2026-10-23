@@ -333,6 +333,7 @@ NRI_INLINE Result DeviceVal::CreateDescriptorPool(const DescriptorPoolDesc& desc
 }
 
 NRI_INLINE Result DeviceVal::CreateBuffer(const BufferDesc& bufferDesc, Buffer*& buffer) {
+    NRI_RETURN_ON_FAILURE(this, !bufferDesc.shared, Result::INVALID_ARGUMENT, "'shared' buffers must be created with 'CreateCommittedBuffer'");
     NRI_RETURN_ON_FAILURE(this, bufferDesc.size != 0, Result::INVALID_ARGUMENT, "'size' is 0");
 
     Buffer* bufferImpl = nullptr;
@@ -346,6 +347,7 @@ NRI_INLINE Result DeviceVal::CreateBuffer(const BufferDesc& bufferDesc, Buffer*&
 }
 
 NRI_INLINE Result DeviceVal::CreateTexture(const TextureDesc& textureDesc, Texture*& texture) {
+    NRI_RETURN_ON_FAILURE(this, !textureDesc.shared, Result::INVALID_ARGUMENT, "'shared' textures must be created with 'CreateCommittedTexture'");
     NRI_RETURN_ON_FAILURE(this, textureDesc.type < TextureType::MAX_NUM, Result::INVALID_ARGUMENT, "'type' is invalid");
     NRI_RETURN_ON_FAILURE(this, textureDesc.format > Format::UNKNOWN && textureDesc.format < Format::MAX_NUM, Result::INVALID_ARGUMENT, "'format' is invalid");
     NRI_RETURN_ON_FAILURE(this, textureDesc.sharingMode < SharingMode::MAX_NUM, Result::INVALID_ARGUMENT, "'sharingMode' is invalid");
@@ -903,9 +905,12 @@ NRI_INLINE Result DeviceVal::CreateQueryPool(const QueryPoolDesc& queryPoolDesc,
     return result;
 }
 
-NRI_INLINE Result DeviceVal::CreateFence(uint64_t initialValue, Fence*& fence) {
+NRI_INLINE Result DeviceVal::CreateFence(const FenceDesc& fenceDesc, Fence*& fence) {
+    NRI_RETURN_ON_FAILURE(this, !fenceDesc.shared || GetDesc().features.sharedFences, Result::UNSUPPORTED, "'shared' fences are not supported by the device");
+
+    const uint64_t initialValue = fenceDesc.initialValue;
     Fence* fenceImpl = nullptr;
-    Result result = m_iCoreImpl.CreateFence(m_Impl, initialValue, fenceImpl);
+    Result result = m_iCoreImpl.CreateFence(m_Impl, fenceDesc, fenceImpl);
 
     fence = nullptr;
     if (result == Result::SUCCESS)
@@ -965,6 +970,8 @@ NRI_INLINE void DeviceVal::DestroyFence(Fence* fence) {
 }
 
 NRI_INLINE Result DeviceVal::CreateCommittedBuffer(MemoryLocation memoryLocation, float priority, const BufferDesc& bufferDesc, Buffer*& buffer) {
+    NRI_RETURN_ON_FAILURE(this, !bufferDesc.shared || GetDesc().features.sharedResources, Result::UNSUPPORTED, "'shared' resources are not supported by the device");
+    NRI_RETURN_ON_FAILURE(this, !bufferDesc.shared || memoryLocation == MemoryLocation::DEVICE, Result::INVALID_ARGUMENT, "'shared' resources must be in 'DEVICE' memory");
     NRI_RETURN_ON_FAILURE(this, priority >= -1.0f && priority <= 1.0f, Result::INVALID_ARGUMENT, "'priority' outside of [-1; 1] range");
     NRI_RETURN_ON_FAILURE(this, bufferDesc.size != 0, Result::INVALID_ARGUMENT, "'size' is 0");
 
@@ -982,6 +989,8 @@ NRI_INLINE Result DeviceVal::CreateCommittedBuffer(MemoryLocation memoryLocation
 }
 
 NRI_INLINE Result DeviceVal::CreateCommittedTexture(MemoryLocation memoryLocation, float priority, const TextureDesc& textureDesc, Texture*& texture) {
+    NRI_RETURN_ON_FAILURE(this, !textureDesc.shared || GetDesc().features.sharedResources, Result::UNSUPPORTED, "'shared' resources are not supported by the device");
+    NRI_RETURN_ON_FAILURE(this, !textureDesc.shared || memoryLocation == MemoryLocation::DEVICE, Result::INVALID_ARGUMENT, "'shared' resources must be in 'DEVICE' memory");
     NRI_RETURN_ON_FAILURE(this, priority >= -1.0f && priority <= 1.0f, Result::INVALID_ARGUMENT, "'priority' outside of [-1; 1] range");
     NRI_RETURN_ON_FAILURE(this, textureDesc.type < TextureType::MAX_NUM, Result::INVALID_ARGUMENT, "'type' is invalid");
     NRI_RETURN_ON_FAILURE(this, textureDesc.format > Format::UNKNOWN && textureDesc.format < Format::MAX_NUM, Result::INVALID_ARGUMENT, "'format' is invalid");
@@ -1093,6 +1102,7 @@ NRI_INLINE Result DeviceVal::CreateCommittedAccelerationStructure(MemoryLocation
 }
 
 NRI_INLINE Result DeviceVal::CreatePlacedBuffer(Memory* memory, uint64_t offset, const BufferDesc& bufferDesc, Buffer*& buffer) {
+    NRI_RETURN_ON_FAILURE(this, !bufferDesc.shared, Result::INVALID_ARGUMENT, "'shared' buffers must be created with 'CreateCommittedBuffer'");
     NRI_RETURN_ON_FAILURE(this, bufferDesc.size != 0, Result::INVALID_ARGUMENT, "'size' is 0");
 
     if (memory) {
@@ -1135,6 +1145,7 @@ NRI_INLINE Result DeviceVal::CreatePlacedBuffer(Memory* memory, uint64_t offset,
 }
 
 NRI_INLINE Result DeviceVal::CreatePlacedTexture(Memory* memory, uint64_t offset, const TextureDesc& textureDesc, Texture*& texture) {
+    NRI_RETURN_ON_FAILURE(this, !textureDesc.shared, Result::INVALID_ARGUMENT, "'shared' textures must be created with 'CreateCommittedTexture'");
     NRI_RETURN_ON_FAILURE(this, textureDesc.type < TextureType::MAX_NUM, Result::INVALID_ARGUMENT, "'type' is invalid");
     NRI_RETURN_ON_FAILURE(this, textureDesc.format > Format::UNKNOWN && textureDesc.format < Format::MAX_NUM, Result::INVALID_ARGUMENT, "'format' is invalid");
     NRI_RETURN_ON_FAILURE(this, textureDesc.sharingMode < SharingMode::MAX_NUM, Result::INVALID_ARGUMENT, "'sharingMode' is invalid");

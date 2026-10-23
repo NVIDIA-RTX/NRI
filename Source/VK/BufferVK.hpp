@@ -8,6 +8,9 @@ BufferVK::~BufferVK() {
             vmaDestroyBuffer(m_Device.GetVma(), m_Handle, m_VmaAllocation);
         else
             vk.DestroyBuffer(m_Device, m_Handle, m_Device.GetVkAllocationCallbacks());
+
+        if (m_SharedMemory)
+            vk.FreeMemory(m_Device, m_SharedMemory, m_Device.GetVkAllocationCallbacks());
     }
 }
 
@@ -19,6 +22,17 @@ Result BufferVK::Create(const BufferDesc& bufferDesc) {
 
     VkBufferCreateInfo info = {VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
     FillCreateInfo(info);
+
+    VkExternalMemoryBufferCreateInfo externalInfo = {VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_BUFFER_CREATE_INFO};
+    externalInfo.handleTypes = SHARED_MEMORY_HANDLE_TYPE;
+
+    if (m_Desc.shared) {
+        if (!m_Device.GetDesc().features.sharedResources)
+            return Result::UNSUPPORTED;
+
+        externalInfo.pNext = info.pNext;
+        info.pNext = &externalInfo;
+    }
 
     const auto& vk = m_Device.GetDispatchTable();
     VkBuffer handle = VK_NULL_HANDLE;
@@ -71,6 +85,33 @@ Result BufferVK::AllocateAndBindMemory(MemoryLocation memoryLocation, float prio
     MemoryTypeInfo memoryTypeInfo = Unpack(memoryDesc.type);
     if (memoryTypeInfo.mustBeDedicated)
         committed = true;
+
+    if (m_Desc.shared) {
+        NRI_RETURN_ON_FAILURE(&m_Device, !IsHostVisibleMemory(memoryTypeInfo.location), Result::INVALID_ARGUMENT, "Shared buffers must be in 'DEVICE' memory");
+
+        Result result = m_Device.AllocateSharedMemory(memoryDesc, priority, m_Handle, VK_NULL_HANDLE, m_SharedMemory);
+        if (result != Result::SUCCESS)
+            return result;
+
+        m_SharedSize = memoryDesc.size;
+
+        VkBindBufferMemoryInfo bindBufferMemoryInfo = {VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO};
+        bindBufferMemoryInfo.buffer = m_Handle;
+        bindBufferMemoryInfo.memory = m_SharedMemory;
+
+        const auto& vk = m_Device.GetDispatchTable();
+        VkResult vkResult = vk.BindBufferMemory2(m_Device, 1, &bindBufferMemoryInfo);
+        NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkBindBufferMemory2");
+
+        if (m_Device.m_IsSupported.deviceAddress) {
+            VkBufferDeviceAddressInfo bufferDeviceAddressInfo = {VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO};
+            bufferDeviceAddressInfo.buffer = m_Handle;
+
+            m_DeviceAddress = vk.GetBufferDeviceAddress(m_Device, &bufferDeviceAddressInfo);
+        }
+
+        return Result::SUCCESS;
+    }
 
     VkMemoryRequirements memoryRequirements = {};
     memoryRequirements.size = memoryDesc.size;
@@ -197,6 +238,10 @@ Result BufferVK::BindMemory(MemoryVK& memory, uint64_t offset, bool bindMemory) 
     }
 
     return Result::SUCCESS;
+}
+
+Result BufferVK::GetSharedHandle(SharedHandle& sharedHandle) const {
+    return m_Device.GetSharedMemoryHandle(m_SharedMemory, m_SharedSize, sharedHandle);
 }
 
 bool BufferVK::IsVideoOnly() const {

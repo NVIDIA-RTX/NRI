@@ -281,7 +281,7 @@ static Result NRI_CALL CreateCommandBuffer(CommandAllocator&, CommandBuffer*& co
     return Result::SUCCESS;
 }
 
-static Result NRI_CALL CreateFence(Device&, uint64_t, Fence*& fence) {
+static Result NRI_CALL CreateFence(Device&, const FenceDesc&, Fence*& fence) {
     fence = DummyObject<Fence>();
 
     return Result::SUCCESS;
@@ -686,6 +686,24 @@ static uint64_t NRI_CALL GetDescriptorNativeObject(const Descriptor*) {
     return 0;
 }
 
+static Result NRI_CALL GetBufferSharedHandle(const Buffer&, SharedHandle& sharedHandle) {
+    sharedHandle = {};
+
+    return Result::SUCCESS;
+}
+
+static Result NRI_CALL GetTextureSharedHandle(const Texture&, SharedHandle& sharedHandle) {
+    sharedHandle = {};
+
+    return Result::SUCCESS;
+}
+
+static Result NRI_CALL GetFenceSharedHandle(const Fence&, SharedHandle& sharedHandle) {
+    sharedHandle = {};
+
+    return Result::SUCCESS;
+}
+
 Result DeviceNONE::FillFunctionTable(CoreInterface& table) const {
     table.GetDeviceDesc = ::GetDeviceDesc;
     table.GetBufferDesc = ::GetBufferDesc;
@@ -801,6 +819,9 @@ Result DeviceNONE::FillFunctionTable(CoreInterface& table) const {
     table.GetBufferNativeObject = ::GetBufferNativeObject;
     table.GetTextureNativeObject = ::GetTextureNativeObject;
     table.GetDescriptorNativeObject = ::GetDescriptorNativeObject;
+    table.GetBufferSharedHandle = ::GetBufferSharedHandle;
+    table.GetTextureSharedHandle = ::GetTextureSharedHandle;
+    table.GetFenceSharedHandle = ::GetFenceSharedHandle;
 
     return Result::SUCCESS;
 }

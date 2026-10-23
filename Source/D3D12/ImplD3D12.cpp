@@ -104,8 +104,8 @@ static Result NRI_CALL CreateCommandBuffer(CommandAllocator& commandAllocator, C
     return ((CommandAllocatorD3D12&)commandAllocator).CreateCommandBuffer(commandBuffer);
 }
 
-static Result NRI_CALL CreateFence(Device& device, uint64_t initialValue, Fence*& fence) {
-    return ((DeviceD3D12&)device).CreateImplementation<FenceD3D12>(fence, initialValue);
+static Result NRI_CALL CreateFence(Device& device, const FenceDesc& fenceDesc, Fence*& fence) {
+    return ((DeviceD3D12&)device).CreateImplementation<FenceD3D12>(fence, fenceDesc);
 }
 
 static Result NRI_CALL CreateDescriptorPool(Device& device, const DescriptorPoolDesc& descriptorPoolDesc, DescriptorPool*& descriptorPool) {
@@ -602,6 +602,18 @@ static uint64_t NRI_CALL GetDescriptorNativeObject(const Descriptor* descriptor)
     return uint64_t(((DescriptorD3D12*)descriptor)->GetDescriptorHandleCPU());
 }
 
+static Result NRI_CALL GetBufferSharedHandle(const Buffer& buffer, SharedHandle& sharedHandle) {
+    return ((const BufferD3D12&)buffer).GetSharedHandle(sharedHandle);
+}
+
+static Result NRI_CALL GetTextureSharedHandle(const Texture& texture, SharedHandle& sharedHandle) {
+    return ((const TextureD3D12&)texture).GetSharedHandle(sharedHandle);
+}
+
+static Result NRI_CALL GetFenceSharedHandle(const Fence& fence, SharedHandle& sharedHandle) {
+    return ((const FenceD3D12&)fence).GetSharedHandle(sharedHandle);
+}
+
 Result DeviceD3D12::FillFunctionTable(CoreInterface& table) const {
     table.GetDeviceDesc = ::GetDeviceDesc;
     table.GetBufferDesc = ::GetBufferDesc;
@@ -717,6 +729,9 @@ Result DeviceD3D12::FillFunctionTable(CoreInterface& table) const {
     table.GetBufferNativeObject = ::GetBufferNativeObject;
     table.GetTextureNativeObject = ::GetTextureNativeObject;
     table.GetDescriptorNativeObject = ::GetDescriptorNativeObject;
+    table.GetBufferSharedHandle = ::GetBufferSharedHandle;
+    table.GetTextureSharedHandle = ::GetTextureSharedHandle;
+    table.GetFenceSharedHandle = ::GetFenceSharedHandle;
 
     return Result::SUCCESS;
 }

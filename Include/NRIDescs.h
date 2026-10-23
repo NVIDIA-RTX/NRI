@@ -666,6 +666,11 @@ NriStruct(BufferBarrierDesc) {
     Nri(AccessStage) after;
 };
 
+// Marks a queue family ownership transfer to or from an external user of a shared texture (another device, API or process)
+// VK: "VK_QUEUE_FAMILY_EXTERNAL" as "TextureBarrierDesc::srcQueue" (acquire after import) or "dstQueue" (release before export)
+// D3D12: ignored (queue ownership does not exist)
+static const NriPtr(Queue) NriConstant(EXTERNAL_QUEUE) = (NriPtr(Queue))1;
+
 NriStruct(TextureBarrierDesc) {
     NriPtr(Texture) texture;
     Nri(AccessLayoutStage) before;
@@ -779,6 +784,7 @@ NriStruct(TextureDesc) {
     NriOptional Nri(VideoCodec) videoCodec;             // VK: required for video textures
     NriOptional bool videoAV1FilmGrain;                 // VK: AV1 decode textures of sessions with "VideoSessionDesc::av1FilmGrain"
     NriOptional Nri(ClearValue) optimizedClearValue;    // D3D12: not needed on desktop, since any HW can track many clear values
+    NriOptional bool shared;                            // exportable to another device, API or process ("GetTextureSharedHandle"): "CreateCommittedTexture" in "DEVICE" memory only, requires "features.sharedResources"
 };
 
 // - VK: buffers are always created with sharing mode "CONCURRENT" to match D3D12 spec
@@ -790,6 +796,7 @@ NriStruct(BufferDesc) {
     uint32_t structureStride;   // enable "STRUCTURED" views
     Nri(BufferUsageBits) usage;
     bool byteAddress;           // enable "BYTE_ADDRESS" views
+    NriOptional bool shared;    // exportable to another device, API or process ("GetBufferSharedHandle"): "CreateCommittedBuffer" in "DEVICE" memory only, requires "features.sharedResources"
 };
 
 #pragma endregion
@@ -852,6 +859,28 @@ NriStruct(BindTextureMemoryDesc) {
     NriPtr(Texture) texture;
     NriPtr(Memory) memory;
     uint64_t offset; // in memory
+};
+
+#pragma endregion
+
+//============================================================================================================================================================================================
+#pragma region [ Shared handles ]
+//============================================================================================================================================================================================
+
+// Export of "shared" buffers, textures and fences (see "BufferDesc::shared", "TextureDesc::shared" and "FenceDesc::shared") to another device, API or process:
+// a second NRI device, D3D12, Vulkan, CUDA, a compositor. Imports go through the wrapper extensions ("BufferD3D12Desc", "TextureVKDesc", "FenceD3D12Desc"...)
+NriEnum(SharedHandleType, uint8_t,
+    NONE,
+    OPAQUE_WIN32,       // VK: "VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT" / "VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_WIN32_BIT" (NT handle)
+    OPAQUE_FD,          // VK: "VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT" / "VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT" (file descriptor)
+    D3D12_RESOURCE,     // D3D12: NT handle from "ID3D12Device::CreateSharedHandle" for an "ID3D12Resource" on a "D3D12_HEAP_FLAG_SHARED" heap
+    D3D12_FENCE         // D3D12: NT handle from "ID3D12Device::CreateSharedHandle" for a "D3D12_FENCE_FLAG_SHARED" fence
+);
+
+NriStruct(SharedHandle) {
+    void* handle;               // NT handle (Windows) or file descriptor cast to a pointer (Linux), owned by the caller ("CloseHandle" / "close")
+    Nri(SharedHandleType) type;
+    uint64_t size;              // resources only: the allocation size, for "VkMemoryAllocateInfo::allocationSize" or "CUDA_EXTERNAL_MEMORY_HANDLE_DESC::size" on import (0 for fences)
 };
 
 #pragma endregion
@@ -1861,6 +1890,11 @@ NriStruct(ReadbackTextureToHostMemoryDesc) {
     NriOptional uint32_t dstSlicePitch; // if slices are not tightly packed
 };
 
+NriStruct(FenceDesc) {
+    uint64_t initialValue;      // "SWAPCHAIN_SEMAPHORE" creates a binary semaphore (see "NRISwapChain.h")
+    NriOptional bool shared;    // exportable to another device, API or process ("GetFenceSharedHandle"), requires "features.sharedFences"; D3D12: not for a binary semaphore
+};
+
 // Work submission
 NriStruct(FenceSubmitDesc) {
     NriPtr(Fence) fence;
@@ -2257,6 +2291,10 @@ NriStruct(DeviceDesc) {
         bool flexibleMultiview;                                   // see "Multiview::FLEXIBLE"
         bool layerBasedMultiview;                                 // see "Multiview::LAYRED_BASED"
         bool viewportBasedMultiview;                              // see "Multiview::VIEWPORT_BASED"
+
+        // Shared handles
+        bool sharedResources;                                     // see "BufferDesc::shared" and "TextureDesc::shared"
+        bool sharedFences;                                        // see "FenceDesc::shared"
 
         // Texture compression
         bool textureCompressionBC;                                // all "BC" texture formats are supported

@@ -41,6 +41,7 @@ struct BufferVK final : public DebugNameBase {
     Result FlushMappedRange(uint64_t offset, uint64_t size);
     Result AllocateAndBindMemory(MemoryLocation memoryLocation, float priority, bool committed);
     Result BindMemory(MemoryVK& memory, uint64_t offset, bool bindMemory);
+    Result GetSharedHandle(SharedHandle& sharedHandle) const;
     void GetMemoryDesc(MemoryLocation memoryLocation, MemoryDesc& memoryDesc) const;
 
     //================================================================================================================
@@ -71,6 +72,8 @@ private:
     uint64_t m_MappedMemoryRangeOffset = 0;
     BufferDesc m_Desc = {};
     VmaAllocation m_VmaAllocation = nullptr;
+    VkDeviceMemory m_SharedMemory = VK_NULL_HANDLE;
+    uint64_t m_SharedSize = 0;
     uint64_t m_MemoryAlignment = 1;
     bool m_OwnsNativeObjects = true;
     bool m_IsDescriptorHeap = false;

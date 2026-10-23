@@ -165,12 +165,14 @@ Typical usage example, valid if the number of swap chain images >= queued frames
         } swapChainTextures[16] = {};
 
         Fence* frameFence;
-        NRI.CreateFence(device, 0, frameFence);
+        FenceDesc fenceDesc = {};
+        NRI.CreateFence(device, fenceDesc, frameFence);
 
         // Use "GetSwapChainTextures" to populate
         for (uint32_t i = 0; i < swapChainDesc.textureNum; i++) {
-            NRI.CreateFence(device, SWAPCHAIN_SEMAPHORE, swapChainTextures[i].swapChainAcquireSemaphore);
-            NRI.CreateFence(device, SWAPCHAIN_SEMAPHORE, swapChainTextures[i].swapChainReleaseSemaphore);
+            fenceDesc.initialValue = SWAPCHAIN_SEMAPHORE;
+            NRI.CreateFence(device, fenceDesc, swapChainTextures[i].swapChainAcquireSemaphore);
+            NRI.CreateFence(device, fenceDesc, swapChainTextures[i].swapChainReleaseSemaphore);
             ...
         }
 
