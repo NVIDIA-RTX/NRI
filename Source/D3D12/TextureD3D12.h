@@ -38,6 +38,7 @@ struct TextureD3D12 final : public DebugNameBase {
     Result Create(const TextureD3D12Desc& textureD3D12Desc);
     Result Allocate(MemoryLocation memoryLocation, float priority, bool committed);
     Result BindMemory(const MemoryD3D12& memory, uint64_t offset);
+    Result GetSharedHandle(SharedHandle& sharedHandle) const;
 
     //================================================================================================================
     // DebugNameBase

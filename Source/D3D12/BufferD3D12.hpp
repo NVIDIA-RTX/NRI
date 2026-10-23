@@ -28,6 +28,11 @@ Result BufferD3D12::Allocate(MemoryLocation memoryLocation, float priority, bool
     if (deviceDesc.tiers.memory == 0)
         heapFlags = D3D12_HEAP_FLAG_ALLOW_ONLY_BUFFERS;
 
+    if (m_Desc.shared) {
+        NRI_RETURN_ON_FAILURE(&m_Device, m_Device.GetHeapType(memoryLocation) == D3D12_HEAP_TYPE_DEFAULT, Result::INVALID_ARGUMENT, "Shared buffers must be in 'DEVICE' memory");
+        heapFlags |= D3D12_HEAP_FLAG_SHARED;
+    }
+
     D3D12MA::ALLOCATION_DESC allocationDesc = {};
     allocationDesc.HeapType = m_Device.GetHeapType(memoryLocation);
     allocationDesc.Flags = (D3D12MA::ALLOCATION_FLAGS)flags;
@@ -130,6 +135,22 @@ Result BufferD3D12::BindMemory(const MemoryD3D12& memory, uint64_t offset) {
     }
 
     return SetPriorityAndPersistentlyMap(memory.GetPriority(), isCommitted, heapDesc.Properties);
+}
+
+Result BufferD3D12::GetSharedHandle(SharedHandle& sharedHandle) const {
+    sharedHandle = {};
+
+    NRI_RETURN_ON_FAILURE(&m_Device, m_Desc.shared && m_Buffer, Result::INVALID_ARGUMENT, "'shared' is false");
+
+    HANDLE handle = nullptr;
+    HRESULT hr = m_Device->CreateSharedHandle(m_Buffer.GetInterface(), nullptr, GENERIC_ALL, nullptr, &handle);
+    NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::CreateSharedHandle");
+
+    sharedHandle.handle = handle;
+    sharedHandle.type = SharedHandleType::D3D12_RESOURCE;
+    sharedHandle.size = m_VmaAllocation ? m_VmaAllocation->GetSize() : 0;
+
+    return Result::SUCCESS;
 }
 
 NRI_INLINE Result BufferD3D12::SetPriorityAndPersistentlyMap(float priority, bool committed, const D3D12_HEAP_PROPERTIES& heapProps) {

@@ -156,7 +156,8 @@ Result HelperDataUpload::Create(const TextureUploadDesc* textureUploadDescs, uin
     }
 
     { // Create other resources
-        Result result = m_iCore.CreateFence(m_Device, 0, m_Fence);
+        FenceDesc fenceDesc = {};
+        Result result = m_iCore.CreateFence(m_Device, fenceDesc, m_Fence);
 
         if (result == Result::SUCCESS)
             result = m_iCore.CreateCommandAllocator(m_Queue, m_CommandAllocator);

@@ -441,7 +441,8 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
     // Latency fence
     if (allowLowLatency) {
         m_LatencyFence = Allocate<FenceVK>(m_Device.GetAllocationCallbacks(), m_Device);
-        m_LatencyFence->Create(0);
+        FenceDesc fenceDesc = {};
+        m_LatencyFence->Create(fenceDesc);
     }
 
     // Finalize

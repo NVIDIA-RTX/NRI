@@ -100,8 +100,11 @@ static Result NRI_CALL CreateCommandBuffer(CommandAllocator& commandAllocator, C
     return ((CommandAllocatorWGPU&)commandAllocator).CreateCommandBuffer(commandBuffer);
 }
 
-static Result NRI_CALL CreateFence(Device& device, uint64_t initialValue, Fence*& fence) {
-    return ((DeviceWGPU&)device).CreateImplementation<FenceWGPU>(fence, initialValue);
+static Result NRI_CALL CreateFence(Device& device, const FenceDesc& fenceDesc, Fence*& fence) {
+    if (fenceDesc.shared)
+        return Result::UNSUPPORTED;
+
+    return ((DeviceWGPU&)device).CreateImplementation<FenceWGPU>(fence, fenceDesc.initialValue);
 }
 
 static Result NRI_CALL CreateDescriptorPool(Device& device, const DescriptorPoolDesc& descriptorPoolDesc, DescriptorPool*& descriptorPool) {
@@ -628,6 +631,24 @@ static uint64_t NRI_CALL GetDescriptorNativeObject(const Descriptor* descriptor)
     }
 }
 
+static Result NRI_CALL GetBufferSharedHandle(const Buffer&, SharedHandle& sharedHandle) {
+    sharedHandle = {};
+
+    return Result::UNSUPPORTED;
+}
+
+static Result NRI_CALL GetTextureSharedHandle(const Texture&, SharedHandle& sharedHandle) {
+    sharedHandle = {};
+
+    return Result::UNSUPPORTED;
+}
+
+static Result NRI_CALL GetFenceSharedHandle(const Fence&, SharedHandle& sharedHandle) {
+    sharedHandle = {};
+
+    return Result::UNSUPPORTED;
+}
+
 Result DeviceWGPU::FillFunctionTable(CoreInterface& table) const {
     table.GetDeviceDesc = ::GetDeviceDesc;
     table.GetBufferDesc = ::GetBufferDesc;
@@ -743,6 +764,9 @@ Result DeviceWGPU::FillFunctionTable(CoreInterface& table) const {
     table.GetBufferNativeObject = ::GetBufferNativeObject;
     table.GetTextureNativeObject = ::GetTextureNativeObject;
     table.GetDescriptorNativeObject = ::GetDescriptorNativeObject;
+    table.GetBufferSharedHandle = ::GetBufferSharedHandle;
+    table.GetTextureSharedHandle = ::GetTextureSharedHandle;
+    table.GetFenceSharedHandle = ::GetFenceSharedHandle;
 
     return Result::SUCCESS;
 }

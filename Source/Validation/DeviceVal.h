@@ -136,7 +136,7 @@ struct DeviceVal final : public DeviceBase {
     // NRI
     //================================================================================================================
 
-    Result CreateFence(uint64_t initialValue, Fence*& fence);
+    Result CreateFence(const FenceDesc& fenceDesc, Fence*& fence);
     Result CreateFence(const FenceVKDesc& fenceVKDesc, Fence*& fence);
     Result CreateFence(const FenceD3D12Desc& fenceD3D12Desc, Fence*& fence);
     Result CreateFence(const FenceMetalDesc& fenceMetalDesc, Fence*& fence);

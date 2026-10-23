@@ -1237,8 +1237,8 @@ NRI_INLINE void CommandBufferVal::Barrier(const BarrierDesc& barrierDesc) {
         memcpy(textures, barrierDesc.textures, sizeof(TextureBarrierDesc) * barrierDesc.textureNum);
         for (uint32_t i = 0; i < barrierDesc.textureNum; i++) {
             textures[i].texture = NRI_GET_IMPL(Texture, barrierDesc.textures[i].texture);
-            textures[i].srcQueue = NRI_GET_IMPL(Queue, barrierDesc.textures[i].srcQueue);
-            textures[i].dstQueue = NRI_GET_IMPL(Queue, barrierDesc.textures[i].dstQueue);
+            textures[i].srcQueue = barrierDesc.textures[i].srcQueue == EXTERNAL_QUEUE ? (Queue*)EXTERNAL_QUEUE : NRI_GET_IMPL(Queue, barrierDesc.textures[i].srcQueue);
+            textures[i].dstQueue = barrierDesc.textures[i].dstQueue == EXTERNAL_QUEUE ? (Queue*)EXTERNAL_QUEUE : NRI_GET_IMPL(Queue, barrierDesc.textures[i].dstQueue);
         }
     }
 

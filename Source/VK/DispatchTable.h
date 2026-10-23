@@ -208,6 +208,14 @@ struct DispatchTable {
 #ifdef VK_USE_PLATFORM_WIN32_KHR
                                                           // VK_KHR_external_memory_win32
     VK_FUNC(GetMemoryWin32HandlePropertiesKHR);           // + | +
+    VK_FUNC(GetMemoryWin32HandleKHR);                     // + | +
+                                                          // VK_KHR_external_semaphore_win32
+    VK_FUNC(GetSemaphoreWin32HandleKHR);                  // + | +
+#else
+                                                          // VK_KHR_external_memory_fd
+    VK_FUNC(GetMemoryFdKHR);                              // + | +
+                                                          // VK_KHR_external_semaphore_fd
+    VK_FUNC(GetSemaphoreFdKHR);                           // + | +
 #endif
                                                           // VK_KHR_acceleration_structure
     VK_FUNC(CreateAccelerationStructureKHR);              // + | +
