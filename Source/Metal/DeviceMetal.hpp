@@ -8,10 +8,8 @@ static inline Result CreatePlacedImplementation(DeviceMetal& device, Memory* mem
 
     Result result = device.CreateImplementation<Implementation>(entity, desc);
 
-    if (result != Result::SUCCESS)
-        return result;
-
-    result = ((Implementation*)entity)->Bind(*(MemoryMetal*)memory, offset);
+    if (result == Result::SUCCESS)
+        result = ((Implementation*)entity)->Bind(*(MemoryMetal*)memory, offset);
 
     if (result != Result::SUCCESS) {
         Destroy((Implementation*)entity);

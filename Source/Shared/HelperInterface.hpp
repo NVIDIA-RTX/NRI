@@ -157,14 +157,13 @@ Result HelperDataUpload::Create(const TextureUploadDesc* textureUploadDescs, uin
 
     { // Create other resources
         Result result = m_iCore.CreateFence(m_Device, 0, m_Fence);
-        if (result != Result::SUCCESS)
-            return result;
 
-        result = m_iCore.CreateCommandAllocator(m_Queue, m_CommandAllocator);
-        if (result != Result::SUCCESS)
-            return result;
+        if (result == Result::SUCCESS)
+            result = m_iCore.CreateCommandAllocator(m_Queue, m_CommandAllocator);
 
-        result = m_iCore.CreateCommandBuffer(*m_CommandAllocator, m_CommandBuffer);
+        if (result == Result::SUCCESS)
+            result = m_iCore.CreateCommandBuffer(*m_CommandAllocator, m_CommandBuffer);
+
         if (result != Result::SUCCESS)
             return result;
     }
@@ -451,14 +450,12 @@ Result HelperDeviceMemoryAllocator::TryToAllocateAndBindMemory(const ResourceGro
     }
 
     Result result = ProcessDedicatedResources(resourceGroupDesc, allocations, allocationNum);
-    if (result != Result::SUCCESS)
-        return result;
 
-    result = m_iCore.BindBufferMemory(m_BufferBindingDescs.data(), (uint32_t)m_BufferBindingDescs.size());
-    if (result != Result::SUCCESS)
-        return result;
+    if (result == Result::SUCCESS)
+        result = m_iCore.BindBufferMemory(m_BufferBindingDescs.data(), (uint32_t)m_BufferBindingDescs.size());
 
-    result = m_iCore.BindTextureMemory(m_TextureBindingDescs.data(), (uint32_t)m_TextureBindingDescs.size());
+    if (result == Result::SUCCESS)
+        result = m_iCore.BindTextureMemory(m_TextureBindingDescs.data(), (uint32_t)m_TextureBindingDescs.size());
 
     return result;
 }

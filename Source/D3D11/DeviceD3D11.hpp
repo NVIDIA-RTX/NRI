@@ -774,10 +774,8 @@ void DeviceD3D11::Destruct() {
 NRI_INLINE Result DeviceD3D11::CreateCommittedBuffer(MemoryLocation memoryLocation, float priority, const BufferDesc& bufferDesc, Buffer*& buffer) {
     Result result = CreateImplementation<BufferD3D11>(buffer, bufferDesc);
 
-    if (result != Result::SUCCESS)
-        return result;
-
-    result = ((BufferD3D11*)buffer)->Allocate(memoryLocation, priority);
+    if (result == Result::SUCCESS)
+        result = ((BufferD3D11*)buffer)->Allocate(memoryLocation, priority);
 
     if (result != Result::SUCCESS) {
         Destroy((BufferD3D11*)buffer);
@@ -790,10 +788,8 @@ NRI_INLINE Result DeviceD3D11::CreateCommittedBuffer(MemoryLocation memoryLocati
 NRI_INLINE Result DeviceD3D11::CreateCommittedTexture(MemoryLocation memoryLocation, float priority, const TextureDesc& textureDesc, Texture*& texture) {
     Result result = CreateImplementation<TextureD3D11>(texture, textureDesc);
 
-    if (result != Result::SUCCESS)
-        return result;
-
-    result = ((TextureD3D11*)texture)->Allocate(memoryLocation, priority);
+    if (result == Result::SUCCESS)
+        result = ((TextureD3D11*)texture)->Allocate(memoryLocation, priority);
 
     if (result != Result::SUCCESS) {
         Destroy((TextureD3D11*)texture);

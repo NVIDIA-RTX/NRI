@@ -74,10 +74,10 @@ Result DescriptorHeapVK::Create(const DescriptorHeapDesc& descriptorHeapDesc) {
 
     const uint64_t resourceReservedSize = descriptorHeapDesc.resourceDescriptorNum ? props.minResourceHeapReservedRange : 0;
     Result result = CreateHeap(m_ResourceHeap, m_ResourceBindInfo, descriptorHeapDesc.resourceDescriptorNum, m_ResourceDescriptorSize, resourceReservedSize, props.resourceHeapAlignment);
-    if (result != Result::SUCCESS)
-        return result;
 
-    result = CreateHeap(m_SamplerHeap, m_SamplerBindInfo, descriptorHeapDesc.samplerDescriptorNum, m_SamplerDescriptorSize, props.minSamplerHeapReservedRangeWithEmbedded, props.samplerHeapAlignment);
+    if (result == Result::SUCCESS)
+        result = CreateHeap(m_SamplerHeap, m_SamplerBindInfo, descriptorHeapDesc.samplerDescriptorNum, m_SamplerDescriptorSize, props.minSamplerHeapReservedRangeWithEmbedded, props.samplerHeapAlignment);
+
     if (result != Result::SUCCESS)
         return result;
 

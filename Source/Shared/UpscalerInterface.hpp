@@ -942,10 +942,10 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
             textureDesc.layerNum = 1;
 
             Result result = m_iCore.CreateCommittedTexture(m_Device, MemoryLocation::DEVICE, 0.0f, textureDesc, m.nis->texScale);
-            if (result != Result::SUCCESS)
-                return result;
 
-            result = m_iCore.CreateCommittedTexture(m_Device, MemoryLocation::DEVICE, 0.0f, textureDesc, m.nis->texUsm);
+            if (result == Result::SUCCESS)
+                result = m_iCore.CreateCommittedTexture(m_Device, MemoryLocation::DEVICE, 0.0f, textureDesc, m.nis->texUsm);
+
             if (result != Result::SUCCESS)
                 return result;
         }
@@ -969,10 +969,10 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
 
             Queue* graphicsQueue = nullptr;
             result = m_iCore.GetQueue(m_Device, QueueType::GRAPHICS, 0, graphicsQueue);
-            if (result != Result::SUCCESS)
-                return result;
 
-            result = iHelper.UploadData(*graphicsQueue, textureUploadDescs.data(), GetCountOf(textureUploadDescs), nullptr, 0);
+            if (result == Result::SUCCESS)
+                result = iHelper.UploadData(*graphicsQueue, textureUploadDescs.data(), GetCountOf(textureUploadDescs), nullptr, 0);
+
             if (result != Result::SUCCESS)
                 return result;
         }
@@ -1024,10 +1024,10 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
 
         { // Descriptor sets
             Result result = m_iCore.AllocateDescriptorSets(*m.nis->descriptorPool, *m.nis->pipelineLayout, NRI_NIS_SET_STATIC, &m.nis->descriptorSet0, 1, 0);
-            if (result != Result::SUCCESS)
-                return result;
 
-            result = m_iCore.AllocateDescriptorSets(*m.nis->descriptorPool, *m.nis->pipelineLayout, NRI_NIS_SET_DYNAMIC, m.nis->descriptorSets1.data(), NIS_DESCRIPTOR_SET_NUM, 0);
+            if (result == Result::SUCCESS)
+                result = m_iCore.AllocateDescriptorSets(*m.nis->descriptorPool, *m.nis->pipelineLayout, NRI_NIS_SET_DYNAMIC, m.nis->descriptorSets1.data(), NIS_DESCRIPTOR_SET_NUM, 0);
+
             if (result != Result::SUCCESS)
                 return result;
         }
