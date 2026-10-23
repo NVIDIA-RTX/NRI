@@ -595,8 +595,12 @@ static inline Dim_t GetDimension(GraphicsAPI api, const TextureDesc& textureDesc
     dim = (Dim_t)std::max(dim >> mip, 1);
 
     // TODO: VK doesn't require manual alignment, but probably we should use it here and during texture creation
-    if (api != GraphicsAPI::VK)
-        dim = Align(dim, dimensionIndex < 2 ? GetFormatProps(textureDesc.format).blockWidth : 1);
+    if (api != GraphicsAPI::VK && dimensionIndex < 2) {
+        // Not "Align", because ASTC block dimensions can be non-power-of-2
+        const FormatProps& formatProps = GetFormatProps(textureDesc.format);
+        uint32_t blockDim = dimensionIndex == 0 ? formatProps.blockWidth : formatProps.blockHeight;
+        dim = (Dim_t)((dim + blockDim - 1) / blockDim * blockDim);
+    }
 
     return dim;
 }
