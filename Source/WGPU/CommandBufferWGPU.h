@@ -68,7 +68,8 @@ struct CommandBufferWGPU final : public DebugNameBase {
         , m_GraphicsRootConstants(device.GetStdAllocator())
         , m_ComputeRootConstants(device.GetStdAllocator())
         , m_AnnotationScopes(device.GetStdAllocator())
-        , m_TemporaryBuffers(device.GetStdAllocator()) {
+        , m_TemporaryBuffers(device.GetStdAllocator())
+        , m_VertexBuffers(device.GetStdAllocator()) {
     }
 
     ~CommandBufferWGPU();
@@ -130,7 +131,14 @@ struct CommandBufferWGPU final : public DebugNameBase {
     }
 
 private:
+    struct VertexBufferBinding {
+        WGPUBuffer buffer = nullptr;
+        uint64_t offset = 0;
+        uint64_t size = 0;
+    };
+
     void EndPass();
+    void BindVertexBuffers();
     bool SetScissorRect(const Rect& rect);
     void BindDescriptorSets(BindPoint bindPoint);
     void ReleaseTransientObjects();
@@ -164,6 +172,7 @@ private:
     RootConstantStateWGPU m_ComputeRootConstants;
     Vector<AnnotationScopeWGPU> m_AnnotationScopes;
     Vector<WGPUBuffer> m_TemporaryBuffers;
+    Vector<VertexBufferBinding> m_VertexBuffers;
     ClearStorageBufferPipelineWGPU m_ClearStorageBufferPipeline = {};
     WGPUCommandEncoder m_CommandEncoder = nullptr;
     WGPUCommandBuffer m_CommandBuffer = nullptr;
@@ -195,6 +204,7 @@ private:
     BindPoint m_BindPoint = BindPoint::GRAPHICS;
     bool m_GraphicsRootGroupDirty = true;
     bool m_ComputeRootGroupDirty = true;
+    bool m_VertexBuffersDirty = true;
     bool m_HasViewport = false;
     bool m_HasScissor = false;
 };

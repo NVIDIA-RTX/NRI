@@ -878,6 +878,8 @@ NRI_INLINE void CommandBufferVal::EndRendering() {
 
 NRI_INLINE void CommandBufferVal::SetVertexBuffers(uint32_t baseSlot, const VertexBufferDesc* vertexBufferDescs, uint32_t vertexBufferNum) {
     NRI_RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
+    NRI_RETURN_ON_FAILURE(&m_Device, baseSlot <= m_Device.GetDesc().shaderStage.vertex.streamMaxNum && vertexBufferNum <= (m_Device.GetDesc().shaderStage.vertex.streamMaxNum - baseSlot), ReturnVoid(), "the vertex buffer slot range exceeds 'shaderStage.vertex.streamMaxNum'");
+    NRI_RETURN_ON_FAILURE(&m_Device, vertexBufferNum == 0 || vertexBufferDescs != nullptr, ReturnVoid(), "'vertexBufferDescs' is NULL");
 
     Scratch<VertexBufferDesc> vertexBufferDescsImpl = NRI_ALLOCATE_SCRATCH(m_Device, VertexBufferDesc, vertexBufferNum);
     for (uint32_t i = 0; i < vertexBufferNum; i++) {

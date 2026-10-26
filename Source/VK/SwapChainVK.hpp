@@ -431,18 +431,18 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
             desc.layerNum = 1;
             desc.sampleNum = 1;
 
-            TextureVK* texture = Allocate<TextureVK>(m_Device.GetAllocationCallbacks(), m_Device);
-            texture->Create(desc);
-
-            m_Textures[i] = texture;
+            Result result = m_Device.CreateImplementation<TextureVK>(m_Textures[i], desc);
+            if (result != Result::SUCCESS)
+                return result;
         }
     }
 
     // Latency fence
     if (allowLowLatency) {
-        m_LatencyFence = Allocate<FenceVK>(m_Device.GetAllocationCallbacks(), m_Device);
         FenceDesc fenceDesc = {};
-        m_LatencyFence->Create(fenceDesc);
+        Result result = m_Device.CreateImplementation<FenceVK>(m_LatencyFence, fenceDesc);
+        if (result != Result::SUCCESS)
+            return result;
     }
 
     // Finalize

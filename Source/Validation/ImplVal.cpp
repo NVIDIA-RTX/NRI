@@ -404,15 +404,16 @@ static inline bool HasValidVideoAV1ReferenceKeys(const VideoAV1ReferenceDesc* re
 #include "VideoSessionParametersVal.hpp"
 #include "VideoSessionVal.hpp"
 
-DeviceBase* CreateDeviceValidation(const DeviceCreationDesc& desc, DeviceBase& device) {
-    DeviceVal* deviceVal = Allocate<DeviceVal>(desc.allocationCallbacks, desc.callbackInterface, desc.allocationCallbacks, device);
+Result CreateDeviceValidation(const DeviceCreationDesc& desc, DeviceBase& impl, DeviceBase*& device) {
+    DeviceVal* deviceVal = Allocate<DeviceVal>(desc.allocationCallbacks, desc.callbackInterface, desc.allocationCallbacks, impl);
+    device = nullptr;
+    if (!deviceVal) {
+        impl.Destruct();
 
-    if (!deviceVal->Create()) {
-        Destroy(desc.allocationCallbacks, deviceVal);
-        return nullptr;
+        return Result::OUT_OF_MEMORY;
     }
 
-    return deviceVal;
+    return CreateImplementation(desc.allocationCallbacks, device, deviceVal);
 }
 
 //============================================================================================================================================================================================
@@ -1206,14 +1207,7 @@ static Result NRI_CALL CreateDescriptorHeap(Device& device, const DescriptorHeap
     if (result != Result::SUCCESS)
         return result;
 
-    descriptorHeap = (DescriptorHeap*)Allocate<DescriptorHeapVal>(deviceVal.GetAllocationCallbacks(), deviceVal, descriptorHeapImpl, descriptorHeapDesc);
-    if (!descriptorHeap) {
-        deviceVal.GetDescriptorHeapInterfaceImpl().DestroyDescriptorHeap(descriptorHeapImpl);
-
-        return Result::OUT_OF_MEMORY;
-    }
-
-    return Result::SUCCESS;
+    return deviceVal.WrapImplementation<DescriptorHeapVal>(descriptorHeap, descriptorHeapImpl, deviceVal.GetDescriptorHeapInterfaceImpl().DestroyDescriptorHeap, descriptorHeapDesc);
 }
 
 static void NRI_CALL DestroyDescriptorHeap(DescriptorHeap* descriptorHeap) {
@@ -1416,16 +1410,13 @@ struct ImguiVal final : public ObjectVal {
 static Result NRI_CALL CreateImgui(Device& device, const ImguiDesc& imguiDesc, Imgui*& imgui) {
     DeviceVal& deviceVal = (DeviceVal&)device;
 
-    ImguiImpl* impl = Allocate<ImguiImpl>(deviceVal.GetAllocationCallbacks(), device, deviceVal.GetCoreInterface());
-    Result result = impl->Create(imguiDesc);
+    imgui = nullptr;
+    ImguiImpl* impl = nullptr;
+    Result result = CreateImplementation(deviceVal.GetAllocationCallbacks(), impl, Allocate<ImguiImpl>(deviceVal.GetAllocationCallbacks(), device, deviceVal.GetCoreInterface()), imguiDesc);
+    if (result != Result::SUCCESS)
+        return result;
 
-    if (result != Result::SUCCESS) {
-        Destroy(impl);
-        imgui = nullptr;
-    } else
-        imgui = (Imgui*)Allocate<ImguiVal>(deviceVal.GetAllocationCallbacks(), deviceVal, impl);
-
-    return result;
+    return deviceVal.WrapImplementation<ImguiVal>(imgui, impl, [](ImguiImpl* object) { Destroy(object); });
 }
 
 static void NRI_CALL DestroyImgui(Imgui* imgui) {
@@ -1842,15 +1833,7 @@ static Result NRI_CALL CreateVideoSession(Device& device, const VideoSessionDesc
     if (result != Result::SUCCESS)
         return result;
 
-    videoSession = (VideoSession*)Allocate<VideoSessionVal>(deviceVal.GetAllocationCallbacks(), deviceVal, videoSessionImpl, videoSessionDesc, videoCapabilities);
-
-    if (!videoSession) {
-        deviceVal.GetVideoInterfaceImpl().DestroyVideoSession(videoSessionImpl);
-
-        return Result::OUT_OF_MEMORY;
-    }
-
-    return Result::SUCCESS;
+    return deviceVal.WrapImplementation<VideoSessionVal>(videoSession, videoSessionImpl, deviceVal.GetVideoInterfaceImpl().DestroyVideoSession, videoSessionDesc, videoCapabilities);
 }
 
 static void NRI_CALL DestroyVideoSession(VideoSession* videoSession) {
@@ -1889,14 +1872,7 @@ static Result NRI_CALL CreateVideoSessionParameters(Device& device, const VideoS
     if (result != Result::SUCCESS)
         return result;
 
-    videoSessionParameters = (VideoSessionParameters*)Allocate<VideoSessionParametersVal>(deviceVal.GetAllocationCallbacks(), deviceVal, impl, sessionVal, videoSessionParametersDesc);
-    if (!videoSessionParameters) {
-        deviceVal.GetVideoInterfaceImpl().DestroyVideoSessionParameters(impl);
-
-        return Result::OUT_OF_MEMORY;
-    }
-
-    return Result::SUCCESS;
+    return deviceVal.WrapImplementation<VideoSessionParametersVal>(videoSessionParameters, impl, deviceVal.GetVideoInterfaceImpl().DestroyVideoSessionParameters, sessionVal, videoSessionParametersDesc);
 }
 
 static void NRI_CALL DestroyVideoSessionParameters(VideoSessionParameters* videoSessionParameters) {
@@ -1925,14 +1901,7 @@ static Result NRI_CALL CreateVideoPicture(Device& device, const VideoPictureDesc
     if (result != Result::SUCCESS)
         return result;
 
-    videoPicture = (VideoPicture*)Allocate<VideoPictureVal>(deviceVal.GetAllocationCallbacks(), deviceVal, impl, videoPictureDesc, textureVal.GetDesc());
-    if (!videoPicture) {
-        deviceVal.GetVideoInterfaceImpl().DestroyVideoPicture(impl);
-
-        return Result::OUT_OF_MEMORY;
-    }
-
-    return Result::SUCCESS;
+    return deviceVal.WrapImplementation<VideoPictureVal>(videoPicture, impl, deviceVal.GetVideoInterfaceImpl().DestroyVideoPicture, videoPictureDesc, textureVal.GetDesc());
 }
 
 static void NRI_CALL DestroyVideoPicture(VideoPicture* videoPicture) {
@@ -2087,16 +2056,13 @@ static Result NRI_CALL CreateStreamer(Device& device, const StreamerDesc& stream
     isUpload = streamerDesc.dynamicBufferMemoryLocation == MemoryLocation::HOST_UPLOAD || streamerDesc.dynamicBufferMemoryLocation == MemoryLocation::DEVICE_UPLOAD;
     NRI_RETURN_ON_FAILURE(&deviceVal, isUpload, Result::INVALID_ARGUMENT, "'dynamicBufferMemoryLocation' must be an UPLOAD heap");
 
-    StreamerImpl* impl = Allocate<StreamerImpl>(deviceVal.GetAllocationCallbacks(), device, deviceVal.GetCoreInterface());
-    Result result = impl->Create(streamerDesc);
+    streamer = nullptr;
+    StreamerImpl* impl = nullptr;
+    Result result = CreateImplementation(deviceVal.GetAllocationCallbacks(), impl, Allocate<StreamerImpl>(deviceVal.GetAllocationCallbacks(), device, deviceVal.GetCoreInterface()), streamerDesc);
+    if (result != Result::SUCCESS)
+        return result;
 
-    if (result != Result::SUCCESS) {
-        Destroy(impl);
-        streamer = nullptr;
-    } else
-        streamer = (Streamer*)Allocate<StreamerVal>(deviceVal.GetAllocationCallbacks(), deviceVal, impl, streamerDesc);
-
-    return result;
+    return deviceVal.WrapImplementation<StreamerVal>(streamer, impl, [](StreamerImpl* object) { Destroy(object); }, streamerDesc);
 }
 
 static void NRI_CALL DestroyStreamer(Streamer* streamer) {
@@ -2341,16 +2307,13 @@ static Result NRI_CALL CreateUpscaler(Device& device, const UpscalerDesc& upscal
     if (upscalerDesc.type == UpscalerType::METALFX_DENOISED)
         NRI_RETURN_ON_FAILURE(&deviceVal, !(upscalerDesc.flags & UpscalerBits::MV_UPSCALED), Result::UNSUPPORTED, "'MV_UPSCALED' is unsupported by 'METALFX_DENOISED'");
 
-    UpscalerImpl* impl = Allocate<UpscalerImpl>(deviceVal.GetAllocationCallbacks(), device, deviceVal.GetCoreInterface());
-    Result result = impl->Create(upscalerDesc);
+    upscaler = nullptr;
+    UpscalerImpl* impl = nullptr;
+    Result result = CreateImplementation(deviceVal.GetAllocationCallbacks(), impl, Allocate<UpscalerImpl>(deviceVal.GetAllocationCallbacks(), device, deviceVal.GetCoreInterface()), upscalerDesc);
+    if (result != Result::SUCCESS)
+        return result;
 
-    if (result != Result::SUCCESS) {
-        Destroy(impl);
-        upscaler = nullptr;
-    } else
-        upscaler = (Upscaler*)Allocate<UpscalerVal>(deviceVal.GetAllocationCallbacks(), deviceVal, impl, upscalerDesc);
-
-    return result;
+    return deviceVal.WrapImplementation<UpscalerVal>(upscaler, impl, [](UpscalerImpl* object) { Destroy(object); }, upscalerDesc);
 }
 
 static void NRI_CALL DestroyUpscaler(Upscaler* upscaler) {

@@ -228,16 +228,9 @@ private:
 Result CreateDeviceNONE(const DeviceCreationDesc& desc, DeviceBase*& device) {
     DeviceNONE* impl = Allocate<DeviceNONE>(desc.allocationCallbacks, desc.callbackInterface, desc.allocationCallbacks, desc.adapterDesc);
 
-    if (!impl) {
-        Destroy(desc.allocationCallbacks, impl);
-        device = nullptr;
-
-        return Result::FAILURE;
-    }
-
     device = (DeviceBase*)impl;
 
-    return Result::SUCCESS;
+    return impl ? Result::SUCCESS : Result::OUT_OF_MEMORY;
 }
 
 //============================================================================================================================================================================================

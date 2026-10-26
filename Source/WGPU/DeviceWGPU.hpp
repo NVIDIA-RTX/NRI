@@ -180,15 +180,10 @@ Result DeviceWGPU::Create(const DeviceCreationDesc& desc) {
         Vector<QueueWGPU*>& queueFamily = m_QueueFamilies[(uint32_t)queueFamilyDesc.queueType];
 
         for (uint32_t j = 0; j < queueFamilyDesc.queueNum; j++) {
-            QueueWGPU* queue = Allocate<QueueWGPU>(GetAllocationCallbacks(), *this);
-            if (!queue)
-                return Result::OUT_OF_MEMORY;
-
-            result = queue->Create(queueFamilyDesc.queueType, j);
-            if (result != Result::SUCCESS) {
-                Destroy(GetAllocationCallbacks(), queue);
+            QueueWGPU* queue = nullptr;
+            result = CreateImplementation<QueueWGPU>(queue, queueFamilyDesc.queueType, j);
+            if (result != Result::SUCCESS)
                 return result;
-            }
 
             queueFamily.push_back(queue);
         }

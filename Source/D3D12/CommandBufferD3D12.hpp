@@ -176,7 +176,7 @@ static inline D3D12_BARRIER_SYNC GetBarrierSyncFlags(StageBits stageBits, Access
 
         // There is no "EMIT_POSTBUILD_INFO" flag in VK, moreover "VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR" already includes "ACCELERATION_STRUCTURE_COPY".
         // "EMIT_POSTBUILD_INFO" can't be set if "write" access is expected.
-        if (!(accessBits & AccessBits::ACCELERATION_STRUCTURE_WRITE))
+        if (!(accessBits & (AccessBits::ACCELERATION_STRUCTURE_WRITE | AccessBits::MICROMAP_WRITE)))
             flags |= D3D12_BARRIER_SYNC_EMIT_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO;
     }
 
@@ -2021,7 +2021,8 @@ NRI_INLINE void CommandBufferD3D12::ClearAttachments(const ClearAttachmentDesc* 
             if (clearAttachmentDesc.planes & PlaneBits::STENCIL)
                 clearFlags |= D3D12_CLEAR_FLAG_STENCIL;
 
-            D3D12_CPU_DESCRIPTOR_HANDLE handle = {m_Depth.attachment->GetDescriptorHandleCPU()};
+            const DescriptorD3D12* depthStencil = m_Depth.attachment ? m_Depth.attachment : m_Stencil.attachment;
+            D3D12_CPU_DESCRIPTOR_HANDLE handle = {depthStencil->GetDescriptorHandleCPU()};
             GetGraphicsCommandList()->ClearDepthStencilView(handle, clearFlags, clearAttachmentDesc.value.depthStencil.depth, clearAttachmentDesc.value.depthStencil.stencil, rectNum, d3dRects);
         }
     }
@@ -2088,14 +2089,17 @@ NRI_INLINE void CommandBufferD3D12::BeginRendering(const RenderingDesc& renderin
             GetGraphicsCommandList()->ClearRenderTargetView(renderTargets[i], &attachmentDesc.clearValue.color.f.x, 0, nullptr);
     }
 
+    const AttachmentDesc& stencil = renderingDesc.stencil.descriptor ? renderingDesc.stencil : renderingDesc.depth;
     D3D12_CLEAR_FLAGS clearFlags = (D3D12_CLEAR_FLAGS)0;
+
     if (renderingDesc.depth.loadOp == LoadOp::CLEAR)
         clearFlags |= D3D12_CLEAR_FLAG_DEPTH;
-    if (renderingDesc.stencil.loadOp == LoadOp::CLEAR)
+
+    if (m_Stencil.attachment && stencil.loadOp == LoadOp::CLEAR)
         clearFlags |= D3D12_CLEAR_FLAG_STENCIL;
 
     if (clearFlags)
-        GetGraphicsCommandList()->ClearDepthStencilView(depthStencil, clearFlags, renderingDesc.depth.clearValue.depthStencil.depth, renderingDesc.stencil.clearValue.depthStencil.stencil, 0, nullptr);
+        GetGraphicsCommandList()->ClearDepthStencilView(depthStencil, clearFlags, renderingDesc.depth.clearValue.depthStencil.depth, stencil.clearValue.depthStencil.stencil, 0, nullptr);
 
     // Shading rate
     if (m_Device.GetDesc().tiers.shadingRate >= 2) {

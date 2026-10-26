@@ -81,21 +81,8 @@ struct DeviceMetal final : public DeviceBase {
 #endif
 
     template <typename Implementation, typename Interface, typename... Args>
-    Result CreateImplementation(Interface*& entity, const Args&... args) {
-        auto* impl = Allocate<Implementation>(GetAllocationCallbacks(), *this);
-        entity = nullptr;
-
-        if (!impl)
-            return Result::OUT_OF_MEMORY;
-
-        Result result = impl->Create(args...);
-
-        if (result != Result::SUCCESS)
-            Destroy(GetAllocationCallbacks(), impl);
-        else
-            entity = (Interface*)impl;
-
-        return result;
+    [[nodiscard]] inline Result CreateImplementation(Interface*& entity, Args&&... args) {
+        return nri::CreateImplementation(GetAllocationCallbacks(), entity, Allocate<Implementation>(GetAllocationCallbacks(), *this), std::forward<Args>(args)...);
     }
 
 private:

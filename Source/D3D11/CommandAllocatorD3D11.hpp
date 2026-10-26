@@ -7,25 +7,10 @@ Result nri::CreateCommandBuffer(DeviceD3D11& device, ID3D11DeviceContext* precre
     else
         isImmediate = device.IsDeferredContextEmulated();
 
-    void* impl;
     if (isImmediate)
-        impl = Allocate<CommandBufferEmuD3D11>(device.GetAllocationCallbacks(), device);
-    else
-        impl = Allocate<CommandBufferD3D11>(device.GetAllocationCallbacks(), device);
+        return device.CreateImplementation<CommandBufferEmuD3D11>(commandBuffer, precreatedContext);
 
-    const Result result = ((CommandBufferBase*)impl)->Create(precreatedContext);
-
-    if (result == Result::SUCCESS) {
-        commandBuffer = (CommandBuffer*)impl;
-        return Result::SUCCESS;
-    }
-
-    if (isImmediate)
-        Destroy((CommandBufferEmuD3D11*)impl);
-    else
-        Destroy((CommandBufferD3D11*)impl);
-
-    return result;
+    return device.CreateImplementation<CommandBufferD3D11>(commandBuffer, precreatedContext);
 }
 
 NRI_INLINE Result CommandAllocatorD3D11::CreateCommandBuffer(CommandBuffer*& commandBuffer) {

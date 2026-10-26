@@ -389,6 +389,9 @@ Result DeviceD3D11::Create(const DeviceCreationDesc& desc, const DeviceCreationD
 
         for (uint32_t j = 0; j < queueFamilyDesc.queueNum; j++) {
             QueueD3D11* queue = Allocate<QueueD3D11>(GetAllocationCallbacks(), *this);
+            if (!queue)
+                return Result::OUT_OF_MEMORY;
+
             queueFamily.push_back(queue);
         }
 
@@ -400,8 +403,10 @@ Result DeviceD3D11::Create(const DeviceCreationDesc& desc, const DeviceCreationD
         zeroBufferDesc.ByteWidth = desc.d3dZeroBufferSize ? desc.d3dZeroBufferSize : NRI_ZERO_BUFFER_SIZE;
         zeroBufferDesc.Usage = D3D11_USAGE_DEFAULT;
 
-        auto& allocator = GetAllocationCallbacks();
-        uint8_t* zeros = (uint8_t*)allocator.Allocate(allocator.userArg, zeroBufferDesc.ByteWidth, 16);
+        Scratch<uint8_t> zeros = NRI_ALLOCATE_SCRATCH(*this, uint8_t, zeroBufferDesc.ByteWidth);
+        if (!zeros)
+            return Result::OUT_OF_MEMORY;
+
         memset(zeros, 0, zeroBufferDesc.ByteWidth);
 
         D3D11_SUBRESOURCE_DATA data = {};
@@ -409,8 +414,6 @@ Result DeviceD3D11::Create(const DeviceCreationDesc& desc, const DeviceCreationD
 
         hr = m_Device->CreateBuffer(&zeroBufferDesc, &data, &m_ZeroBuffer);
         NRI_RETURN_ON_BAD_HRESULT(this, hr, "ID3D11Device::CreateBuffer");
-
-        allocator.Free(allocator.userArg, zeros);
     }
 
     // Fill desc

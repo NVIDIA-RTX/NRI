@@ -81,7 +81,10 @@ struct DeviceVal final : public DeviceBase {
         return m_Lock;
     }
 
-    bool Create();
+    template <typename Implementation, typename Interface, typename Backend, typename Deleter, typename... Args>
+    [[nodiscard]] Result WrapImplementation(Interface*& entity, Backend* impl, Deleter destroy, Args&&... args);
+
+    Result Create();
     void RegisterMemoryType(MemoryType memoryType, MemoryLocation memoryLocation);
 
     //================================================================================================================
@@ -89,13 +92,8 @@ struct DeviceVal final : public DeviceBase {
     //================================================================================================================
 
     void SetDebugName(const char* name) override {
-        const auto& allocationCallbacks = GetAllocationCallbacks();
-        if (m_Name)
-            allocationCallbacks.Free(allocationCallbacks.userArg, m_Name);
-
-        size_t len = strlen(name);
-        m_Name = (char*)allocationCallbacks.Allocate(allocationCallbacks.userArg, len + 1, sizeof(size_t));
-        strcpy(m_Name, name);
+        if (!UpdateDebugName(GetAllocationCallbacks(), m_Name, name))
+            return;
 
         GetCoreInterfaceImpl().SetDebugName(&m_Impl, name);
     }

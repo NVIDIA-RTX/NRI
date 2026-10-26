@@ -5,15 +5,24 @@ SwapChainVal::~SwapChainVal() {
         Destroy(m_Textures[i]);
 }
 
-NRI_INLINE Texture* const* SwapChainVal::GetTextures(uint32_t& textureNum) {
+Result SwapChainVal::Create() {
+    uint32_t textureNum = 0;
     Texture* const* textures = GetSwapChainInterfaceImpl().GetSwapChainTextures(*GetImpl(), textureNum);
+    m_Textures.reserve(textureNum);
 
-    if (m_Textures.empty()) {
-        for (uint32_t i = 0; i < textureNum; i++) {
-            TextureVal* textureVal = Allocate<TextureVal>(m_Device.GetAllocationCallbacks(), m_Device, textures[i], true);
-            m_Textures.push_back(textureVal);
-        }
+    for (uint32_t i = 0; i < textureNum; i++) {
+        TextureVal* textureVal = Allocate<TextureVal>(m_Device.GetAllocationCallbacks(), m_Device, textures[i], true);
+        if (!textureVal)
+            return Result::OUT_OF_MEMORY;
+
+        m_Textures.push_back(textureVal);
     }
+
+    return Result::SUCCESS;
+}
+
+NRI_INLINE Texture* const* SwapChainVal::GetTextures(uint32_t& textureNum) {
+    textureNum = (uint32_t)m_Textures.size();
 
     return (Texture* const*)m_Textures.data();
 }

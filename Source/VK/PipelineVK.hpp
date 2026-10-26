@@ -164,7 +164,7 @@ Result PipelineVK::Create(const GraphicsPipelineDesc& graphicsPipelineDesc) {
             VkVertexInputAttributeDescription& vertexAttributeDesc = vertexAttributeDescs[i];
             vertexAttributeDesc = {};
             vertexAttributeDesc.location = attribute.vk.location;
-            vertexAttributeDesc.binding = attribute.streamIndex;
+            vertexAttributeDesc.binding = vi->streams[attribute.streamIndex].bindingSlot;
             vertexAttributeDesc.format = GetVkFormat(attribute.format);
             vertexAttributeDesc.offset = attribute.offset;
         }
@@ -375,7 +375,7 @@ Result PipelineVK::Create(const GraphicsPipelineDesc& graphicsPipelineDesc) {
         dynamicStates[dynamicStateNum++] = VK_DYNAMIC_STATE_SCISSOR;
     }
 
-    if (vi && m_Device.GetDesc().features.extendedDynamicState)
+    if (streamNum && m_Device.GetDesc().features.extendedDynamicState)
         dynamicStates[dynamicStateNum++] = VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE;
     if (rasterizationState.depthBiasEnable)
         dynamicStates[dynamicStateNum++] = VK_DYNAMIC_STATE_DEPTH_BIAS;

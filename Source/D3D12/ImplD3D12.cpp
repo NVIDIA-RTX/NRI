@@ -60,16 +60,7 @@ using namespace nri;
 #include "VideoSessionParametersD3D12.hpp"
 
 Result CreateDeviceD3D12(const DeviceCreationDesc& desc, const DeviceCreationD3D12Desc& descD3D12, DeviceBase*& device) {
-    DeviceD3D12* impl = Allocate<DeviceD3D12>(desc.allocationCallbacks, desc.callbackInterface, desc.allocationCallbacks);
-    Result result = impl->Create(desc, descD3D12);
-
-    if (result != Result::SUCCESS) {
-        Destroy(desc.allocationCallbacks, impl);
-        device = nullptr;
-    } else
-        device = (DeviceBase*)impl;
-
-    return result;
+    return CreateImplementation(desc.allocationCallbacks, device, Allocate<DeviceD3D12>(desc.allocationCallbacks, desc.callbackInterface, desc.allocationCallbacks), desc, descD3D12);
 }
 
 //============================================================================================================================================================================================
@@ -825,16 +816,8 @@ Result DeviceD3D12::FillFunctionTable(HelperInterface& table) const {
 
 static Result NRI_CALL CreateImgui(Device& device, const ImguiDesc& imguiDesc, Imgui*& imgui) {
     DeviceD3D12& deviceD3D12 = (DeviceD3D12&)device;
-    ImguiImpl* impl = Allocate<ImguiImpl>(deviceD3D12.GetAllocationCallbacks(), device, deviceD3D12.GetCoreInterface());
-    Result result = impl->Create(imguiDesc);
 
-    if (result != Result::SUCCESS) {
-        Destroy(impl);
-        imgui = nullptr;
-    } else
-        imgui = (Imgui*)impl;
-
-    return result;
+    return CreateImplementation(deviceD3D12.GetAllocationCallbacks(), imgui, Allocate<ImguiImpl>(deviceD3D12.GetAllocationCallbacks(), device, deviceD3D12.GetCoreInterface()), imguiDesc);
 }
 
 static void NRI_CALL DestroyImgui(Imgui* imgui) {
@@ -1256,16 +1239,8 @@ Result DeviceD3D12::FillFunctionTable(VideoInterface& table) const {
 
 static Result NRI_CALL CreateStreamer(Device& device, const StreamerDesc& streamerDesc, Streamer*& streamer) {
     DeviceD3D12& deviceD3D12 = (DeviceD3D12&)device;
-    StreamerImpl* impl = Allocate<StreamerImpl>(deviceD3D12.GetAllocationCallbacks(), device, deviceD3D12.GetCoreInterface());
-    Result result = impl->Create(streamerDesc);
 
-    if (result != Result::SUCCESS) {
-        Destroy(impl);
-        streamer = nullptr;
-    } else
-        streamer = (Streamer*)impl;
-
-    return result;
+    return CreateImplementation(deviceD3D12.GetAllocationCallbacks(), streamer, Allocate<StreamerImpl>(deviceD3D12.GetAllocationCallbacks(), device, deviceD3D12.GetCoreInterface()), streamerDesc);
 }
 
 static void NRI_CALL DestroyStreamer(Streamer* streamer) {
@@ -1374,16 +1349,8 @@ Result DeviceD3D12::FillFunctionTable(SwapChainInterface& table) const {
 
 static Result NRI_CALL CreateUpscaler(Device& device, const UpscalerDesc& upscalerDesc, Upscaler*& upscaler) {
     DeviceD3D12& deviceD3D12 = (DeviceD3D12&)device;
-    UpscalerImpl* impl = Allocate<UpscalerImpl>(deviceD3D12.GetAllocationCallbacks(), device, deviceD3D12.GetCoreInterface());
-    Result result = impl->Create(upscalerDesc);
 
-    if (result != Result::SUCCESS) {
-        Destroy(deviceD3D12.GetAllocationCallbacks(), impl);
-        upscaler = nullptr;
-    } else
-        upscaler = (Upscaler*)impl;
-
-    return result;
+    return CreateImplementation(deviceD3D12.GetAllocationCallbacks(), upscaler, Allocate<UpscalerImpl>(deviceD3D12.GetAllocationCallbacks(), device, deviceD3D12.GetCoreInterface()), upscalerDesc);
 }
 
 static void NRI_CALL DestroyUpscaler(Upscaler* upscaler) {

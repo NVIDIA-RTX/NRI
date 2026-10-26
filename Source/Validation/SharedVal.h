@@ -31,6 +31,22 @@ struct SwapChainVal;
 struct TextureVal;
 struct VideoSessionVal;
 
+static inline bool UpdateDebugName(const AllocationCallbacks& allocationCallbacks, char*& currentName, const char* name) {
+    const size_t len = strlen(name);
+    char* newName = (char*)allocationCallbacks.Allocate(allocationCallbacks.userArg, len + 1, sizeof(size_t));
+    if (!newName)
+        return false;
+
+    strcpy(newName, name);
+
+    if (currentName)
+        allocationCallbacks.Free(allocationCallbacks.userArg, currentName);
+
+    currentName = newName;
+
+    return true;
+}
+
 uint64_t GetMemorySizeD3D12(const MemoryD3D12Desc& memoryD3D12Desc);
 QueryType GetQueryTypeVK(uint32_t queryTypeVK);
 const char* GetDescriptorTypeName(DescriptorType descriptorType);
@@ -108,13 +124,8 @@ struct ObjectVal : public DebugNameBaseVal {
     //================================================================================================================
 
     void SetDebugName(const char* name) override {
-        const auto& allocationCallbacks = m_Device.GetAllocationCallbacks();
-        if (m_Name)
-            allocationCallbacks.Free(allocationCallbacks.userArg, m_Name);
-
-        size_t len = strlen(name);
-        m_Name = (char*)allocationCallbacks.Allocate(allocationCallbacks.userArg, len + 1, sizeof(size_t));
-        strcpy(m_Name, name);
+        if (!UpdateDebugName(m_Device.GetAllocationCallbacks(), m_Name, name))
+            return;
 
         m_Device.GetCoreInterfaceImpl().SetDebugName(m_Impl, name);
     }

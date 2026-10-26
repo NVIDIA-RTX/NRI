@@ -310,14 +310,18 @@ NRI_INLINE void CommandBufferD3D11::BeginRendering(const RenderingDesc& renderin
             m_DeferredContext->ClearRenderTargetView(renderTargets[i], &renderingDesc.colors[i].clearValue.color.f.x);
     }
 
+    const AttachmentDesc& stencil = renderingDesc.stencil.descriptor ? renderingDesc.stencil : renderingDesc.depth;
+    const DescriptorD3D11* stencilAttachment = (DescriptorD3D11*)stencil.descriptor;
     uint32_t clearFlags = 0;
+
     if (renderingDesc.depth.loadOp == LoadOp::CLEAR)
         clearFlags |= D3D11_CLEAR_DEPTH;
-    if (renderingDesc.stencil.loadOp == LoadOp::CLEAR)
+
+    if (stencilAttachment && GetFormatProps(stencilAttachment->GetFormat()).isStencil && stencil.loadOp == LoadOp::CLEAR)
         clearFlags |= D3D11_CLEAR_STENCIL;
 
     if (clearFlags)
-        m_DeferredContext->ClearDepthStencilView(m_DepthStencil, clearFlags, renderingDesc.depth.clearValue.depthStencil.depth, renderingDesc.stencil.clearValue.depthStencil.stencil);
+        m_DeferredContext->ClearDepthStencilView(m_DepthStencil, clearFlags, renderingDesc.depth.clearValue.depthStencil.depth, stencil.clearValue.depthStencil.stencil);
 
     // Shading rate
 #if NRI_ENABLE_NVAPI
