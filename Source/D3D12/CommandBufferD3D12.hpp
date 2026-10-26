@@ -2021,7 +2021,8 @@ NRI_INLINE void CommandBufferD3D12::ClearAttachments(const ClearAttachmentDesc* 
             if (clearAttachmentDesc.planes & PlaneBits::STENCIL)
                 clearFlags |= D3D12_CLEAR_FLAG_STENCIL;
 
-            D3D12_CPU_DESCRIPTOR_HANDLE handle = {m_Depth.attachment->GetDescriptorHandleCPU()};
+            const DescriptorD3D12* depthStencil = m_Depth.attachment ? m_Depth.attachment : m_Stencil.attachment;
+            D3D12_CPU_DESCRIPTOR_HANDLE handle = {depthStencil->GetDescriptorHandleCPU()};
             GetGraphicsCommandList()->ClearDepthStencilView(handle, clearFlags, clearAttachmentDesc.value.depthStencil.depth, clearAttachmentDesc.value.depthStencil.stencil, rectNum, d3dRects);
         }
     }
