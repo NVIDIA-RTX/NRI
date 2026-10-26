@@ -375,7 +375,7 @@ Result PipelineVK::Create(const GraphicsPipelineDesc& graphicsPipelineDesc) {
         dynamicStates[dynamicStateNum++] = VK_DYNAMIC_STATE_SCISSOR;
     }
 
-    if (vi && m_Device.GetDesc().features.extendedDynamicState)
+    if (streamNum && m_Device.GetDesc().features.extendedDynamicState)
         dynamicStates[dynamicStateNum++] = VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE;
     if (rasterizationState.depthBiasEnable)
         dynamicStates[dynamicStateNum++] = VK_DYNAMIC_STATE_DEPTH_BIAS;
