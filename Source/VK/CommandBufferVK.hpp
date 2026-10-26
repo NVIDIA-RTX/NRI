@@ -2649,6 +2649,9 @@ NRI_INLINE void CommandBufferVK::Barrier(const BarrierDesc& barrierDesc) {
     for (uint32_t i = 0; i < barrierDesc.bufferNum; i++) {
         const BufferBarrierDesc& in = barrierDesc.buffers[i];
         const BufferVK& bufferVK = *(const BufferVK*)in.buffer;
+        const QueueVK* srcQueue = (QueueVK*)in.srcQueue;
+        const QueueVK* dstQueue = (QueueVK*)in.dstQueue;
+        const bool isConcurrent = bufferVK.IsConcurrent();
 
         VkBufferMemoryBarrier2& out = bufferBarriers[i];
         out = {VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2};
@@ -2656,8 +2659,10 @@ NRI_INLINE void CommandBufferVK::Barrier(const BarrierDesc& barrierDesc) {
         out.srcAccessMask = GetAccessFlags(in.before.access);
         out.dstStageMask = GetPipelineStageFlags(in.after.stages);
         out.dstAccessMask = GetAccessFlags(in.after.access);
-        out.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED; // "VK_SHARING_MODE_CONCURRENT" is intentionally used for buffers to match D3D12 spec
-        out.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        // Same rules as for textures: "VK_SHARING_MODE_CONCURRENT" (more than one active queue family) needs no transfer between the device's own queues,
+        // "EXCLUSIVE" (one active family) names it, and "EXTERNAL_QUEUE" is the external queue family for either sharing mode
+        out.srcQueueFamilyIndex = in.srcQueue == EXTERNAL_QUEUE ? VK_QUEUE_FAMILY_EXTERNAL : ((in.srcQueue && !isConcurrent) ? srcQueue->GetFamilyIndex() : VK_QUEUE_FAMILY_IGNORED);
+        out.dstQueueFamilyIndex = in.dstQueue == EXTERNAL_QUEUE ? VK_QUEUE_FAMILY_EXTERNAL : ((in.dstQueue && !isConcurrent) ? dstQueue->GetFamilyIndex() : VK_QUEUE_FAMILY_IGNORED);
         out.buffer = bufferVK.GetHandle();
         out.offset = 0;
         out.size = VK_WHOLE_SIZE;

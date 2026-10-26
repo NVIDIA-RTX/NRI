@@ -24,6 +24,7 @@ Result BufferVK::Create(const BufferDesc& bufferDesc) {
 
     VkBufferCreateInfo info = {VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
     FillCreateInfo(info);
+    m_IsConcurrent = info.sharingMode == VK_SHARING_MODE_CONCURRENT;
 
     VkExternalMemoryBufferCreateInfo externalInfo = {VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_BUFFER_CREATE_INFO};
     externalInfo.handleTypes = SHARED_MEMORY_HANDLE_TYPE;

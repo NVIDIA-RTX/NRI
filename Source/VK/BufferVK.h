@@ -42,6 +42,10 @@ struct BufferVK final : public DebugNameBase {
     Result AllocateAndBindMemory(MemoryLocation memoryLocation, float priority, bool committed);
     Result BindMemory(MemoryVK& memory, uint64_t offset, bool bindMemory);
     Result GetSharedHandle(SharedHandle& sharedHandle) const;
+
+    inline bool IsConcurrent() const {
+        return m_IsConcurrent;
+    }
     void GetMemoryDesc(MemoryLocation memoryLocation, MemoryDesc& memoryDesc) const;
 
     //================================================================================================================
@@ -78,6 +82,7 @@ private:
     uint64_t m_MemoryAlignment = 1;
     bool m_OwnsNativeObjects = true;
     bool m_IsDescriptorHeap = false;
+    bool m_IsConcurrent = false; // TODO: sharing mode is unknown for wrapped buffers
 };
 
 inline VkDeviceAddress GetBufferDeviceAddress(const Buffer* buffer, uint64_t offset) {

@@ -660,16 +660,21 @@ NriStruct(GlobalBarrierDesc) {
     Nri(AccessStage) after;
 };
 
+// Marks a queue family ownership transfer to or from an external user of a shared buffer or texture (another device, API or process)
+// VK: "VK_QUEUE_FAMILY_EXTERNAL" as "srcQueue" (acquire after import) or "dstQueue" (release before export)
+// D3D12: ignored (queue ownership does not exist)
+static NriPtr(Queue) const NriConstant(EXTERNAL_QUEUE) = (NriPtr(Queue))1;
+
 NriStruct(BufferBarrierDesc) {
     NriPtr(Buffer) buffer;  // use "GetAccelerationStructureBuffer" and "GetMicromapBuffer" for related barriers
     Nri(AccessStage) before;
     Nri(AccessStage) after;
-};
 
-// Marks a queue family ownership transfer to or from an external user of a shared texture (another device, API or process)
-// VK: "VK_QUEUE_FAMILY_EXTERNAL" as "TextureBarrierDesc::srcQueue" (acquire after import) or "dstQueue" (release before export)
-// D3D12: ignored (queue ownership does not exist)
-static NriPtr(Queue) const NriConstant(EXTERNAL_QUEUE) = (NriPtr(Queue))1;
+    // Source and destination queues of a cross-queue hand-off, same rules as for textures: a buffer is "VK_SHARING_MODE_CONCURRENT" with more than one
+    // active queue family (no transfer between the device's own queues) and "EXCLUSIVE" otherwise; a transfer to or from "EXTERNAL_QUEUE" applies to either
+    NriOptional NriPtr(Queue) srcQueue;
+    NriOptional NriPtr(Queue) dstQueue;
+};
 
 NriStruct(TextureBarrierDesc) {
     NriPtr(Texture) texture;
