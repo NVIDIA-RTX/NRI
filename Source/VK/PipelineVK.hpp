@@ -164,7 +164,7 @@ Result PipelineVK::Create(const GraphicsPipelineDesc& graphicsPipelineDesc) {
             VkVertexInputAttributeDescription& vertexAttributeDesc = vertexAttributeDescs[i];
             vertexAttributeDesc = {};
             vertexAttributeDesc.location = attribute.vk.location;
-            vertexAttributeDesc.binding = attribute.streamIndex;
+            vertexAttributeDesc.binding = vi->streams[attribute.streamIndex].bindingSlot;
             vertexAttributeDesc.format = GetVkFormat(attribute.format);
             vertexAttributeDesc.offset = attribute.offset;
         }

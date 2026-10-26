@@ -810,6 +810,7 @@ WGPUComputePipeline CommandBufferWGPU::GetClearStorageTexturePipeline(Format for
 
 Result CommandBufferWGPU::Create(const CommandAllocator& commandAllocator) {
     MaybeUnused(commandAllocator);
+    m_VertexBuffers.resize(m_Device.GetDesc().shaderStage.vertex.streamMaxNum);
 
     return Result::SUCCESS;
 }
@@ -833,6 +834,7 @@ Result CommandBufferWGPU::Begin(const DescriptorPool* descriptorPool) {
     WGPUCommandEncoderDescriptor desc = WGPU_COMMAND_ENCODER_DESCRIPTOR_INIT;
     m_CommandEncoder = wgpuDeviceCreateCommandEncoder(m_Device, &desc);
     m_PipelineLayout = nullptr;
+    m_GraphicsPipelineWGPU = nullptr;
     m_RenderPipeline = nullptr;
     m_ComputePipeline = nullptr;
     m_BoundComputePipeline = nullptr;
@@ -844,6 +846,11 @@ Result CommandBufferWGPU::Begin(const DescriptorPool* descriptorPool) {
     m_RenderSampleNum = 1;
     m_RenderWidth = 0;
     m_RenderHeight = 0;
+
+    for (VertexBufferBinding& binding : m_VertexBuffers)
+        binding = {};
+
+    m_VertexBuffersDirty = true;
     m_GraphicsDescriptorSets.clear();
     m_ComputeDescriptorSets.clear();
     m_GraphicsDescriptorSetVersions.clear();
@@ -974,6 +981,7 @@ void CommandBufferWGPU::SetPipeline(const Pipeline& pipeline) {
 
     if (renderPipeline && m_GraphicsPipelineWGPU != &pipelineWGPU) {
         m_GraphicsPipelineWGPU = &pipelineWGPU;
+        m_VertexBuffersDirty = true;
         MarkDescriptorSetsDirty(BindPoint::GRAPHICS);
     }
 
@@ -1291,14 +1299,27 @@ void CommandBufferWGPU::SetRootDescriptor(const SetRootDescriptorDesc& setRootDe
 }
 
 void CommandBufferWGPU::SetVertexBuffers(uint32_t baseSlot, const VertexBufferDesc* vertexBufferDescs, uint32_t vertexBufferNum) {
-    if (!m_RenderPass)
-        return;
-
     for (uint32_t i = 0; i < vertexBufferNum; i++) {
         const VertexBufferDesc& vertexBufferDesc = vertexBufferDescs[i];
         const BufferWGPU& buffer = *(BufferWGPU*)vertexBufferDesc.buffer;
-        wgpuRenderPassEncoderSetVertexBuffer(m_RenderPass, baseSlot + i, buffer, vertexBufferDesc.offset, buffer.GetSize() - vertexBufferDesc.offset);
+        m_VertexBuffers[baseSlot + i] = {buffer, vertexBufferDesc.offset, buffer.GetSize() - vertexBufferDesc.offset};
     }
+
+    m_VertexBuffersDirty = true;
+}
+
+void CommandBufferWGPU::BindVertexBuffers() {
+    if (!m_VertexBuffersDirty)
+        return;
+
+    const Vector<uint16_t>& bindingSlots = m_GraphicsPipelineWGPU->GetVertexBindingSlots();
+
+    for (uint32_t i = 0; i < bindingSlots.size(); i++) {
+        const VertexBufferBinding& binding = m_VertexBuffers[bindingSlots[i]];
+        wgpuRenderPassEncoderSetVertexBuffer(m_RenderPass, i, binding.buffer, binding.offset, binding.size);
+    }
+
+    m_VertexBuffersDirty = false;
 }
 
 void CommandBufferWGPU::SetIndexBuffer(const Buffer& buffer, uint64_t offset, IndexType indexType) {
@@ -1422,6 +1443,8 @@ void CommandBufferWGPU::BeginRendering(const RenderingDesc& renderingDesc) {
     desc.depthStencilAttachment = depthStencilAttachmentPtr;
 
     m_RenderPass = wgpuCommandEncoderBeginRenderPass(m_CommandEncoder, &desc);
+    m_VertexBuffersDirty = true;
+
     if (!m_RenderPass)
         ReleaseRenderPassTransientObjects();
 
@@ -1529,6 +1552,7 @@ void CommandBufferWGPU::ClearAttachments(const ClearAttachmentDesc* clearAttachm
 
 void CommandBufferWGPU::Draw(const DrawDesc& drawDesc) {
     if (m_RenderPass) {
+        BindVertexBuffers();
         BindRootGroup(BindPoint::GRAPHICS);
         BindDescriptorSets(BindPoint::GRAPHICS);
         wgpuRenderPassEncoderDraw(m_RenderPass, drawDesc.vertexNum, drawDesc.instanceNum, drawDesc.baseVertex, drawDesc.baseInstance);
@@ -1537,6 +1561,7 @@ void CommandBufferWGPU::Draw(const DrawDesc& drawDesc) {
 
 void CommandBufferWGPU::DrawIndexed(const DrawIndexedDesc& drawIndexedDesc) {
     if (m_RenderPass) {
+        BindVertexBuffers();
         BindRootGroup(BindPoint::GRAPHICS);
         BindDescriptorSets(BindPoint::GRAPHICS);
         wgpuRenderPassEncoderDrawIndexed(m_RenderPass, drawIndexedDesc.indexNum, drawIndexedDesc.instanceNum, drawIndexedDesc.baseIndex, drawIndexedDesc.baseVertex, drawIndexedDesc.baseInstance);
@@ -1550,6 +1575,7 @@ void CommandBufferWGPU::DrawIndirect(const Buffer& buffer, uint64_t offset, uint
     if (!m_RenderPass)
         return;
 
+    BindVertexBuffers();
     BindRootGroup(BindPoint::GRAPHICS);
     BindDescriptorSets(BindPoint::GRAPHICS);
 
@@ -1565,6 +1591,7 @@ void CommandBufferWGPU::DrawIndexedIndirect(const Buffer& buffer, uint64_t offse
     if (!m_RenderPass)
         return;
 
+    BindVertexBuffers();
     BindRootGroup(BindPoint::GRAPHICS);
     BindDescriptorSets(BindPoint::GRAPHICS);
 

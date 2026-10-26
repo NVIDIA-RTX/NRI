@@ -230,11 +230,14 @@ Result PipelineWGPU::Create(const GraphicsPipelineDesc& graphicsPipelineDesc) {
     Scratch<WGPUVertexAttribute> attributes = NRI_ALLOCATE_SCRATCH(m_Device, WGPUVertexAttribute, vertexInput ? (size_t)vertexInput->attributeNum : 0ull);
     Scratch<WGPUVertexBufferLayout> streams = NRI_ALLOCATE_SCRATCH(m_Device, WGPUVertexBufferLayout, vertexInput ? (size_t)vertexInput->streamNum : 0ull);
 
+    // Compact native layouts because wgpu-native does not support unused buffer slots
     if (vertexInput) {
+        m_VertexBindingSlots.reserve(vertexInput->streamNum);
         uint32_t attributeOffset = 0;
+
         for (uint32_t i = 0; i < vertexInput->streamNum; i++) {
             const VertexStreamDesc& in = vertexInput->streams[i];
-            WGPUVertexBufferLayout& out = streams[i];
+            WGPUVertexBufferLayout& out = streams[m_VertexBindingSlots.size()];
             out = WGPU_VERTEX_BUFFER_LAYOUT_INIT;
             out.arrayStride = in.stride ? in.stride : GetVertexStreamStride(*vertexInput, i);
             out.stepMode = in.stepRate == VertexStreamStepRate::PER_INSTANCE ? WGPUVertexStepMode_Instance : WGPUVertexStepMode_Vertex;
@@ -253,6 +256,9 @@ Result PipelineWGPU::Create(const GraphicsPipelineDesc& graphicsPipelineDesc) {
             }
 
             attributeOffset += (uint32_t)out.attributeCount;
+
+            if (out.attributeCount)
+                m_VertexBindingSlots.push_back(in.bindingSlot);
         }
     }
 
@@ -315,7 +321,7 @@ Result PipelineWGPU::Create(const GraphicsPipelineDesc& graphicsPipelineDesc) {
     vertex.module = vertexShader;
     vertex.entryPoint = WGPUString(vertexEntryPoint);
     vertex.buffers = streams;
-    vertex.bufferCount = vertexInput ? vertexInput->streamNum : 0;
+    vertex.bufferCount = m_VertexBindingSlots.size();
 
     WGPURenderPipelineDescriptor desc = WGPU_RENDER_PIPELINE_DESCRIPTOR_INIT;
     desc.layout = m_PipelineLayout;
