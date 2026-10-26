@@ -1478,8 +1478,16 @@ void DeviceD3D12::GetResourceDesc(const BufferDesc& bufferDesc, D3D12_RESOURCE_D
     desc.Flags = GetBufferFlags(bufferDesc.usage);
 
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
-    if (m_TightAlignmentTier != 0)
+    if (m_TightAlignmentTier != 0) {
         desc.Flags |= D3D12_RESOURCE_FLAG_USE_TIGHT_ALIGNMENT;
+
+        // Tight buffer alignment may be smaller than AS and micromap address requirements
+        if (bufferDesc.usage & BufferUsageBits::ACCELERATION_STRUCTURE_STORAGE)
+            desc.Alignment = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT;
+
+        if (bufferDesc.usage & BufferUsageBits::MICROMAP_STORAGE)
+            desc.Alignment = std::max(desc.Alignment, (uint64_t)D3D12_RAYTRACING_OPACITY_MICROMAP_ARRAY_BYTE_ALIGNMENT);
+    }
 #endif
 }
 
@@ -1542,7 +1550,7 @@ void DeviceD3D12::GetMemoryDesc(MemoryLocation memoryLocation, const D3D12_RESOU
 
     memoryDesc = {};
     memoryDesc.size = resourceAllocationInfo.SizeInBytes;
-    memoryDesc.alignment = (uint32_t)resourceAllocationInfo.Alignment;
+    memoryDesc.alignment = (uint32_t)std::max(resourceAllocationInfo.Alignment, resourceDesc.Alignment); // allocation queries may return less than the requested alignment floor
     memoryDesc.type = Pack(memoryTypeInfo);
     memoryDesc.mustBeDedicated = mustBeDedicated;
 }
