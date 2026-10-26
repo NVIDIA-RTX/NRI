@@ -669,7 +669,7 @@ NriStruct(BufferBarrierDesc) {
 // Marks a queue family ownership transfer to or from an external user of a shared texture (another device, API or process)
 // VK: "VK_QUEUE_FAMILY_EXTERNAL" as "TextureBarrierDesc::srcQueue" (acquire after import) or "dstQueue" (release before export)
 // D3D12: ignored (queue ownership does not exist)
-static const NriPtr(Queue) NriConstant(EXTERNAL_QUEUE) = (NriPtr(Queue))1;
+static NriPtr(Queue) const NriConstant(EXTERNAL_QUEUE) = (NriPtr(Queue))1;
 
 NriStruct(TextureBarrierDesc) {
     NriPtr(Texture) texture;
