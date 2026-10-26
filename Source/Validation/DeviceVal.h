@@ -82,7 +82,7 @@ struct DeviceVal final : public DeviceBase {
     }
 
     template <typename Implementation, typename Interface, typename Backend, typename Deleter, typename... Args>
-    Result WrapImplementation(Interface*& entity, Backend* impl, Deleter destroy, Args&&... args);
+    [[nodiscard]] Result WrapImplementation(Interface*& entity, Backend* impl, Deleter destroy, Args&&... args);
 
     Result Create();
     void RegisterMemoryType(MemoryType memoryType, MemoryLocation memoryLocation);

@@ -83,7 +83,7 @@ struct DeviceD3D12 final : public DeviceBase {
     }
 
     template <typename Implementation, typename Interface, typename... Args>
-    inline Result CreateImplementation(Interface*& entity, Args&&... args) {
+    [[nodiscard]] inline Result CreateImplementation(Interface*& entity, Args&&... args) {
         return nri::CreateImplementation(GetAllocationCallbacks(), entity, Allocate<Implementation>(GetAllocationCallbacks(), *this), std::forward<Args>(args)...);
     }
 

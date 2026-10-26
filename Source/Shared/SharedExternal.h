@@ -474,7 +474,7 @@ static inline void Destroy(const AllocationCallbacks& allocationCallbacks, T* ob
 }
 
 template <typename Implementation, typename Interface, typename... Args>
-static inline Result CreateImplementation(const AllocationCallbacks& allocationCallbacks, Interface*& entity, Implementation* impl, Args&&... args) {
+[[nodiscard]] static inline Result CreateImplementation(const AllocationCallbacks& allocationCallbacks, Interface*& entity, Implementation* impl, Args&&... args) {
     entity = nullptr;
     if (!impl)
         return Result::OUT_OF_MEMORY;
