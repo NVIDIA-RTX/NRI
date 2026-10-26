@@ -2089,14 +2089,17 @@ NRI_INLINE void CommandBufferD3D12::BeginRendering(const RenderingDesc& renderin
             GetGraphicsCommandList()->ClearRenderTargetView(renderTargets[i], &attachmentDesc.clearValue.color.f.x, 0, nullptr);
     }
 
+    const AttachmentDesc& stencil = renderingDesc.stencil.descriptor ? renderingDesc.stencil : renderingDesc.depth;
     D3D12_CLEAR_FLAGS clearFlags = (D3D12_CLEAR_FLAGS)0;
+
     if (renderingDesc.depth.loadOp == LoadOp::CLEAR)
         clearFlags |= D3D12_CLEAR_FLAG_DEPTH;
-    if (renderingDesc.stencil.loadOp == LoadOp::CLEAR)
+
+    if (m_Stencil.attachment && stencil.loadOp == LoadOp::CLEAR)
         clearFlags |= D3D12_CLEAR_FLAG_STENCIL;
 
     if (clearFlags)
-        GetGraphicsCommandList()->ClearDepthStencilView(depthStencil, clearFlags, renderingDesc.depth.clearValue.depthStencil.depth, renderingDesc.stencil.clearValue.depthStencil.stencil, 0, nullptr);
+        GetGraphicsCommandList()->ClearDepthStencilView(depthStencil, clearFlags, renderingDesc.depth.clearValue.depthStencil.depth, stencil.clearValue.depthStencil.stencil, 0, nullptr);
 
     // Shading rate
     if (m_Device.GetDesc().tiers.shadingRate >= 2) {
