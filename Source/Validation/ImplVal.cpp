@@ -1061,6 +1061,9 @@ static Result NRI_CALL GetTextureSharedHandle(const Texture& texture, SharedHand
 
 static Result NRI_CALL GetFenceSharedHandle(const Fence& fence, SharedHandle& sharedHandle) {
     const FenceVal& fenceVal = (const FenceVal&)fence;
+    sharedHandle = {};
+
+    NRI_RETURN_ON_FAILURE(&fenceVal.GetDevice(), fenceVal.IsShared(), Result::INVALID_ARGUMENT, "'shared' is false");
 
     return fenceVal.GetDevice().GetCoreInterfaceImpl().GetFenceSharedHandle(*fenceVal.GetImpl(), sharedHandle);
 }

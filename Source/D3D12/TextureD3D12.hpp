@@ -43,10 +43,8 @@ Result TextureD3D12::Allocate(MemoryLocation memoryLocation, float priority, boo
             heapFlags = D3D12_HEAP_FLAG_ALLOW_ONLY_NON_RT_DS_TEXTURES;
     }
 
-    if (m_Desc.shared) {
-        NRI_RETURN_ON_FAILURE(&m_Device, m_Device.GetHeapType(memoryLocation) == D3D12_HEAP_TYPE_DEFAULT, Result::INVALID_ARGUMENT, "Shared textures must be in 'DEVICE' memory");
+    if (m_Desc.shared)
         heapFlags |= D3D12_HEAP_FLAG_SHARED;
-    }
 
     D3D12MA::ALLOCATION_DESC allocationDesc = {};
     allocationDesc.HeapType = m_Device.GetHeapType(memoryLocation);
@@ -151,8 +149,6 @@ Result TextureD3D12::BindMemory(const MemoryD3D12& memory, uint64_t offset) {
 
 Result TextureD3D12::GetSharedHandle(SharedHandle& sharedHandle) const {
     sharedHandle = {};
-
-    NRI_RETURN_ON_FAILURE(&m_Device, m_Desc.shared && m_Texture, Result::INVALID_ARGUMENT, "'shared' is false");
 
     HANDLE handle = nullptr;
     HRESULT hr = m_Device->CreateSharedHandle(m_Texture.GetInterface(), nullptr, GENERIC_ALL, nullptr, &handle);

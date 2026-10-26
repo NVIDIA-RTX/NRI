@@ -5,9 +5,10 @@
 namespace nri {
 
 struct FenceVal final : public ObjectVal {
-    inline FenceVal(DeviceVal& device, Fence* fence, bool isSwapChainSemaphore = false)
+    inline FenceVal(DeviceVal& device, Fence* fence, bool isSwapChainSemaphore = false, bool isShared = false)
         : ObjectVal(device, fence)
-        , m_IsSwapChainSemaphore(isSwapChainSemaphore) {
+        , m_IsSwapChainSemaphore(isSwapChainSemaphore)
+        , m_IsShared(isShared) {
     }
 
     inline ~FenceVal() {
@@ -21,6 +22,10 @@ struct FenceVal final : public ObjectVal {
         return m_IsSwapChainSemaphore;
     }
 
+    inline bool IsShared() const {
+        return m_IsShared;
+    }
+
     //================================================================================================================
     // NRI
     //================================================================================================================
@@ -30,6 +35,7 @@ struct FenceVal final : public ObjectVal {
 
 private:
     bool m_IsSwapChainSemaphore = false;
+    bool m_IsShared = false;
 };
 
 } // namespace nri

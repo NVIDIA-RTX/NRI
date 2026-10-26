@@ -40,7 +40,6 @@ private:
     DeviceVK& m_Device;
     VkSemaphore m_Handle = VK_NULL_HANDLE;
     bool m_OwnsNativeObjects = true;
-    bool m_IsShared = false;
 };
 
 } // namespace nri

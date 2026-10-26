@@ -2967,8 +2967,6 @@ Result DeviceVK::AllocateSharedMemory(const MemoryDesc& memoryDesc, float priori
 Result DeviceVK::GetSharedMemoryHandle(VkDeviceMemory memory, uint64_t size, SharedHandle& sharedHandle) {
     sharedHandle = {};
 
-    NRI_RETURN_ON_FAILURE(this, memory != VK_NULL_HANDLE, Result::INVALID_ARGUMENT, "'shared' is false");
-
 #ifdef VK_USE_PLATFORM_WIN32_KHR
     VkMemoryGetWin32HandleInfoKHR getInfo = {VK_STRUCTURE_TYPE_MEMORY_GET_WIN32_HANDLE_INFO_KHR};
     getInfo.memory = memory;

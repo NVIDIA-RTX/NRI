@@ -112,8 +112,6 @@ Result TextureVK::AllocateAndBindMemory(MemoryLocation memoryLocation, float pri
         committed = true;
 
     if (m_Desc.shared) {
-        NRI_RETURN_ON_FAILURE(&m_Device, !IsHostVisibleMemory(memoryTypeInfo.location), Result::INVALID_ARGUMENT, "Shared textures must be in 'DEVICE' memory");
-
         Result result = m_Device.AllocateSharedMemory(memoryDesc, priority, VK_NULL_HANDLE, m_Handle, m_SharedMemory);
         if (result != Result::SUCCESS)
             return result;

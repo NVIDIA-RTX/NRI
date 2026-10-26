@@ -87,8 +87,6 @@ Result BufferVK::AllocateAndBindMemory(MemoryLocation memoryLocation, float prio
         committed = true;
 
     if (m_Desc.shared) {
-        NRI_RETURN_ON_FAILURE(&m_Device, !IsHostVisibleMemory(memoryTypeInfo.location), Result::INVALID_ARGUMENT, "Shared buffers must be in 'DEVICE' memory");
-
         Result result = m_Device.AllocateSharedMemory(memoryDesc, priority, m_Handle, VK_NULL_HANDLE, m_SharedMemory);
         if (result != Result::SUCCESS)
             return result;

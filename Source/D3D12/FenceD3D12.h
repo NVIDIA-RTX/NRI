@@ -43,7 +43,6 @@ private:
     DeviceD3D12& m_Device;
     ComPtr<ID3D12Fence> m_Fence;
     HANDLE m_Event = 0;
-    bool m_IsShared = false;
 };
 
 } // namespace nri

@@ -938,7 +938,7 @@ NRI_INLINE Result DeviceVal::CreateFence(const FenceDesc& fenceDesc, Fence*& fen
 
     fence = nullptr;
     if (result == Result::SUCCESS)
-        result = WrapImplementation<FenceVal>(fence, fenceImpl, m_iCoreImpl.DestroyFence, initialValue == SWAPCHAIN_SEMAPHORE);
+        result = WrapImplementation<FenceVal>(fence, fenceImpl, m_iCoreImpl.DestroyFence, initialValue == SWAPCHAIN_SEMAPHORE, fenceDesc.shared);
 
     return result;
 }

@@ -7,7 +7,6 @@ Result FenceD3D12::Create(const FenceDesc& fenceDesc) {
         NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::CreateFence");
 
         m_Event = CreateEventA(nullptr, FALSE, FALSE, nullptr);
-        m_IsShared = fenceDesc.shared;
     } else if (fenceDesc.shared)
         return Result::UNSUPPORTED; // no binary fences
 
@@ -23,8 +22,6 @@ Result FenceD3D12::Create(const FenceD3D12Desc& fenceD3D12Desc) {
 
 Result FenceD3D12::GetSharedHandle(SharedHandle& sharedHandle) const {
     sharedHandle = {};
-
-    NRI_RETURN_ON_FAILURE(&m_Device, m_IsShared && m_Fence, Result::INVALID_ARGUMENT, "'shared' is false");
 
     HANDLE handle = nullptr;
     HRESULT hr = m_Device->CreateSharedHandle(m_Fence.GetInterface(), nullptr, GENERIC_ALL, nullptr, &handle);

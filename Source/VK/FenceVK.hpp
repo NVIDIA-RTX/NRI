@@ -20,7 +20,6 @@ Result FenceVK::Create(const FenceDesc& fenceDesc) {
             return Result::UNSUPPORTED;
 
         semaphoreTypeCreateInfo.pNext = &exportInfo;
-        m_IsShared = true;
     }
 
     VkSemaphoreCreateInfo semaphoreCreateInfo = {VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
@@ -42,8 +41,6 @@ Result FenceVK::Create(const FenceVKDesc& fenceVKDesc) {
 
 Result FenceVK::GetSharedHandle(SharedHandle& sharedHandle) const {
     sharedHandle = {};
-
-    NRI_RETURN_ON_FAILURE(&m_Device, m_IsShared, Result::INVALID_ARGUMENT, "'shared' is false");
 
     const auto& vk = m_Device.GetDispatchTable();
 #ifdef VK_USE_PLATFORM_WIN32_KHR
