@@ -30,9 +30,6 @@ Result BufferVK::Create(const BufferDesc& bufferDesc) {
     externalInfo.handleTypes = SHARED_MEMORY_HANDLE_TYPE;
 
     if (m_Desc.shared) {
-        if (!m_Device.GetDesc().features.sharedResources)
-            return Result::UNSUPPORTED;
-
         externalInfo.pNext = info.pNext;
         info.pNext = &externalInfo;
     }

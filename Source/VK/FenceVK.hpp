@@ -17,12 +17,8 @@ Result FenceVK::Create(const FenceDesc& fenceDesc) {
     VkExportSemaphoreCreateInfo exportInfo = {VK_STRUCTURE_TYPE_EXPORT_SEMAPHORE_CREATE_INFO};
     exportInfo.handleTypes = SHARED_SEMAPHORE_HANDLE_TYPE;
 
-    if (fenceDesc.shared) {
-        if (!m_Device.GetDesc().features.sharedFences)
-            return Result::UNSUPPORTED;
-
+    if (fenceDesc.shared)
         semaphoreTypeCreateInfo.pNext = &exportInfo;
-    }
 
     VkSemaphoreCreateInfo semaphoreCreateInfo = {VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
     semaphoreCreateInfo.pNext = &semaphoreTypeCreateInfo;

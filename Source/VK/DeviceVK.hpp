@@ -1,5 +1,26 @@
 // © 2021 NVIDIA Corporation
 
+#ifdef VK_USE_PLATFORM_WIN32_KHR
+// VK exports one NT handle per object and handle type: a repeated export returns the same handle, which the first "CloseHandle" closes
+// for everyone (VUID-VkMemoryGetWin32HandleInfoKHR-handleType-00663, VUID-VkSemaphoreGetWin32HandleInfoKHR-handleType-01127).
+// So the export is done once, retained until the object is destroyed, and each caller gets a duplicate it owns
+static inline Result DuplicateSharedHandle(DeviceVK& device, void* exportedHandle, SharedHandle& sharedHandle) {
+    HANDLE process = GetCurrentProcess();
+    HANDLE handle = nullptr;
+
+    if (!DuplicateHandle(process, (HANDLE)exportedHandle, process, &handle, 0, FALSE, DUPLICATE_SAME_ACCESS)) {
+        NRI_REPORT_ERROR(&device, "DuplicateHandle() failed, error = %u", (uint32_t)GetLastError());
+
+        return Result::FAILURE;
+    }
+
+    sharedHandle.handle = handle;
+    sharedHandle.type = SharedHandleType::OPAQUE_WIN32;
+
+    return Result::SUCCESS;
+}
+#endif
+
 constexpr bool VERBOSE = false;
 
 static inline const char* GetDeviceLostAddressTypeName(VkDeviceFaultAddressTypeEXT type) {
@@ -2963,25 +2984,6 @@ Result DeviceVK::AllocateSharedMemory(const MemoryDesc& memoryDesc, float priori
 
     return Result::SUCCESS;
 }
-
-#ifdef VK_USE_PLATFORM_WIN32_KHR
-// VK exports one NT handle per object and handle type: a repeated export returns the same handle, which the first "CloseHandle" closes
-// for everyone (VUID-VkMemoryGetWin32HandleInfoKHR-handleType-00663, VUID-VkSemaphoreGetWin32HandleInfoKHR-handleType-01127).
-// So the export is done once, retained until the object is destroyed, and each caller gets a duplicate it owns
-static Result DuplicateSharedHandle(DeviceVK& device, void* exportedHandle, SharedHandle& sharedHandle) {
-    HANDLE process = GetCurrentProcess();
-    HANDLE handle = nullptr;
-    if (!DuplicateHandle(process, (HANDLE)exportedHandle, process, &handle, 0, FALSE, DUPLICATE_SAME_ACCESS)) {
-        NRI_REPORT_ERROR(&device, "DuplicateHandle() failed, error = %u", (uint32_t)GetLastError());
-        return Result::FAILURE;
-    }
-
-    sharedHandle.handle = handle;
-    sharedHandle.type = SharedHandleType::OPAQUE_WIN32;
-
-    return Result::SUCCESS;
-}
-#endif
 
 Result DeviceVK::GetSharedMemoryHandle(VkDeviceMemory memory, uint64_t size, void*& exportedHandle, SharedHandle& sharedHandle) {
     sharedHandle = {};
