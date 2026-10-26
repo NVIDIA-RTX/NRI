@@ -425,6 +425,7 @@ static inline Result XessConvertError(xess_result_t code) {
 struct Ngx {
     NVSDK_NGX_Handle* handle = nullptr;
     NVSDK_NGX_Parameter* params = nullptr;
+    bool isInitialized = false;
 };
 
 struct RefCounter {
@@ -755,56 +756,79 @@ UpscalerImpl::~UpscalerImpl() {
 
 #if NRI_ENABLE_NGX_SDK
     if ((m_Desc.type == UpscalerType::DLSR || m_Desc.type == UpscalerType::DLRR) && m.ngx) {
-        ExclusiveScope lock(g_ngx.lock);
+        if (m.ngx->isInitialized) {
+            ExclusiveScope lock(g_ngx.lock);
 
-        const DeviceDesc& deviceDesc = m_iCore.GetDeviceDesc(m_Device);
-        void* deviceNative = m_iCore.GetDeviceNativeObject(&m_Device);
-        int32_t refCount = NgxDecrRef(deviceNative);
+            const DeviceDesc& deviceDesc = m_iCore.GetDeviceDesc(m_Device);
+            void* deviceNative = m_iCore.GetDeviceNativeObject(&m_Device);
+            int32_t refCount = NgxDecrRef(deviceNative);
 
 #    if NRI_ENABLE_D3D11_SUPPORT
-        if (deviceDesc.graphicsAPI == GraphicsAPI::D3D11) {
-            NVSDK_NGX_Result result = NVSDK_NGX_D3D11_DestroyParameters(m.ngx->params);
-            NRI_CHECK(!m.ngx->params || result == NVSDK_NGX_Result_Success, "NVSDK_NGX_D3D11_DestroyParameters() failed!");
+            if (deviceDesc.graphicsAPI == GraphicsAPI::D3D11) {
+                if (m.ngx->handle) {
+                    NVSDK_NGX_Result result = NVSDK_NGX_D3D11_ReleaseFeature(m.ngx->handle);
+                    MaybeUnused(result);
+                    NRI_CHECK(result == NVSDK_NGX_Result_Success, "NVSDK_NGX_D3D11_ReleaseFeature() failed!");
+                }
 
-            result = NVSDK_NGX_D3D11_ReleaseFeature(m.ngx->handle);
-            NRI_CHECK(!m.ngx->handle || result == NVSDK_NGX_Result_Success, "NVSDK_NGX_D3D11_ReleaseFeature() failed!");
+                if (m.ngx->params) {
+                    NVSDK_NGX_Result result = NVSDK_NGX_D3D11_DestroyParameters(m.ngx->params);
+                    MaybeUnused(result);
+                    NRI_CHECK(result == NVSDK_NGX_Result_Success, "NVSDK_NGX_D3D11_DestroyParameters() failed!");
+                }
 
-            if (refCount == 0) {
-                result = NVSDK_NGX_D3D11_Shutdown1((ID3D11Device*)deviceNative);
-                NRI_CHECK(result == NVSDK_NGX_Result_Success, "NVSDK_NGX_D3D11_Shutdown1() failed!");
+                if (refCount == 0) {
+                    NVSDK_NGX_Result result = NVSDK_NGX_D3D11_Shutdown1((ID3D11Device*)deviceNative);
+                    MaybeUnused(result);
+                    NRI_CHECK(result == NVSDK_NGX_Result_Success, "NVSDK_NGX_D3D11_Shutdown1() failed!");
+                }
             }
-        }
 #    endif
 
 #    if NRI_ENABLE_D3D12_SUPPORT
-        if (deviceDesc.graphicsAPI == GraphicsAPI::D3D12) {
-            NVSDK_NGX_Result result = NVSDK_NGX_D3D12_DestroyParameters(m.ngx->params);
-            NRI_CHECK(!m.ngx->params || result == NVSDK_NGX_Result_Success, "NVSDK_NGX_D3D12_DestroyParameters() failed!");
+            if (deviceDesc.graphicsAPI == GraphicsAPI::D3D12) {
+                if (m.ngx->handle) {
+                    NVSDK_NGX_Result result = NVSDK_NGX_D3D12_ReleaseFeature(m.ngx->handle);
+                    MaybeUnused(result);
+                    NRI_CHECK(result == NVSDK_NGX_Result_Success, "NVSDK_NGX_D3D12_ReleaseFeature() failed!");
+                }
 
-            result = NVSDK_NGX_D3D12_ReleaseFeature(m.ngx->handle);
-            NRI_CHECK(!m.ngx->handle || result == NVSDK_NGX_Result_Success, "NVSDK_NGX_D3D12_ReleaseFeature() failed!");
+                if (m.ngx->params) {
+                    NVSDK_NGX_Result result = NVSDK_NGX_D3D12_DestroyParameters(m.ngx->params);
+                    MaybeUnused(result);
+                    NRI_CHECK(result == NVSDK_NGX_Result_Success, "NVSDK_NGX_D3D12_DestroyParameters() failed!");
+                }
 
-            if (refCount == 0) {
-                result = NVSDK_NGX_D3D12_Shutdown1((ID3D12Device*)deviceNative);
-                NRI_CHECK(result == NVSDK_NGX_Result_Success, "NVSDK_NGX_D3D12_Shutdown1() failed!");
+                if (refCount == 0) {
+                    NVSDK_NGX_Result result = NVSDK_NGX_D3D12_Shutdown1((ID3D12Device*)deviceNative);
+                    MaybeUnused(result);
+                    NRI_CHECK(result == NVSDK_NGX_Result_Success, "NVSDK_NGX_D3D12_Shutdown1() failed!");
+                }
             }
-        }
 #    endif
 
 #    if NRI_ENABLE_VK_SUPPORT
-        if (deviceDesc.graphicsAPI == GraphicsAPI::VK) {
-            NVSDK_NGX_Result result = NVSDK_NGX_VULKAN_DestroyParameters(m.ngx->params);
-            NRI_CHECK(!m.ngx->params || result == NVSDK_NGX_Result_Success, "NVSDK_NGX_VULKAN_DestroyParameters() failed!");
+            if (deviceDesc.graphicsAPI == GraphicsAPI::VK) {
+                if (m.ngx->handle) {
+                    NVSDK_NGX_Result result = NVSDK_NGX_VULKAN_ReleaseFeature(m.ngx->handle);
+                    MaybeUnused(result);
+                    NRI_CHECK(result == NVSDK_NGX_Result_Success, "NVSDK_NGX_VULKAN_ReleaseFeature() failed!");
+                }
 
-            result = NVSDK_NGX_VULKAN_ReleaseFeature(m.ngx->handle);
-            NRI_CHECK(!m.ngx->handle || result == NVSDK_NGX_Result_Success, "NVSDK_NGX_VULKAN_ReleaseFeature() failed!");
+                if (m.ngx->params) {
+                    NVSDK_NGX_Result result = NVSDK_NGX_VULKAN_DestroyParameters(m.ngx->params);
+                    MaybeUnused(result);
+                    NRI_CHECK(result == NVSDK_NGX_Result_Success, "NVSDK_NGX_VULKAN_DestroyParameters() failed!");
+                }
 
-            if (refCount == 0) {
-                result = NVSDK_NGX_VULKAN_Shutdown1((VkDevice)deviceNative);
-                NRI_CHECK(result == NVSDK_NGX_Result_Success, "NVSDK_NGX_VULKAN_Shutdown1() failed!");
+                if (refCount == 0) {
+                    NVSDK_NGX_Result result = NVSDK_NGX_VULKAN_Shutdown1((VkDevice)deviceNative);
+                    MaybeUnused(result);
+                    NRI_CHECK(result == NVSDK_NGX_Result_Success, "NVSDK_NGX_VULKAN_Shutdown1() failed!");
+                }
             }
-        }
 #    endif
+        }
 
         const auto& allocationCallbacks = ((DeviceBase&)m_Device).GetAllocationCallbacks();
         Destroy<Ngx>(allocationCallbacks, m.ngx);
@@ -1262,6 +1286,7 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
                 ngxResult = NVSDK_NGX_D3D11_Init(APPLICATION_ID, path, (ID3D11Device*)deviceNative, &featureCommonInfo);
                 if (ngxResult == NVSDK_NGX_Result_Success) {
                     NgxIncrRef(deviceNative);
+                    m.ngx->isInitialized = true;
                     ngxResult = NVSDK_NGX_D3D11_GetCapabilityParameters(&m.ngx->params);
                 }
             }
@@ -1272,6 +1297,7 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
                 ngxResult = NVSDK_NGX_D3D12_Init(APPLICATION_ID, path, (ID3D12Device*)deviceNative, &featureCommonInfo);
                 if (ngxResult == NVSDK_NGX_Result_Success) {
                     NgxIncrRef(deviceNative);
+                    m.ngx->isInitialized = true;
                     ngxResult = NVSDK_NGX_D3D12_GetCapabilityParameters(&m.ngx->params);
                 }
             }
@@ -1291,6 +1317,7 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
                 ngxResult = NVSDK_NGX_VULKAN_Init(APPLICATION_ID, path, vkInstance, vkPhysicalDevice, (VkDevice)deviceNative, vkGipa, vkGdpa, &featureCommonInfo);
                 if (ngxResult == NVSDK_NGX_Result_Success) {
                     NgxIncrRef(deviceNative);
+                    m.ngx->isInitialized = true;
                     ngxResult = NVSDK_NGX_VULKAN_GetCapabilityParameters(&m.ngx->params);
                 }
             }
