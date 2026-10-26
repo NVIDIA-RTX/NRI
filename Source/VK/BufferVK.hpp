@@ -9,6 +9,8 @@ BufferVK::~BufferVK() {
         else
             vk.DestroyBuffer(m_Device, m_Handle, m_Device.GetVkAllocationCallbacks());
 
+        m_Device.CloseSharedHandle(m_SharedHandle);
+
         if (m_SharedMemory)
             vk.FreeMemory(m_Device, m_SharedMemory, m_Device.GetVkAllocationCallbacks());
     }
@@ -239,7 +241,7 @@ Result BufferVK::BindMemory(MemoryVK& memory, uint64_t offset, bool bindMemory) 
 }
 
 Result BufferVK::GetSharedHandle(SharedHandle& sharedHandle) const {
-    return m_Device.GetSharedMemoryHandle(m_SharedMemory, m_SharedSize, sharedHandle);
+    return m_Device.GetSharedMemoryHandle(m_SharedMemory, m_SharedSize, m_SharedHandle, sharedHandle);
 }
 
 bool BufferVK::IsVideoOnly() const {

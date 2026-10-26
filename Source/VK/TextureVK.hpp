@@ -9,6 +9,8 @@ TextureVK::~TextureVK() {
         else
             vk.DestroyImage(m_Device, m_Handle, m_Device.GetVkAllocationCallbacks());
 
+        m_Device.CloseSharedHandle(m_SharedHandle);
+
         if (m_SharedMemory)
             vk.FreeMemory(m_Device, m_SharedMemory, m_Device.GetVkAllocationCallbacks());
     }
@@ -169,7 +171,7 @@ Result TextureVK::BindMemory(const MemoryVK& memory, uint64_t offset) {
 }
 
 Result TextureVK::GetSharedHandle(SharedHandle& sharedHandle) const {
-    return m_Device.GetSharedMemoryHandle(m_SharedMemory, m_SharedSize, sharedHandle);
+    return m_Device.GetSharedMemoryHandle(m_SharedMemory, m_SharedSize, m_SharedHandle, sharedHandle);
 }
 
 void TextureVK::GetMemoryDesc(MemoryLocation memoryLocation, MemoryDesc& memoryDesc) const {

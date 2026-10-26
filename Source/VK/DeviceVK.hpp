@@ -2964,21 +2964,48 @@ Result DeviceVK::AllocateSharedMemory(const MemoryDesc& memoryDesc, float priori
     return Result::SUCCESS;
 }
 
-Result DeviceVK::GetSharedMemoryHandle(VkDeviceMemory memory, uint64_t size, SharedHandle& sharedHandle) {
-    sharedHandle = {};
-
 #ifdef VK_USE_PLATFORM_WIN32_KHR
-    VkMemoryGetWin32HandleInfoKHR getInfo = {VK_STRUCTURE_TYPE_MEMORY_GET_WIN32_HANDLE_INFO_KHR};
-    getInfo.memory = memory;
-    getInfo.handleType = SHARED_MEMORY_HANDLE_TYPE;
-
+// VK exports one NT handle per object and handle type: a repeated export returns the same handle, which the first "CloseHandle" closes
+// for everyone (VUID-VkMemoryGetWin32HandleInfoKHR-handleType-00663, VUID-VkSemaphoreGetWin32HandleInfoKHR-handleType-01127).
+// So the export is done once, retained until the object is destroyed, and each caller gets a duplicate it owns
+static Result DuplicateSharedHandle(DeviceVK& device, void* exportedHandle, SharedHandle& sharedHandle) {
+    HANDLE process = GetCurrentProcess();
     HANDLE handle = nullptr;
-    VkResult vkResult = m_VK.GetMemoryWin32HandleKHR(m_Device, &getInfo, &handle);
-    NRI_RETURN_ON_BAD_VKRESULT(this, vkResult, "vkGetMemoryWin32HandleKHR");
+    if (!DuplicateHandle(process, (HANDLE)exportedHandle, process, &handle, 0, FALSE, DUPLICATE_SAME_ACCESS)) {
+        NRI_REPORT_ERROR(&device, "DuplicateHandle() failed, error = %u", (uint32_t)GetLastError());
+        return Result::FAILURE;
+    }
 
     sharedHandle.handle = handle;
     sharedHandle.type = SharedHandleType::OPAQUE_WIN32;
+
+    return Result::SUCCESS;
+}
+#endif
+
+Result DeviceVK::GetSharedMemoryHandle(VkDeviceMemory memory, uint64_t size, void*& exportedHandle, SharedHandle& sharedHandle) {
+    sharedHandle = {};
+    sharedHandle.size = size;
+
+#ifdef VK_USE_PLATFORM_WIN32_KHR
+    ExclusiveScope lock(m_SharedHandleLock);
+
+    if (!exportedHandle) {
+        VkMemoryGetWin32HandleInfoKHR getInfo = {VK_STRUCTURE_TYPE_MEMORY_GET_WIN32_HANDLE_INFO_KHR};
+        getInfo.memory = memory;
+        getInfo.handleType = SHARED_MEMORY_HANDLE_TYPE;
+
+        HANDLE handle = nullptr;
+        VkResult vkResult = m_VK.GetMemoryWin32HandleKHR(m_Device, &getInfo, &handle);
+        NRI_RETURN_ON_BAD_VKRESULT(this, vkResult, "vkGetMemoryWin32HandleKHR");
+
+        exportedHandle = handle;
+    }
+
+    return DuplicateSharedHandle(*this, exportedHandle, sharedHandle);
 #else
+    MaybeUnused(exportedHandle); // each FD export is independent
+
     VkMemoryGetFdInfoKHR getInfo = {VK_STRUCTURE_TYPE_MEMORY_GET_FD_INFO_KHR};
     getInfo.memory = memory;
     getInfo.handleType = SHARED_MEMORY_HANDLE_TYPE;
@@ -2989,10 +3016,57 @@ Result DeviceVK::GetSharedMemoryHandle(VkDeviceMemory memory, uint64_t size, Sha
 
     sharedHandle.handle = (void*)(intptr_t)fd;
     sharedHandle.type = SharedHandleType::OPAQUE_FD;
-#endif
-    sharedHandle.size = size;
 
     return Result::SUCCESS;
+#endif
+}
+
+Result DeviceVK::GetSharedSemaphoreHandle(VkSemaphore semaphore, void*& exportedHandle, SharedHandle& sharedHandle) {
+    sharedHandle = {};
+
+#ifdef VK_USE_PLATFORM_WIN32_KHR
+    ExclusiveScope lock(m_SharedHandleLock);
+
+    if (!exportedHandle) {
+        VkSemaphoreGetWin32HandleInfoKHR getInfo = {VK_STRUCTURE_TYPE_SEMAPHORE_GET_WIN32_HANDLE_INFO_KHR};
+        getInfo.semaphore = semaphore;
+        getInfo.handleType = SHARED_SEMAPHORE_HANDLE_TYPE;
+
+        HANDLE handle = nullptr;
+        VkResult vkResult = m_VK.GetSemaphoreWin32HandleKHR(m_Device, &getInfo, &handle);
+        NRI_RETURN_ON_BAD_VKRESULT(this, vkResult, "vkGetSemaphoreWin32HandleKHR");
+
+        exportedHandle = handle;
+    }
+
+    return DuplicateSharedHandle(*this, exportedHandle, sharedHandle);
+#else
+    MaybeUnused(exportedHandle); // each FD export is independent
+
+    VkSemaphoreGetFdInfoKHR getInfo = {VK_STRUCTURE_TYPE_SEMAPHORE_GET_FD_INFO_KHR};
+    getInfo.semaphore = semaphore;
+    getInfo.handleType = SHARED_SEMAPHORE_HANDLE_TYPE;
+
+    int fd = -1;
+    VkResult vkResult = m_VK.GetSemaphoreFdKHR(m_Device, &getInfo, &fd);
+    NRI_RETURN_ON_BAD_VKRESULT(this, vkResult, "vkGetSemaphoreFdKHR");
+
+    sharedHandle.handle = (void*)(intptr_t)fd;
+    sharedHandle.type = SharedHandleType::OPAQUE_FD;
+
+    return Result::SUCCESS;
+#endif
+}
+
+void DeviceVK::CloseSharedHandle(void*& exportedHandle) {
+#ifdef VK_USE_PLATFORM_WIN32_KHR
+    if (exportedHandle) {
+        CloseHandle((HANDLE)exportedHandle);
+        exportedHandle = nullptr;
+    }
+#else
+    MaybeUnused(exportedHandle);
+#endif
 }
 
 NRI_INLINE Result DeviceVK::CreateCommittedBuffer(MemoryLocation memoryLocation, float priority, const BufferDesc& bufferDesc, Buffer*& buffer) {

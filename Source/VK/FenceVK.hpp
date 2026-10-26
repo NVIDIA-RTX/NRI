@@ -1,6 +1,8 @@
 // © 2021 NVIDIA Corporation
 
 FenceVK::~FenceVK() {
+    m_Device.CloseSharedHandle(m_SharedHandle);
+
     if (m_OwnsNativeObjects && m_Handle) {
         const auto& vk = m_Device.GetDispatchTable();
         vk.DestroySemaphore(m_Device, m_Handle, m_Device.GetVkAllocationCallbacks());
@@ -40,34 +42,7 @@ Result FenceVK::Create(const FenceVKDesc& fenceVKDesc) {
 }
 
 Result FenceVK::GetSharedHandle(SharedHandle& sharedHandle) const {
-    sharedHandle = {};
-
-    const auto& vk = m_Device.GetDispatchTable();
-#ifdef VK_USE_PLATFORM_WIN32_KHR
-    VkSemaphoreGetWin32HandleInfoKHR getInfo = {VK_STRUCTURE_TYPE_SEMAPHORE_GET_WIN32_HANDLE_INFO_KHR};
-    getInfo.semaphore = m_Handle;
-    getInfo.handleType = SHARED_SEMAPHORE_HANDLE_TYPE;
-
-    HANDLE handle = nullptr;
-    VkResult vkResult = vk.GetSemaphoreWin32HandleKHR(m_Device, &getInfo, &handle);
-    NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkGetSemaphoreWin32HandleKHR");
-
-    sharedHandle.handle = handle;
-    sharedHandle.type = SharedHandleType::OPAQUE_WIN32;
-#else
-    VkSemaphoreGetFdInfoKHR getInfo = {VK_STRUCTURE_TYPE_SEMAPHORE_GET_FD_INFO_KHR};
-    getInfo.semaphore = m_Handle;
-    getInfo.handleType = SHARED_SEMAPHORE_HANDLE_TYPE;
-
-    int fd = -1;
-    VkResult vkResult = vk.GetSemaphoreFdKHR(m_Device, &getInfo, &fd);
-    NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkGetSemaphoreFdKHR");
-
-    sharedHandle.handle = (void*)(intptr_t)fd;
-    sharedHandle.type = SharedHandleType::OPAQUE_FD;
-#endif
-
-    return Result::SUCCESS;
+    return m_Device.GetSharedSemaphoreHandle(m_Handle, m_SharedHandle, sharedHandle);
 }
 
 NRI_INLINE void FenceVK::SetDebugName(const char* name) {

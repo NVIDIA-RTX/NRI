@@ -74,6 +74,7 @@ private:
     VmaAllocation m_VmaAllocation = nullptr;
     VkDeviceMemory m_SharedMemory = VK_NULL_HANDLE;
     uint64_t m_SharedSize = 0;
+    mutable void* m_SharedHandle = nullptr; // Win32: the one export of "m_SharedMemory", duplicated for each "GetSharedHandle"
     uint64_t m_MemoryAlignment = 1;
     bool m_OwnsNativeObjects = true;
     bool m_IsDescriptorHeap = false;
