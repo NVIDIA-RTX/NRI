@@ -3522,16 +3522,9 @@ Result DeviceVK::AcquireTransferContext(QueueVK& queue, TransferContextVK*& cont
         }
     }
 
-    context = Allocate<TransferContextVK>(GetAllocationCallbacks(), *this);
-    if (!context)
-        return Result::OUT_OF_MEMORY;
-
-    Result result = context->Create(queue);
-    if (result != Result::SUCCESS) {
-        Destroy(context);
-        context = nullptr;
+    Result result = CreateImplementation<TransferContextVK>(context, queue);
+    if (result != Result::SUCCESS)
         return result;
-    }
 
     context->SetInUse(true);
     m_TransferContexts.push_back(context);

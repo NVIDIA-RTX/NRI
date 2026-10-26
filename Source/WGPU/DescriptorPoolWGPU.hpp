@@ -28,10 +28,10 @@ Result DescriptorPoolWGPU::AllocateDescriptorSets(const PipelineLayout& pipeline
                 m_DescriptorSets.pop_back();
             }
 
-            for (uint32_t j = 0; j < i; j++)
+            for (uint32_t j = 0; j < instanceNum; j++)
                 descriptorSets[j] = nullptr;
 
-            return Result::FAILURE;
+            return Result::OUT_OF_MEMORY;
         }
 
         m_DescriptorSets.push_back(descriptorSet);

@@ -149,8 +149,7 @@ Result SwapChainD3D11::Create(const SwapChainDesc& swapChainDesc) {
         TextureD3D11Desc textureDesc = {};
         textureDesc.d3d11Resource = textureNative;
 
-        m_Texture = Allocate<TextureD3D11>(m_Device.GetAllocationCallbacks(), m_Device);
-        Result res = m_Texture->Create(textureDesc);
+        Result res = m_Device.CreateImplementation<TextureD3D11>(m_Texture, textureDesc);
         if (res != Result::SUCCESS)
             return res;
     }

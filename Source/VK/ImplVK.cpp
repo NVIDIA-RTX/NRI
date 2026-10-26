@@ -61,16 +61,7 @@ using namespace nri;
 #include "VideoSessionVK.hpp"
 
 Result CreateDeviceVK(const DeviceCreationDesc& desc, const DeviceCreationVKDesc& descVK, DeviceBase*& device) {
-    DeviceVK* impl = Allocate<DeviceVK>(desc.allocationCallbacks, desc.callbackInterface, desc.allocationCallbacks);
-    Result result = impl->Create(desc, descVK);
-
-    if (result != Result::SUCCESS) {
-        Destroy(desc.allocationCallbacks, impl);
-        device = nullptr;
-    } else
-        device = (DeviceBase*)impl;
-
-    return result;
+    return CreateImplementation(desc.allocationCallbacks, device, Allocate<DeviceVK>(desc.allocationCallbacks, desc.callbackInterface, desc.allocationCallbacks), desc, descVK);
 }
 
 //============================================================================================================================================================================================
@@ -828,16 +819,8 @@ Result DeviceVK::FillFunctionTable(HelperInterface& table) const {
 
 static Result NRI_CALL CreateImgui(Device& device, const ImguiDesc& imguiDesc, Imgui*& imgui) {
     DeviceVK& deviceVK = (DeviceVK&)device;
-    ImguiImpl* impl = Allocate<ImguiImpl>(deviceVK.GetAllocationCallbacks(), device, deviceVK.GetCoreInterface());
-    Result result = impl->Create(imguiDesc);
 
-    if (result != Result::SUCCESS) {
-        Destroy(impl);
-        imgui = nullptr;
-    } else
-        imgui = (Imgui*)impl;
-
-    return result;
+    return CreateImplementation(deviceVK.GetAllocationCallbacks(), imgui, Allocate<ImguiImpl>(deviceVK.GetAllocationCallbacks(), device, deviceVK.GetCoreInterface()), imguiDesc);
 }
 
 static void NRI_CALL DestroyImgui(Imgui* imgui) {
@@ -1253,16 +1236,8 @@ Result DeviceVK::FillFunctionTable(VideoInterface& table) const {
 
 static Result NRI_CALL CreateStreamer(Device& device, const StreamerDesc& streamerDesc, Streamer*& streamer) {
     DeviceVK& deviceVK = (DeviceVK&)device;
-    StreamerImpl* impl = Allocate<StreamerImpl>(deviceVK.GetAllocationCallbacks(), device, deviceVK.GetCoreInterface());
-    Result result = impl->Create(streamerDesc);
 
-    if (result != Result::SUCCESS) {
-        Destroy(impl);
-        streamer = nullptr;
-    } else
-        streamer = (Streamer*)impl;
-
-    return result;
+    return CreateImplementation(deviceVK.GetAllocationCallbacks(), streamer, Allocate<StreamerImpl>(deviceVK.GetAllocationCallbacks(), device, deviceVK.GetCoreInterface()), streamerDesc);
 }
 
 static void NRI_CALL DestroyStreamer(Streamer* streamer) {
@@ -1371,16 +1346,8 @@ Result DeviceVK::FillFunctionTable(SwapChainInterface& table) const {
 
 static Result NRI_CALL CreateUpscaler(Device& device, const UpscalerDesc& upscalerDesc, Upscaler*& upscaler) {
     DeviceVK& deviceVK = (DeviceVK&)device;
-    UpscalerImpl* impl = Allocate<UpscalerImpl>(deviceVK.GetAllocationCallbacks(), device, deviceVK.GetCoreInterface());
-    Result result = impl->Create(upscalerDesc);
 
-    if (result != Result::SUCCESS) {
-        Destroy(impl);
-        upscaler = nullptr;
-    } else
-        upscaler = (Upscaler*)impl;
-
-    return result;
+    return CreateImplementation(deviceVK.GetAllocationCallbacks(), upscaler, Allocate<UpscalerImpl>(deviceVK.GetAllocationCallbacks(), device, deviceVK.GetCoreInterface()), upscalerDesc);
 }
 
 static void NRI_CALL DestroyUpscaler(Upscaler* upscaler) {

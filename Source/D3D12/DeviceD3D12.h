@@ -83,17 +83,8 @@ struct DeviceD3D12 final : public DeviceBase {
     }
 
     template <typename Implementation, typename Interface, typename... Args>
-    inline Result CreateImplementation(Interface*& entity, const Args&... args) {
-        Implementation* impl = Allocate<Implementation>(GetAllocationCallbacks(), *this);
-        Result result = impl->Create(args...);
-
-        if (result != Result::SUCCESS) {
-            Destroy(GetAllocationCallbacks(), impl);
-            entity = nullptr;
-        } else
-            entity = (Interface*)impl;
-
-        return result;
+    inline Result CreateImplementation(Interface*& entity, Args&&... args) {
+        return nri::CreateImplementation(GetAllocationCallbacks(), entity, Allocate<Implementation>(GetAllocationCallbacks(), *this), std::forward<Args>(args)...);
     }
 
     Result Create(const DeviceCreationDesc& deviceCreationDesc, const DeviceCreationD3D12Desc& deviceCreationD3D12Desc);

@@ -849,6 +849,8 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
 
         const auto& allocationCallbacks = ((DeviceBase&)m_Device).GetAllocationCallbacks();
         m.nis = Allocate<Nis>(allocationCallbacks);
+        if (!m.nis)
+            return Result::OUT_OF_MEMORY;
 
         { // Pipeline layout
             RootConstantDesc rootConstants = {};
@@ -1051,6 +1053,8 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
     if (upscalerDesc.type == UpscalerType::FSR) {
         const auto& allocationCallbacks = ((DeviceBase&)m_Device).GetAllocationCallbacks();
         m.ffx = Allocate<Ffx>(allocationCallbacks);
+        if (!m.ffx)
+            return Result::OUT_OF_MEMORY;
         m.ffx->sdkLock = &FfxGetSdkLock(deviceDesc.graphicsAPI);
         ExclusiveScope lock(*m.ffx->sdkLock);
 
@@ -1160,6 +1164,8 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
     if (upscalerDesc.type == UpscalerType::XESS) {
         const auto& allocationCallbacks = ((DeviceBase&)m_Device).GetAllocationCallbacks();
         m.xess = Allocate<Xess>(allocationCallbacks);
+        if (!m.xess)
+            return Result::OUT_OF_MEMORY;
 
 #    if NRI_ENABLE_D3D12_SUPPORT
         if (deviceDesc.graphicsAPI == GraphicsAPI::D3D12) {
@@ -1240,6 +1246,8 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
 
         const auto& allocationCallbacks = ((DeviceBase&)m_Device).GetAllocationCallbacks();
         m.ngx = Allocate<Ngx>(allocationCallbacks);
+        if (!m.ngx)
+            return Result::OUT_OF_MEMORY;
 
         { // Create instance
             ExclusiveScope lock(g_ngx.lock);
@@ -1474,6 +1482,8 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
 
         const auto& allocationCallbacks = ((DeviceBase&)m_Device).GetAllocationCallbacks();
         m.metalfx = Allocate<MetalFx>(allocationCallbacks);
+        if (!m.metalfx)
+            return Result::OUT_OF_MEMORY;
 
         // Scalers are created on the first dispatch, because resource formats are unknown here
         MTL4::CompilerDescriptor* compilerDesc = MTL4::CompilerDescriptor::alloc()->init();

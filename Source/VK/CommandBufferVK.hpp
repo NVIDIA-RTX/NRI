@@ -457,10 +457,17 @@ CommandBufferVK::~CommandBufferVK() {
     }
 }
 
-void CommandBufferVK::Create(VkCommandPool commandPool, VkCommandBuffer commandBuffer, QueueType type) {
+Result CommandBufferVK::Create(VkCommandPool commandPool, QueueType type) {
+    const VkCommandBufferAllocateInfo info = {VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO, nullptr, commandPool, VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1};
+
+    const auto& vk = m_Device.GetDispatchTable();
+    VkResult vkResult = vk.AllocateCommandBuffers(m_Device, &info, &m_Handle);
+    NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkAllocateCommandBuffers");
+
     m_CommandPool = commandPool;
-    m_Handle = commandBuffer;
     m_Type = type;
+
+    return Result::SUCCESS;
 }
 
 Result CommandBufferVK::Create(const CommandBufferVKDesc& commandBufferVKDesc) {

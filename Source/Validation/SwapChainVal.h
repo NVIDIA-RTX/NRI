@@ -13,6 +13,8 @@ struct SwapChainVal final : public ObjectVal {
 
     ~SwapChainVal();
 
+    Result Create();
+
     inline SwapChain* GetImpl() const {
         return (SwapChain*)m_Impl;
     }

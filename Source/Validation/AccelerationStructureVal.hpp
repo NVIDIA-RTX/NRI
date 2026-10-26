@@ -42,11 +42,11 @@ NRI_INLINE Result AccelerationStructureVal::CreateDescriptor(Descriptor*& descri
     NRI_RETURN_ON_FAILURE(&m_Device, IsBoundToMemory(), Result::INVALID_ARGUMENT, "AccelerationStructure is not bound to memory");
 
     Descriptor* descriptorImpl = nullptr;
-    const Result result = GetRayTracingInterfaceImpl().CreateAccelerationStructureDescriptor(*GetImpl(), descriptorImpl);
+    Result result = GetRayTracingInterfaceImpl().CreateAccelerationStructureDescriptor(*GetImpl(), descriptorImpl);
 
     descriptor = nullptr;
     if (result == Result::SUCCESS)
-        descriptor = (Descriptor*)Allocate<DescriptorVal>(m_Device.GetAllocationCallbacks(), m_Device, descriptorImpl, DescriptorType::ACCELERATION_STRUCTURE);
+        result = m_Device.WrapImplementation<DescriptorVal>(descriptor, descriptorImpl, GetCoreInterfaceImpl().DestroyDescriptor, DescriptorType::ACCELERATION_STRUCTURE);
 
     return result;
 }

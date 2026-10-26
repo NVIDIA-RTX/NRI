@@ -36,20 +36,7 @@ NRI_INLINE void CommandAllocatorVK::SetDebugName(const char* name) {
 NRI_INLINE Result CommandAllocatorVK::CreateCommandBuffer(CommandBuffer*& commandBuffer) {
     ExclusiveScope lock(m_Lock);
 
-    const VkCommandBufferAllocateInfo info = {VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO, nullptr, m_Handle, VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1};
-
-    VkCommandBuffer commandBufferHandle = VK_NULL_HANDLE;
-
-    const auto& vk = m_Device.GetDispatchTable();
-    VkResult vkResult = vk.AllocateCommandBuffers(m_Device, &info, &commandBufferHandle);
-    NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkAllocateCommandBuffers");
-
-    CommandBufferVK* commandBufferVK = Allocate<CommandBufferVK>(m_Device.GetAllocationCallbacks(), m_Device);
-    commandBufferVK->Create(m_Handle, commandBufferHandle, m_Type);
-
-    commandBuffer = (CommandBuffer*)commandBufferVK;
-
-    return Result::SUCCESS;
+    return m_Device.CreateImplementation<CommandBufferVK>(commandBuffer, m_Handle, m_Type);
 }
 
 NRI_INLINE void CommandAllocatorVK::Reset() {

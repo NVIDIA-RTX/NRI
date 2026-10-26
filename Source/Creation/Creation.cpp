@@ -44,7 +44,7 @@ Result CreateDeviceWGPU(const DeviceCreationDesc& deviceCreationDesc, DeviceBase
 Result CreateDeviceMetal(const DeviceCreationDesc& deviceCreationDesc, const DeviceCreationMetalDesc& deviceCreationMetalDesc, DeviceBase*& device);
 void UpdateAdaptersMetal(AdapterDesc* adapterDescs, uint32_t& adapterDescNum, uint32_t adapterDescMaxNum);
 bool GetAdapterDescMetal(AdapterDesc& adapterDesc, void* device);
-DeviceBase* CreateDeviceValidation(const DeviceCreationDesc& deviceCreationDesc, DeviceBase& device);
+Result CreateDeviceValidation(const DeviceCreationDesc& deviceCreationDesc, DeviceBase& impl, DeviceBase*& device);
 
 static constexpr uint64_t Hash(const char* name) {
     return *name != 0 ? *name ^ (33 * Hash(name + 1)) : 5381;
@@ -690,13 +690,12 @@ static Result FinalizeDeviceCreation(const DeviceCreationDesc& deviceCreationDes
     MaybeUnused(deviceCreationDesc);
 #if NRI_ENABLE_VALIDATION_SUPPORT
     if (deviceCreationDesc.enableNRIValidation && deviceCreationDesc.graphicsAPI != GraphicsAPI::NONE) {
-        Device* deviceVal = (Device*)CreateDeviceValidation(deviceCreationDesc, deviceImpl);
-        if (!deviceVal) {
-            nriDestroyDevice((Device*)&deviceImpl);
-            return Result::FAILURE;
-        }
+        DeviceBase* deviceVal = nullptr;
+        Result result = CreateDeviceValidation(deviceCreationDesc, deviceImpl, deviceVal);
+        if (result != Result::SUCCESS)
+            return result;
 
-        device = deviceVal;
+        device = (Device*)deviceVal;
     } else
 #endif
         device = (Device*)&deviceImpl;
@@ -900,6 +899,7 @@ NRI_API void NRI_CALL nriSetThreadName(const char*) {
 #endif
 
 NRI_API Result NRI_CALL nriCreateDevice(const DeviceCreationDesc& deviceCreationDesc, Device*& device) {
+    device = nullptr;
     Result result = Result::UNSUPPORTED;
     DeviceBase* deviceImpl = nullptr;
 
@@ -988,6 +988,7 @@ NRI_API Result NRI_CALL nriCreateDevice(const DeviceCreationDesc& deviceCreation
 }
 
 NRI_API Result NRI_CALL nriCreateDeviceFromMetalDevice(const DeviceCreationMetalDesc& deviceCreationMetalDesc, Device*& device) {
+    device = nullptr;
     DeviceCreationDesc deviceCreationDesc = {};
     deviceCreationDesc.graphicsAPI = GraphicsAPI::METAL;
 
@@ -1043,6 +1044,7 @@ NRI_API Result NRI_CALL nriCreateDeviceFromMetalDevice(const DeviceCreationMetal
 }
 
 NRI_API Result NRI_CALL nriCreateDeviceFromD3D11Device(const DeviceCreationD3D11Desc& deviceCreationD3D11Desc, Device*& device) {
+    device = nullptr;
     DeviceCreationDesc deviceCreationDesc = {};
     deviceCreationDesc.graphicsAPI = GraphicsAPI::D3D11;
 
@@ -1103,6 +1105,7 @@ NRI_API Result NRI_CALL nriCreateDeviceFromD3D11Device(const DeviceCreationD3D11
 }
 
 NRI_API Result NRI_CALL nriCreateDeviceFromD3D12Device(const DeviceCreationD3D12Desc& deviceCreationD3D12Desc, Device*& device) {
+    device = nullptr;
     DeviceCreationD3D12Desc modifiedDeviceCreationD3D12Desc = deviceCreationD3D12Desc;
 
     DeviceCreationDesc deviceCreationDesc = {};
@@ -1163,6 +1166,7 @@ NRI_API Result NRI_CALL nriCreateDeviceFromD3D12Device(const DeviceCreationD3D12
 }
 
 NRI_API Result NRI_CALL nriCreateDeviceFromVKDevice(const DeviceCreationVKDesc& deviceCreationVKDesc, Device*& device) {
+    device = nullptr;
     DeviceCreationVKDesc modifiedDeviceCreationVKDesc = deviceCreationVKDesc;
 
     DeviceCreationDesc deviceCreationDesc = {};

@@ -473,6 +473,21 @@ static inline void Destroy(const AllocationCallbacks& allocationCallbacks, T* ob
     }
 }
 
+template <typename Implementation, typename Interface, typename... Args>
+static inline Result CreateImplementation(const AllocationCallbacks& allocationCallbacks, Interface*& entity, Implementation* impl, Args&&... args) {
+    entity = nullptr;
+    if (!impl)
+        return Result::OUT_OF_MEMORY;
+
+    Result result = impl->Create(std::forward<Args>(args)...);
+    if (result != Result::SUCCESS)
+        Destroy(allocationCallbacks, impl);
+    else
+        entity = (Interface*)impl;
+
+    return result;
+}
+
 constexpr uint64_t MsToUs(uint32_t x) {
     return x * 1000000ull;
 }
