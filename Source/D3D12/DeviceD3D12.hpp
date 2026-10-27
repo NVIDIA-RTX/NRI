@@ -1211,6 +1211,8 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     m_Desc.features.filterOpMinMax = levels.MaxSupportedFeatureLevel >= D3D_FEATURE_LEVEL_11_1 ? true : false;
     m_Desc.features.logicOp = options.OutputMergerLogicOp != 0;
     m_Desc.features.depthBoundsTest = options2.DepthBoundsTestSupported != 0;
+    m_Desc.features.sharedResources = true;
+    m_Desc.features.sharedFences = true;
     m_Desc.features.drawIndirectCount = true;
     m_Desc.features.lineSmoothing = true;
     m_Desc.features.pipelineStatistics = true;

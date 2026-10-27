@@ -1,12 +1,14 @@
 // © 2021 NVIDIA Corporation
 
-Result FenceD3D12::Create(uint64_t initialValue) {
-    if (initialValue != SWAPCHAIN_SEMAPHORE) {
-        HRESULT hr = m_Device->CreateFence(initialValue, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_Fence));
+Result FenceD3D12::Create(const FenceDesc& fenceDesc) {
+    if (fenceDesc.initialValue != SWAPCHAIN_SEMAPHORE) {
+        D3D12_FENCE_FLAGS flags = fenceDesc.shared ? D3D12_FENCE_FLAG_SHARED : D3D12_FENCE_FLAG_NONE;
+        HRESULT hr = m_Device->CreateFence(fenceDesc.initialValue, flags, IID_PPV_ARGS(&m_Fence));
         NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::CreateFence");
 
         m_Event = CreateEventA(nullptr, FALSE, FALSE, nullptr);
-    }
+    } else if (fenceDesc.shared)
+        return Result::UNSUPPORTED; // no binary fences
 
     return Result::SUCCESS;
 }
@@ -14,6 +16,19 @@ Result FenceD3D12::Create(uint64_t initialValue) {
 Result FenceD3D12::Create(const FenceD3D12Desc& fenceD3D12Desc) {
     m_Fence = fenceD3D12Desc.d3d12Fence;
     m_Event = CreateEventA(nullptr, FALSE, FALSE, nullptr);
+
+    return Result::SUCCESS;
+}
+
+Result FenceD3D12::GetSharedHandle(SharedHandle& sharedHandle) const {
+    sharedHandle = {};
+
+    HANDLE handle = nullptr;
+    HRESULT hr = m_Device->CreateSharedHandle(m_Fence.GetInterface(), nullptr, GENERIC_ALL, nullptr, &handle);
+    NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::CreateSharedHandle");
+
+    sharedHandle.handle = handle;
+    sharedHandle.type = SharedHandleType::D3D12_FENCE;
 
     return Result::SUCCESS;
 }

@@ -300,7 +300,7 @@ constexpr std::array<D3D12_BARRIER_LAYOUT, (size_t)Layout::MAX_NUM> g_BarrierLay
 NRI_VALIDATE_ARRAY(g_BarrierLayouts);
 
 static inline bool IsCopyQueue(const Queue* queue) {
-    return queue && ((const QueueD3D12*)queue)->GetType() == D3D12_COMMAND_LIST_TYPE_COPY;
+    return queue && queue != EXTERNAL_QUEUE && ((const QueueD3D12*)queue)->GetType() == D3D12_COMMAND_LIST_TYPE_COPY;
 }
 
 static inline D3D12_BARRIER_LAYOUT GetBarrierLayout(Layout layout, AccessBits accessBits, bool isCopyQueue) {

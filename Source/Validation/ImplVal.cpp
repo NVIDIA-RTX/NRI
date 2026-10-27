@@ -447,8 +447,8 @@ static Result NRI_CALL CreateCommandBuffer(CommandAllocator& commandAllocator, C
     return ((CommandAllocatorVal&)commandAllocator).CreateCommandBuffer(commandBuffer);
 }
 
-static Result NRI_CALL CreateFence(Device& device, uint64_t initialValue, Fence*& fence) {
-    return ((DeviceVal&)device).CreateFence(initialValue, fence);
+static Result NRI_CALL CreateFence(Device& device, const FenceDesc& fenceDesc, Fence*& fence) {
+    return ((DeviceVal&)device).CreateFence(fenceDesc, fence);
 }
 
 static Result NRI_CALL CreateDescriptorPool(Device& device, const DescriptorPoolDesc& descriptorPoolDesc, DescriptorPool*& descriptorPool) {
@@ -1041,6 +1041,33 @@ static uint64_t NRI_CALL GetDescriptorNativeObject(const Descriptor* descriptor)
     return ((DescriptorVal*)descriptor)->GetNativeObject();
 }
 
+static Result NRI_CALL GetBufferSharedHandle(const Buffer& buffer, SharedHandle& sharedHandle) {
+    const BufferVal& bufferVal = (const BufferVal&)buffer;
+    sharedHandle = {};
+
+    NRI_RETURN_ON_FAILURE(&bufferVal.GetDevice(), bufferVal.GetDesc().shared, Result::INVALID_ARGUMENT, "'shared' is false");
+
+    return bufferVal.GetDevice().GetCoreInterfaceImpl().GetBufferSharedHandle(*bufferVal.GetImpl(), sharedHandle);
+}
+
+static Result NRI_CALL GetTextureSharedHandle(const Texture& texture, SharedHandle& sharedHandle) {
+    const TextureVal& textureVal = (const TextureVal&)texture;
+    sharedHandle = {};
+
+    NRI_RETURN_ON_FAILURE(&textureVal.GetDevice(), textureVal.GetDesc().shared, Result::INVALID_ARGUMENT, "'shared' is false");
+
+    return textureVal.GetDevice().GetCoreInterfaceImpl().GetTextureSharedHandle(*textureVal.GetImpl(), sharedHandle);
+}
+
+static Result NRI_CALL GetFenceSharedHandle(const Fence& fence, SharedHandle& sharedHandle) {
+    const FenceVal& fenceVal = (const FenceVal&)fence;
+    sharedHandle = {};
+
+    NRI_RETURN_ON_FAILURE(&fenceVal.GetDevice(), fenceVal.IsShared(), Result::INVALID_ARGUMENT, "'shared' is false");
+
+    return fenceVal.GetDevice().GetCoreInterfaceImpl().GetFenceSharedHandle(*fenceVal.GetImpl(), sharedHandle);
+}
+
 Result DeviceVal::FillFunctionTable(CoreInterface& table) const {
     table.GetDeviceDesc = ::GetDeviceDesc;
     table.GetBufferDesc = ::GetBufferDesc;
@@ -1156,6 +1183,9 @@ Result DeviceVal::FillFunctionTable(CoreInterface& table) const {
     table.GetBufferNativeObject = ::GetBufferNativeObject;
     table.GetTextureNativeObject = ::GetTextureNativeObject;
     table.GetDescriptorNativeObject = ::GetDescriptorNativeObject;
+    table.GetBufferSharedHandle = ::GetBufferSharedHandle;
+    table.GetTextureSharedHandle = ::GetTextureSharedHandle;
+    table.GetFenceSharedHandle = ::GetFenceSharedHandle;
 
     return Result::SUCCESS;
 }

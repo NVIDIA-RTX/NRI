@@ -19,8 +19,9 @@ struct FenceVK final : public DebugNameBase {
 
     ~FenceVK();
 
-    Result Create(uint64_t initialValue);
+    Result Create(const FenceDesc& fenceDesc);
     Result Create(const FenceVKDesc& fenceVKDesc);
+    Result GetSharedHandle(SharedHandle& sharedHandle) const;
 
     //================================================================================================================
     // DebugNameBase
@@ -38,6 +39,7 @@ struct FenceVK final : public DebugNameBase {
 private:
     DeviceVK& m_Device;
     VkSemaphore m_Handle = VK_NULL_HANDLE;
+    mutable void* m_SharedHandle = nullptr; // Win32: the one export of "m_Handle", duplicated for each "GetSharedHandle"
     bool m_OwnsNativeObjects = true;
 };
 

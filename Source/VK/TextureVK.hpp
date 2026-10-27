@@ -8,6 +8,11 @@ TextureVK::~TextureVK() {
             vmaDestroyImage(m_Device.GetVma(), m_Handle, m_VmaAllocation);
         else
             vk.DestroyImage(m_Device, m_Handle, m_Device.GetVkAllocationCallbacks());
+
+        CloseSharedHandle(m_SharedHandle);
+
+        if (m_SharedMemory)
+            vk.FreeMemory(m_Device, m_SharedMemory, m_Device.GetVkAllocationCallbacks());
     }
 }
 
@@ -20,6 +25,14 @@ Result TextureVK::Create(const TextureDesc& textureDesc) {
 
     VideoResourceProfileListVK videoProfiles = {};
     m_Device.AppendVideoProfileList(m_Desc, info, videoProfiles);
+
+    VkExternalMemoryImageCreateInfo externalInfo = {VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO};
+    externalInfo.handleTypes = SHARED_MEMORY_HANDLE_TYPE;
+
+    if (m_Desc.shared) {
+        externalInfo.pNext = info.pNext;
+        info.pNext = &externalInfo;
+    }
 
     const auto& vk = m_Device.GetDispatchTable();
     VkImage handle = VK_NULL_HANDLE;
@@ -97,6 +110,24 @@ Result TextureVK::AllocateAndBindMemory(MemoryLocation memoryLocation, float pri
     if (memoryTypeInfo.mustBeDedicated)
         committed = true;
 
+    if (m_Desc.shared) {
+        Result result = m_Device.AllocateSharedMemory(memoryDesc, priority, VK_NULL_HANDLE, m_Handle, m_SharedMemory);
+        if (result != Result::SUCCESS)
+            return result;
+
+        m_SharedSize = memoryDesc.size;
+
+        VkBindImageMemoryInfo bindImageMemoryInfo = {VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO};
+        bindImageMemoryInfo.image = m_Handle;
+        bindImageMemoryInfo.memory = m_SharedMemory;
+
+        const auto& vk = m_Device.GetDispatchTable();
+        VkResult vkResult = vk.BindImageMemory2(m_Device, 1, &bindImageMemoryInfo);
+        NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkBindImageMemory2");
+
+        return Result::SUCCESS;
+    }
+
     VkMemoryRequirements memoryRequirements = {};
     memoryRequirements.size = memoryDesc.size;
     memoryRequirements.alignment = memoryDesc.alignment;
@@ -134,6 +165,10 @@ Result TextureVK::BindMemory(const MemoryVK& memory, uint64_t offset) {
     NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkBindImageMemory2");
 
     return Result::SUCCESS;
+}
+
+Result TextureVK::GetSharedHandle(SharedHandle& sharedHandle) const {
+    return m_Device.GetSharedMemoryHandle(m_SharedMemory, m_SharedSize, m_SharedHandle, sharedHandle);
 }
 
 void TextureVK::GetMemoryDesc(MemoryLocation memoryLocation, MemoryDesc& memoryDesc) const {

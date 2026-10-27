@@ -211,6 +211,9 @@ struct DeviceVK final : public DeviceBase {
     VkRenderPass GetOrCreateRenderPass(const RenderPassDesc& desc);
     VkFramebuffer GetOrCreateFramebuffer(const FramebufferDesc& desc);
     void FillCreateInfo(const BufferDesc& bufferDesc, VkBufferCreateInfo& info) const;
+    Result AllocateSharedMemory(const MemoryDesc& memoryDesc, float priority, VkBuffer buffer, VkImage image, VkDeviceMemory& memory);
+    Result GetSharedMemoryHandle(VkDeviceMemory memory, uint64_t size, void*& exportedHandle, SharedHandle& sharedHandle);
+    Result GetSharedSemaphoreHandle(VkSemaphore semaphore, void*& exportedHandle, SharedHandle& sharedHandle);
     void FillCreateInfo(const TextureDesc& bufferDesc, VkImageCreateInfo& info) const;
     void AppendVideoProfileList(const TextureDesc& textureDesc, VkImageCreateInfo& info, VideoResourceProfileListVK& videoProfiles) const; // "videoProfiles" must outlive "info"
     void FillCreateInfo(const SamplerDesc& samplerDesc, VkSamplerCreateInfo& info, VkSamplerReductionModeCreateInfo& reductionModeInfo, VkSamplerCustomBorderColorCreateInfoEXT& borderColorInfo) const;
@@ -337,6 +340,7 @@ private:
     Lock m_Lock;
     Lock m_TransferContextLock;
     Lock m_DeviceLostLock;
+    Lock m_SharedHandleLock;
 };
 
 } // namespace nri

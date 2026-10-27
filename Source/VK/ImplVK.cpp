@@ -96,8 +96,8 @@ static Result NRI_CALL CreateCommandBuffer(CommandAllocator& commandAllocator, C
     return ((CommandAllocatorVK&)commandAllocator).CreateCommandBuffer(commandBuffer);
 }
 
-static Result NRI_CALL CreateFence(Device& device, uint64_t initialValue, Fence*& fence) {
-    return ((DeviceVK&)device).CreateImplementation<FenceVK>(fence, initialValue);
+static Result NRI_CALL CreateFence(Device& device, const FenceDesc& fenceDesc, Fence*& fence) {
+    return ((DeviceVK&)device).CreateImplementation<FenceVK>(fence, fenceDesc);
 }
 
 static Result NRI_CALL CreateDescriptorPool(Device& device, const DescriptorPoolDesc& descriptorPoolDesc, DescriptorPool*& descriptorPool) {
@@ -613,6 +613,18 @@ static uint64_t NRI_CALL GetDescriptorNativeObject(const Descriptor* descriptor)
     return handle;
 }
 
+static Result NRI_CALL GetBufferSharedHandle(const Buffer& buffer, SharedHandle& sharedHandle) {
+    return ((const BufferVK&)buffer).GetSharedHandle(sharedHandle);
+}
+
+static Result NRI_CALL GetTextureSharedHandle(const Texture& texture, SharedHandle& sharedHandle) {
+    return ((const TextureVK&)texture).GetSharedHandle(sharedHandle);
+}
+
+static Result NRI_CALL GetFenceSharedHandle(const Fence& fence, SharedHandle& sharedHandle) {
+    return ((const FenceVK&)fence).GetSharedHandle(sharedHandle);
+}
+
 Result DeviceVK::FillFunctionTable(CoreInterface& table) const {
     table.GetDeviceDesc = ::GetDeviceDesc;
     table.GetBufferDesc = ::GetBufferDesc;
@@ -728,6 +740,9 @@ Result DeviceVK::FillFunctionTable(CoreInterface& table) const {
     table.GetBufferNativeObject = ::GetBufferNativeObject;
     table.GetTextureNativeObject = ::GetTextureNativeObject;
     table.GetDescriptorNativeObject = ::GetDescriptorNativeObject;
+    table.GetBufferSharedHandle = ::GetBufferSharedHandle;
+    table.GetTextureSharedHandle = ::GetTextureSharedHandle;
+    table.GetFenceSharedHandle = ::GetFenceSharedHandle;
 
     return Result::SUCCESS;
 }

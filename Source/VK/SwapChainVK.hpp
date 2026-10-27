@@ -439,7 +439,8 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
 
     // Latency fence
     if (allowLowLatency) {
-        Result result = m_Device.CreateImplementation<FenceVK>(m_LatencyFence, 0);
+        FenceDesc fenceDesc = {};
+        Result result = m_Device.CreateImplementation<FenceVK>(m_LatencyFence, fenceDesc);
         if (result != Result::SUCCESS)
             return result;
     }

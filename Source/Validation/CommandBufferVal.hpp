@@ -1230,8 +1230,11 @@ NRI_INLINE void CommandBufferVal::Barrier(const BarrierDesc& barrierDesc) {
     Scratch<BufferBarrierDesc> buffers = NRI_ALLOCATE_SCRATCH(m_Device, BufferBarrierDesc, barrierDesc.bufferNum);
     if (barrierDesc.bufferNum > 0) {
         memcpy(buffers, barrierDesc.buffers, sizeof(BufferBarrierDesc) * barrierDesc.bufferNum);
-        for (uint32_t i = 0; i < barrierDesc.bufferNum; i++)
+        for (uint32_t i = 0; i < barrierDesc.bufferNum; i++) {
             buffers[i].buffer = NRI_GET_IMPL(Buffer, barrierDesc.buffers[i].buffer);
+            buffers[i].srcQueue = barrierDesc.buffers[i].srcQueue == EXTERNAL_QUEUE ? EXTERNAL_QUEUE : NRI_GET_IMPL(Queue, barrierDesc.buffers[i].srcQueue);
+            buffers[i].dstQueue = barrierDesc.buffers[i].dstQueue == EXTERNAL_QUEUE ? EXTERNAL_QUEUE : NRI_GET_IMPL(Queue, barrierDesc.buffers[i].dstQueue);
+        }
     }
 
     Scratch<TextureBarrierDesc> textures = NRI_ALLOCATE_SCRATCH(m_Device, TextureBarrierDesc, barrierDesc.textureNum);
@@ -1239,8 +1242,8 @@ NRI_INLINE void CommandBufferVal::Barrier(const BarrierDesc& barrierDesc) {
         memcpy(textures, barrierDesc.textures, sizeof(TextureBarrierDesc) * barrierDesc.textureNum);
         for (uint32_t i = 0; i < barrierDesc.textureNum; i++) {
             textures[i].texture = NRI_GET_IMPL(Texture, barrierDesc.textures[i].texture);
-            textures[i].srcQueue = NRI_GET_IMPL(Queue, barrierDesc.textures[i].srcQueue);
-            textures[i].dstQueue = NRI_GET_IMPL(Queue, barrierDesc.textures[i].dstQueue);
+            textures[i].srcQueue = barrierDesc.textures[i].srcQueue == EXTERNAL_QUEUE ? EXTERNAL_QUEUE : NRI_GET_IMPL(Queue, barrierDesc.textures[i].srcQueue);
+            textures[i].dstQueue = barrierDesc.textures[i].dstQueue == EXTERNAL_QUEUE ? EXTERNAL_QUEUE : NRI_GET_IMPL(Queue, barrierDesc.textures[i].dstQueue);
         }
     }
 

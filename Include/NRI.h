@@ -79,7 +79,7 @@ NriStruct(CoreInterface) {
     // Create (doesn't assume allocation of big chunks of memory on the device, but it happens for some entities implicitly)
     Nri(Result)         (NRI_CALL *CreateCommandAllocator)          (NriRef(Queue) queue, NriOut NriRef(CommandAllocator*) commandAllocator);
     Nri(Result)         (NRI_CALL *CreateCommandBuffer)             (NriRef(CommandAllocator) commandAllocator, NriOut NriRef(CommandBuffer*) commandBuffer);
-    Nri(Result)         (NRI_CALL *CreateFence)                     (NriRef(Device) device, uint64_t initialValue, NriOut NriRef(Fence*) fence);
+    Nri(Result)         (NRI_CALL *CreateFence)                     (NriRef(Device) device, const NriRef(FenceDesc) fenceDesc, NriOut NriRef(Fence*) fence);
     Nri(Result)         (NRI_CALL *CreateDescriptorPool)            (NriRef(Device) device, const NriRef(DescriptorPoolDesc) descriptorPoolDesc, NriOut NriRef(DescriptorPool*) descriptorPool);
     Nri(Result)         (NRI_CALL *CreatePipelineLayout)            (NriRef(Device) device, const NriRef(PipelineLayoutDesc) pipelineLayoutDesc, NriOut NriRef(PipelineLayout*) pipelineLayout);
     Nri(Result)         (NRI_CALL *CreateGraphicsPipeline)          (NriRef(Device) device, const NriRef(GraphicsPipelineDesc) graphicsPipelineDesc, NriOut NriRef(Pipeline*) pipeline);
@@ -282,6 +282,11 @@ NriStruct(CoreInterface) {
     uint64_t            (NRI_CALL *GetBufferNativeObject)           (const NriPtr(Buffer) buffer);               // ID3D11Buffer*                   | ID3D12Resource*             | VkBuffer                           | WGPUBuffer
     uint64_t            (NRI_CALL *GetTextureNativeObject)          (const NriPtr(Texture) texture);             // ID3D11Resource*                 | ID3D12Resource*             | VkImage                            | WGPUTexture
     uint64_t            (NRI_CALL *GetDescriptorNativeObject)       (const NriPtr(Descriptor) descriptor);       // ID3D11View/ID3D11SamplerState*  | D3D12_CPU_DESCRIPTOR_HANDLE | VkImageView/VkBufferView/VkSampler | WGPUTextureView/WGPUBuffer/WGPUSampler
+
+    // Shared handles (see "BufferDesc::shared", "TextureDesc::shared" and "FenceDesc::shared"): every call creates a new handle, which the caller owns
+    Nri(Result)         (NRI_CALL *GetBufferSharedHandle)           (const NriRef(Buffer) buffer, NriOut NriRef(SharedHandle) sharedHandle);
+    Nri(Result)         (NRI_CALL *GetTextureSharedHandle)          (const NriRef(Texture) texture, NriOut NriRef(SharedHandle) sharedHandle);
+    Nri(Result)         (NRI_CALL *GetFenceSharedHandle)            (const NriRef(Fence) fence, NriOut NriRef(SharedHandle) sharedHandle);
 };
 
 NriNamespaceEnd
