@@ -2,10 +2,10 @@
 
 [![Status](https://github.com/NVIDIA-RTX/NRI/actions/workflows/build.yml/badge.svg)](https://github.com/NVIDIA-RTX/NRI/actions/workflows/build.yml)
 
-*NRI* is a modular, extensible, low-level abstract rendering interface designed to expose the low-level features of *D3D12* and *Vulkan* GAPIs. At the same time, it aims to simplify usage and reduce the amount of code needed (especially compared with VK).
+*NRI* is a modular, extensible, low-level rendering interface for *D3D12*, *Vulkan*, *D3D11*, *WebGPU* and *Metal*, with an API suitable for console backends. It exposes low-level GAPI features while simplifying usage and reducing the amount of code needed (especially compared with *Vulkan*).
 
 Goals:
-- Generalization and unification of *D3D12* ([spec](https://microsoft.github.io/DirectX-Specs/)) and VK ([spec](https://registry.khronos.org/vulkan/specs/latest/html/vkspec.html))
+- Generalization and unification of GAPIs, building on the explicit models of *D3D12* ([spec](https://microsoft.github.io/DirectX-Specs/)) and *Vulkan* ([spec](https://registry.khronos.org/vulkan/specs/latest/html/vkspec.html))
 - Explicitness (providing access to low-level features of modern GAPIs)
 - Quality-of-life and high-level extensions (e.g., streaming and upscaling)
 - Low overhead
@@ -29,7 +29,11 @@ Supported GAPIs:
 
 ## WHY NRI?
 
-There is [NVRHI](https://github.com/NVIDIA-RTX/NVRHI), which offers a *D3D11*-like abstraction layer, implying some overhead. There is [vkd3d-proton](https://github.com/HansKristian-Work/vkd3d-proton), which was designed for *D3D12* emulation using *Vulkan*. There is [nvpro-samples](https://github.com/nvpro-samples), which explores all "dark corners" of *Vulkan* usage, but does not offer any cross-API support. There are other good projects, but *NRI* was designed to offer a reasonably simple, low-overhead, and high-performance render interface suitable for game development, professional rendering and hobby projects. Additionally, *NRI* can serve as middleware for integrations. For instance, the [NRD integration layer](https://github.com/NVIDIA-RTX/NRD/tree/master/Integration) is based on *NRI*, providing multi-GAPI support within a single codebase.
+There is [NVRHI](https://github.com/NVIDIA-RTX/NVRHI), which offers a higher-level abstraction with optional automatic barriers and automatic resource lifetime management, reducing application-side bookkeeping. In our measured workloads, NVRHI ([`2e21b39`](https://github.com/NVIDIA-RTX/NVRHI/commit/2e21b39c1eddd9661cf6728b165c132412708869), 2026.10.27) was 3–8× slower on the CPU than *NRI*. There is [vkd3d-proton](https://github.com/HansKristian-Work/vkd3d-proton), which implements *D3D12* using *Vulkan*. There is [nvpro-samples](https://github.com/nvpro-samples), which provides *Vulkan*-focused samples and tutorials. These projects address different needs.
+
+*NRI* was designed to offer a reasonably simple, low-overhead, and high-performance render interface suitable for game development, professional rendering and hobby projects. Additionally, *NRI* can serve as middleware for integrations. For instance, the [NRD integration layer](https://github.com/NVIDIA-RTX/NRD/tree/master/Integration) is based on *NRI*, providing multi-GAPI support within a single codebase.
+
+*NRI* is console friendly. Console backends for *Nintendo Switch (NVN)*, *PlayStation 5 (AGC)* and *Xbox (D3D12.x)* are possible. These are not included in this public repository and cannot be maintained by NVIDIA. Authorized developers may maintain them in access-controlled repositories. Generic API fixes for console portability are welcome here.
 
 ## KEY FEATURES
  - *Multi-API support* - a unified interface for *D3D12*, *Vulkan*, *D3D11*, *WebGPU*, and native *Metal 4* (default *D3D11* behavior is changed to match *D3D12*/VK using *NVAPI* or **AMD AGS** libraries, where applicable)
@@ -37,7 +41,7 @@ There is [NVRHI](https://github.com/NVIDIA-RTX/NVRHI), which offers a *D3D11*-li
  - *High performance* - low overhead, with support for user-provided memory allocators
  - *Modern hardware tech* - support for Ray Tracing, Mesh Shaders, descriptor indexing (including directly indexed descriptor heaps) and more
  - *Mobile-ready* - optimized for Tile-Based Rendering (TBR/TBDR) architectures and friendly to mobile-oriented API designs
- - *Portable API shape* - maps cleanly to constrained GAPIs, including WebGPU and consoles
+ - *Portable API shape* - explicit resource, command and synchronization models suitable for console GAPIs, with capability reporting for optional features
  - *D3D12 Ultimate* - full support, including Enhanced Barriers
  - *Platform Flexibility* - Windows, Linux, macOS, iOS, and Android support
  - *Developer Experience* - integrated GAPI and NRI validation, VK [printf](https://github.com/KhronosGroup/Vulkan-ValidationLayers/blob/main/docs/debug_printf.md), and timeline annotations (GAPI, [NVTX](https://github.com/NVIDIA/NVTX) and [PIX](https://devblogs.microsoft.com/pix/winpixeventruntime/), if "WinPixEventRuntime.dll" is nearby)
@@ -145,7 +149,7 @@ It's safe to compile *NRI* using the default *Agility SDK* and export a specific
 
 ## SUPPORTED VULKAN EXTENSIONS
 
-Required:
+Required for Vulkan 1.2 (core in 1.3+):
 - _VK_KHR_synchronization2_
 
 Required (Apple):
@@ -155,7 +159,7 @@ Supported (instance):
 - _VK_KHR_get_surface_capabilities2_, _VK_KHR_surface_, _VK_KHR_win32_surface_, _VK_KHR_xlib_surface_, _VK_KHR_wayland_surface_, _VK_KHR_android_surface_, _VK_EXT_metal_surface_, _VK_EXT_swapchain_colorspace_, _VK_EXT_debug_utils_, _VK_EXT_surface_maintenance1_
 
 Supported:
-- _VK_KHR_copy_commands2_, _VK_KHR_dynamic_rendering_, _VK_KHR_format_feature_flags2_, _VK_KHR_swapchain_, _VK_KHR_present_id_, _VK_KHR_present_wait_, _VK_KHR_swapchain_mutable_format_, _VK_KHR_push_descriptor_, _VK_KHR_maintenance4_, _VK_KHR_maintenance5_, _VK_KHR_maintenance6_, _VK_KHR_maintenance7_, _VK_KHR_maintenance8_, _VK_KHR_maintenance9_, _VK_KHR_maintenance10_, _VK_KHR_extended_flags_, _VK_KHR_line_rasterization_, _VK_KHR_fragment_shading_rate_, _VK_KHR_pipeline_library_, _VK_KHR_ray_tracing_pipeline_, _VK_KHR_acceleration_structure_ (depends on _VK_KHR_deferred_host_operations_), _VK_KHR_ray_query_, _VK_KHR_ray_tracing_position_fetch_, _VK_KHR_ray_tracing_maintenance1_, _VK_KHR_fragment_shader_barycentric_, _VK_KHR_shader_clock_, _VK_KHR_compute_shader_derivatives_, _VK_KHR_unified_image_layouts_, _VK_KHR_shader_integer_dot_product_, _VK_KHR_shader_untyped_pointers_, _VK_KHR_sampler_ycbcr_conversion_, _VK_KHR_load_store_op_none_, _VK_KHR_dynamic_rendering_local_read_, _VK_EXT_extended_dynamic_state_, _VK_EXT_calibrated_timestamps_, _VK_EXT_pipeline_creation_cache_control_, _VK_EXT_pipeline_robustness_, _VK_EXT_host_image_copy_, _VK_EXT_load_store_op_none_, _VK_EXT_image_robustness_, _VK_EXT_subgroup_size_control_, _VK_EXT_mutable_descriptor_type_, _VK_EXT_descriptor_heap_, _VK_EXT_swapchain_maintenance1_, _VK_EXT_present_mode_fifo_latest_ready_, _VK_EXT_opacity_micromap_, _VK_EXT_sample_locations_, _VK_EXT_conservative_rasterization_, _VK_EXT_mesh_shader_, _VK_EXT_shader_atomic_float_, _VK_EXT_shader_atomic_float2_, _VK_EXT_memory_budget_, _VK_EXT_memory_priority_, _VK_EXT_image_sliced_view_of_3d_, _VK_EXT_custom_border_color_, _VK_EXT_robustness2_, _VK_EXT_fragment_shader_interlock_, _VK_EXT_zero_initialize_device_memory_, _VK_EXT_device_fault_, _VK_KHR_video_queue_, _VK_KHR_video_decode_queue_, _VK_KHR_video_encode_queue_, _VK_KHR_video_decode_h264_, _VK_KHR_video_decode_h265_, _VK_KHR_video_decode_av1_, _VK_KHR_video_encode_h264_, _VK_KHR_video_encode_h265_, _VK_KHR_video_encode_av1_, _VK_KHR_video_maintenance1_, _VK_KHR_video_maintenance2_, _VK_NV_low_latency2_, _VK_NVX_binary_import_, _VK_NVX_image_view_handle_
+- _VK_KHR_external_memory_win32_, _VK_KHR_external_semaphore_win32_, _VK_KHR_external_memory_fd_, _VK_KHR_external_semaphore_fd_, _VK_KHR_copy_commands2_, _VK_KHR_dynamic_rendering_, _VK_KHR_format_feature_flags2_, _VK_KHR_swapchain_, _VK_KHR_present_id_, _VK_KHR_present_wait_, _VK_KHR_swapchain_mutable_format_, _VK_KHR_push_descriptor_, _VK_KHR_maintenance4_, _VK_KHR_maintenance5_, _VK_KHR_maintenance6_, _VK_KHR_maintenance7_, _VK_KHR_maintenance8_, _VK_KHR_maintenance9_, _VK_KHR_maintenance10_, _VK_KHR_extended_flags_, _VK_KHR_line_rasterization_, _VK_KHR_fragment_shading_rate_, _VK_KHR_pipeline_library_, _VK_KHR_ray_tracing_pipeline_, _VK_KHR_acceleration_structure_ (depends on _VK_KHR_deferred_host_operations_), _VK_KHR_ray_query_, _VK_KHR_ray_tracing_position_fetch_, _VK_KHR_ray_tracing_maintenance1_, _VK_KHR_fragment_shader_barycentric_, _VK_KHR_shader_clock_, _VK_KHR_compute_shader_derivatives_, _VK_KHR_unified_image_layouts_, _VK_KHR_shader_integer_dot_product_, _VK_KHR_shader_untyped_pointers_, _VK_KHR_sampler_ycbcr_conversion_, _VK_KHR_load_store_op_none_, _VK_KHR_dynamic_rendering_local_read_, _VK_EXT_extended_dynamic_state_, _VK_EXT_calibrated_timestamps_, _VK_EXT_pipeline_creation_cache_control_, _VK_EXT_pipeline_robustness_, _VK_EXT_host_image_copy_, _VK_EXT_load_store_op_none_, _VK_EXT_image_robustness_, _VK_EXT_subgroup_size_control_, _VK_EXT_mutable_descriptor_type_, _VK_EXT_descriptor_heap_, _VK_EXT_swapchain_maintenance1_, _VK_EXT_present_mode_fifo_latest_ready_, _VK_EXT_opacity_micromap_, _VK_EXT_sample_locations_, _VK_EXT_conservative_rasterization_, _VK_EXT_mesh_shader_, _VK_EXT_shader_atomic_float_, _VK_EXT_shader_atomic_float2_, _VK_EXT_memory_budget_, _VK_EXT_memory_priority_, _VK_EXT_image_sliced_view_of_3d_, _VK_EXT_custom_border_color_, _VK_EXT_robustness2_, _VK_EXT_fragment_shader_interlock_, _VK_EXT_zero_initialize_device_memory_, _VK_EXT_device_fault_, _VK_KHR_video_queue_, _VK_KHR_video_decode_queue_, _VK_KHR_video_encode_queue_, _VK_KHR_video_decode_h264_, _VK_KHR_video_decode_h265_, _VK_KHR_video_decode_av1_, _VK_KHR_video_encode_h264_, _VK_KHR_video_encode_h265_, _VK_KHR_video_encode_av1_, _VK_KHR_video_maintenance1_, _VK_KHR_video_maintenance2_, _VK_NV_low_latency2_, _VK_NVX_binary_import_, _VK_NVX_image_view_handle_
 
 ## SAMPLES OVERVIEW
 
@@ -178,22 +182,22 @@ Supported:
 
 ## ENTITIES
 
-| NRI                     | *D3D11*                                 | *D3D12*                         | VK                           | WGPU                                      |
-|-------------------------|-----------------------------------------|---------------------------------|------------------------------|-------------------------------------------|
-| `Device`                | `ID3D11Device`                          | `ID3D12Device`                  | `VkDevice`                   | `WGPUDevice`                              |
-| `CommandBuffer`         | `ID3D11DeviceContext` (deferred)        | `ID3D12CommandList`             | `VkCommandBuffer`            | `WGPUCommandBuffer`                       |
-| `Queue`                 | `ID3D11DeviceContext` (immediate)       | `ID3D12CommandQueue`            | `VkQueue`                    | `WGPUQueue`                               |
-| `Fence`                 | `ID3D11Fence`                           | `ID3D12Fence`                   | `VkSemaphore` (timeline)     | N/A                                       |
-| `CommandAllocator`      | N/A                                     | `ID3D12CommandAllocator`        | `VkCommandPool`              | N/A                                       |
-| `Buffer`                | `ID3D11Buffer`                          | `ID3D12Resource`                | `VkBuffer`                   | `WGPUBuffer`                              |
-| `Texture`               | `ID3D11Texture`                         | `ID3D12Resource`                | `VkImage`                    | `WGPUTexture`                             |
-| `Memory`                | N/A                                     | `ID3D12Heap`                    | `VkDeviceMemory`             | N/A                                       |
-| `Descriptor`            | `ID3D11*View` or `ID3D11SamplerState`   | `D3D12_CPU_DESCRIPTOR_HANDLE`   | `Vk*View` or `VkSampler`     | `WGPUTextureView`, `WGPUBuffer`, `WGPUSampler` |
-| `DescriptorSet`         | N/A                                     | N/A                             | `VkDescriptorSet`            | N/A                                       |
-| `DescriptorPool`        | N/A                                     | `ID3D12DescriptorHeap`          | `VkDescriptorPool`           | N/A                                       |
-| `PipelineLayout`        | N/A                                     | `ID3D12RootSignature`           | `VkPipelineLayout`           | N/A                                       |
-| `Pipeline`              | `ID3D11*Shader` and `ID3D11*State`      | `ID3D12StateObject`             | `VkPipeline`                 | N/A                                       |
-| `AccelerationStructure` | N/A                                     | `ID3D12Resource`                | `VkAccelerationStructure`    | N/A                                       |
+| NRI                     | *D3D11*                                 | *D3D12*                         | VK                           | WGPU                                      | *Metal 4*                                               |
+|-------------------------|-----------------------------------------|---------------------------------|------------------------------|-------------------------------------------|---------------------------------------------------------|
+| `Device`                | `ID3D11Device`                          | `ID3D12Device`                  | `VkDevice`                   | `WGPUDevice`                              | `MTL::Device`                                           |
+| `CommandBuffer`         | `ID3D11DeviceContext` (deferred)        | `ID3D12CommandList`             | `VkCommandBuffer`            | `WGPUCommandBuffer`                       | `MTL4::CommandBuffer`                                   |
+| `Queue`                 | `ID3D11DeviceContext` (immediate)       | `ID3D12CommandQueue`            | `VkQueue`                    | `WGPUQueue`                               | `MTL4::CommandQueue`                                    |
+| `Fence`                 | `ID3D11Fence`                           | `ID3D12Fence`                   | `VkSemaphore` (timeline)     | N/A                                       | `MTL::SharedEvent`                                      |
+| `CommandAllocator`      | N/A                                     | `ID3D12CommandAllocator`        | `VkCommandPool`              | N/A                                       | `MTL4::CommandAllocator`                                |
+| `Buffer`                | `ID3D11Buffer`                          | `ID3D12Resource`                | `VkBuffer`                   | `WGPUBuffer`                              | `MTL::Buffer`                                           |
+| `Texture`               | `ID3D11Texture`                         | `ID3D12Resource`                | `VkImage`                    | `WGPUTexture`                             | `MTL::Texture`                                          |
+| `Memory`                | N/A                                     | `ID3D12Heap`                    | `VkDeviceMemory`             | N/A                                       | `MTL::Heap`                                             |
+| `Descriptor`            | `ID3D11*View` or `ID3D11SamplerState`   | `D3D12_CPU_DESCRIPTOR_HANDLE`   | `Vk*View` or `VkSampler`     | `WGPUTextureView`, `WGPUBuffer`, `WGPUSampler` | `MTL::Texture`, `MTL::Buffer`, `MTL::SamplerState`      |
+| `DescriptorSet`         | N/A                                     | N/A                             | `VkDescriptorSet`            | `WGPUBindGroup`                           | N/A                                                     |
+| `DescriptorPool`        | N/A                                     | `ID3D12DescriptorHeap`          | `VkDescriptorPool`           | N/A                                       | `MTL::Buffer`                                           |
+| `PipelineLayout`        | N/A                                     | `ID3D12RootSignature`           | `VkPipelineLayout`           | `WGPUPipelineLayout`                      | N/A                                                     |
+| `Pipeline`              | `ID3D11*Shader` and `ID3D11*State`      | `ID3D12PipelineState` / `ID3D12StateObject` | `VkPipeline`                 | `WGPURenderPipeline` / `WGPUComputePipeline` | `MTL::RenderPipelineState` / `MTL::ComputePipelineState` |
+| `AccelerationStructure` | N/A                                     | `ID3D12Resource`                | `VkAccelerationStructure`    | N/A                                       | `MTL::AccelerationStructure`                            |
 
 ## LICENSE
 
