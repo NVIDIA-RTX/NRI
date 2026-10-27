@@ -26,15 +26,44 @@ Result TextureVK::Create(const TextureDesc& textureDesc) {
     VideoResourceProfileListVK videoProfiles = {};
     m_Device.AppendVideoProfileList(m_Desc, info, videoProfiles);
 
+    const auto& vk = m_Device.GetDispatchTable();
+
     VkExternalMemoryImageCreateInfo externalInfo = {VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO};
     externalInfo.handleTypes = SHARED_MEMORY_HANDLE_TYPE;
 
     if (m_Desc.shared) {
+        VkPhysicalDeviceExternalImageFormatInfo externalQuery = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_IMAGE_FORMAT_INFO};
+        externalQuery.pNext = info.pNext;
+        externalQuery.handleType = SHARED_MEMORY_HANDLE_TYPE;
+
+        VkPhysicalDeviceImageFormatInfo2 query = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_FORMAT_INFO_2};
+        query.pNext = &externalQuery;
+        query.format = info.format;
+        query.type = info.imageType;
+        query.tiling = info.tiling;
+        query.usage = info.usage;
+        query.flags = info.flags;
+
+        VkExternalImageFormatProperties externalProps = {VK_STRUCTURE_TYPE_EXTERNAL_IMAGE_FORMAT_PROPERTIES};
+        VkImageFormatProperties2 props = {VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2};
+        props.pNext = &externalProps;
+
+        VkResult vkResult = vk.GetPhysicalDeviceImageFormatProperties2(m_Device, &query, &props);
+        if (vkResult == VK_ERROR_FORMAT_NOT_SUPPORTED)
+            return Result::UNSUPPORTED;
+        NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkGetPhysicalDeviceImageFormatProperties2");
+
+        const VkImageFormatProperties& limits = props.imageFormatProperties;
+        if (!(externalProps.externalMemoryProperties.externalMemoryFeatures & VK_EXTERNAL_MEMORY_FEATURE_EXPORTABLE_BIT)
+            || !(limits.sampleCounts & info.samples)
+            || info.extent.width > limits.maxExtent.width || info.extent.height > limits.maxExtent.height || info.extent.depth > limits.maxExtent.depth
+            || info.mipLevels > limits.maxMipLevels || info.arrayLayers > limits.maxArrayLayers)
+            return Result::UNSUPPORTED;
+
         externalInfo.pNext = info.pNext;
         info.pNext = &externalInfo;
     }
 
-    const auto& vk = m_Device.GetDispatchTable();
     VkImage handle = VK_NULL_HANDLE;
     VkResult vkResult = vk.CreateImage(m_Device, &info, m_Device.GetVkAllocationCallbacks(), &handle);
     NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateImage");

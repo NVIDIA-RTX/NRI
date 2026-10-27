@@ -114,10 +114,7 @@ static inline VkBufferImageCopy GetLegacyBufferImageCopyRegion(const VkBufferIma
 static constexpr VkBufferUsageFlags GetBufferUsageFlags(const BufferDesc& bufferDesc, bool isDeviceAddressSupported) {
     VkBufferUsageFlags flags = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT; // TODO: ban "the opposite" for UPLOAD/READBACK?
 
-    constexpr uint32_t videoUsageMask = (uint32_t)BufferUsageBits::VIDEO_DECODE | (uint32_t)BufferUsageBits::VIDEO_ENCODE;
-    const uint32_t usageMask = (uint32_t)bufferDesc.usage;
-    const bool isVideoOnly = (usageMask & videoUsageMask) != 0 && (usageMask & ~videoUsageMask) == 0;
-    if (isDeviceAddressSupported && !isVideoOnly)
+    if (isDeviceAddressSupported && !IsVideoOnly(bufferDesc))
         flags |= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
 
     if (bufferDesc.usage & BufferUsageBits::VERTEX)
@@ -1670,6 +1667,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         m_Desc.features.sharedResources = IsExtensionSupported(VK_KHR_EXTERNAL_MEMORY_FD_EXTENSION_NAME, desiredDeviceExts);
         m_Desc.features.sharedFences = IsExtensionSupported(VK_KHR_EXTERNAL_SEMAPHORE_FD_EXTENSION_NAME, desiredDeviceExts);
 #endif
+        m_Desc.features.sharedFences = m_Desc.features.sharedFences && (IsSharedFenceSupported(VK_SEMAPHORE_TYPE_TIMELINE) || IsSharedFenceSupported(VK_SEMAPHORE_TYPE_BINARY));
         m_Desc.features.drawIndirectCount = features12.drawIndirectCount;
         m_Desc.features.lineSmoothing = features14.smoothLines;
         m_Desc.features.meshShaderPipelineStats = MeshShaderFeatures.meshShaderQueries == VK_TRUE;
@@ -2269,6 +2267,8 @@ Result DeviceVK::ResolveInstanceDispatchTable(const Vector<const char*>& desired
     GET_INSTANCE_FUNC(GetDeviceGroupPeerMemoryFeatures);
     GET_INSTANCE_FUNC(GetPhysicalDeviceFormatProperties2);
     GET_INSTANCE_FUNC(GetPhysicalDeviceImageFormatProperties2);
+    GET_INSTANCE_FUNC(GetPhysicalDeviceExternalBufferProperties);
+    GET_INSTANCE_FUNC(GetPhysicalDeviceExternalSemaphoreProperties);
     GET_INSTANCE_FUNC(CreateDevice);
     GET_INSTANCE_FUNC(GetDeviceQueue2);
     GET_INSTANCE_FUNC(EnumeratePhysicalDeviceGroups);
@@ -2949,6 +2949,20 @@ NRI_INLINE void DeviceVK::DestroyFramebuffers(VkImageView imageView) {
             entry.desc.attachments.clear();
         }
     }
+}
+
+bool DeviceVK::IsSharedFenceSupported(VkSemaphoreType type) const {
+    VkSemaphoreTypeCreateInfo semaphoreType = {VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO};
+    semaphoreType.semaphoreType = type;
+
+    VkPhysicalDeviceExternalSemaphoreInfo info = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_SEMAPHORE_INFO};
+    info.pNext = &semaphoreType;
+    info.handleType = SHARED_SEMAPHORE_HANDLE_TYPE;
+
+    VkExternalSemaphoreProperties props = {VK_STRUCTURE_TYPE_EXTERNAL_SEMAPHORE_PROPERTIES};
+    m_VK.GetPhysicalDeviceExternalSemaphoreProperties(m_PhysicalDevice, &info, &props);
+
+    return (props.externalSemaphoreFeatures & VK_EXTERNAL_SEMAPHORE_FEATURE_EXPORTABLE_BIT) != 0;
 }
 
 // Shared resources are dedicated allocations outside VMA, so the export info can be chained

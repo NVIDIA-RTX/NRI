@@ -20,6 +20,8 @@ struct DispatchTable {
     VK_FUNC(GetDeviceGroupPeerMemoryFeatures);
     VK_FUNC(GetPhysicalDeviceFormatProperties2);
     VK_FUNC(GetPhysicalDeviceImageFormatProperties2);
+    VK_FUNC(GetPhysicalDeviceExternalBufferProperties);
+    VK_FUNC(GetPhysicalDeviceExternalSemaphoreProperties);
     VK_FUNC(CreateDevice); // may return "VK_ERROR_DEVICE_LOST"
     VK_FUNC(GetDeviceQueue2);
     VK_FUNC(EnumeratePhysicalDeviceGroups);

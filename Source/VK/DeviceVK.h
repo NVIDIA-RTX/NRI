@@ -211,6 +211,7 @@ struct DeviceVK final : public DeviceBase {
     VkRenderPass GetOrCreateRenderPass(const RenderPassDesc& desc);
     VkFramebuffer GetOrCreateFramebuffer(const FramebufferDesc& desc);
     void FillCreateInfo(const BufferDesc& bufferDesc, VkBufferCreateInfo& info) const;
+    bool IsSharedFenceSupported(VkSemaphoreType type) const;
     Result AllocateSharedMemory(const MemoryDesc& memoryDesc, float priority, VkBuffer buffer, VkImage image, VkDeviceMemory& memory);
     Result GetSharedMemoryHandle(VkDeviceMemory memory, uint64_t size, void*& exportedHandle, SharedHandle& sharedHandle);
     Result GetSharedSemaphoreHandle(VkSemaphore semaphore, void*& exportedHandle, SharedHandle& sharedHandle);

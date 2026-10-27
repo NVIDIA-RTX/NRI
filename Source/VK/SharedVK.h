@@ -81,6 +81,13 @@ static inline void CloseSharedHandle(void*& exportedHandle) {
 #endif
 }
 
+static constexpr bool IsVideoOnly(const BufferDesc& bufferDesc) {
+    constexpr uint32_t videoUsageMask = (uint32_t)BufferUsageBits::VIDEO_DECODE | (uint32_t)BufferUsageBits::VIDEO_ENCODE;
+    const uint32_t usageMask = (uint32_t)bufferDesc.usage;
+
+    return (usageMask & videoUsageMask) != 0 && (usageMask & ~videoUsageMask) == 0;
+}
+
 struct MemoryTypeInfo {
     MemoryTypeIndex index;
     MemoryLocation location;

@@ -2,6 +2,13 @@
 
 #include <math.h>
 
+static inline uint32_t GetQueueFamilyIndex(const Queue* queue, bool isConcurrent) {
+    if (queue == EXTERNAL_QUEUE)
+        return VK_QUEUE_FAMILY_EXTERNAL;
+
+    return (queue && !isConcurrent) ? ((const QueueVK*)queue)->GetFamilyIndex() : VK_QUEUE_FAMILY_IGNORED;
+}
+
 static inline VkPipelineBindPoint GetPipelineBindPoint(BindPoint bindPoint) {
     switch (bindPoint) {
         case BindPoint::COMPUTE:
@@ -2649,8 +2656,6 @@ NRI_INLINE void CommandBufferVK::Barrier(const BarrierDesc& barrierDesc) {
     for (uint32_t i = 0; i < barrierDesc.bufferNum; i++) {
         const BufferBarrierDesc& in = barrierDesc.buffers[i];
         const BufferVK& bufferVK = *(const BufferVK*)in.buffer;
-        const QueueVK* srcQueue = (QueueVK*)in.srcQueue;
-        const QueueVK* dstQueue = (QueueVK*)in.dstQueue;
         const bool isConcurrent = bufferVK.IsConcurrent();
 
         VkBufferMemoryBarrier2& out = bufferBarriers[i];
@@ -2659,10 +2664,8 @@ NRI_INLINE void CommandBufferVK::Barrier(const BarrierDesc& barrierDesc) {
         out.srcAccessMask = GetAccessFlags(in.before.access);
         out.dstStageMask = GetPipelineStageFlags(in.after.stages);
         out.dstAccessMask = GetAccessFlags(in.after.access);
-        // Same rules as for textures: "VK_SHARING_MODE_CONCURRENT" (more than one active queue family) needs no transfer between the device's own queues,
-        // "EXCLUSIVE" (one active family) names it, and "EXTERNAL_QUEUE" is the external queue family for either sharing mode
-        out.srcQueueFamilyIndex = in.srcQueue == EXTERNAL_QUEUE ? VK_QUEUE_FAMILY_EXTERNAL : ((in.srcQueue && !isConcurrent) ? srcQueue->GetFamilyIndex() : VK_QUEUE_FAMILY_IGNORED);
-        out.dstQueueFamilyIndex = in.dstQueue == EXTERNAL_QUEUE ? VK_QUEUE_FAMILY_EXTERNAL : ((in.dstQueue && !isConcurrent) ? dstQueue->GetFamilyIndex() : VK_QUEUE_FAMILY_IGNORED);
+        out.srcQueueFamilyIndex = GetQueueFamilyIndex(in.srcQueue, isConcurrent);
+        out.dstQueueFamilyIndex = GetQueueFamilyIndex(in.dstQueue, isConcurrent);
         out.buffer = bufferVK.GetHandle();
         out.offset = 0;
         out.size = VK_WHOLE_SIZE;
@@ -2674,8 +2677,6 @@ NRI_INLINE void CommandBufferVK::Barrier(const BarrierDesc& barrierDesc) {
     for (uint32_t i = 0; i < barrierDesc.textureNum; i++) {
         const TextureBarrierDesc& in = barrierDesc.textures[i];
         const TextureVK& textureVK = *(TextureVK*)in.texture;
-        const QueueVK* srcQueue = (QueueVK*)in.srcQueue;
-        const QueueVK* dstQueue = (QueueVK*)in.dstQueue;
         const bool isConcurrent = textureVK.IsConcurrent();
 
         VkImageAspectFlags aspectFlags = GetImageAspectFlags(in.planes, textureVK.GetDesc().format);
@@ -2688,9 +2689,8 @@ NRI_INLINE void CommandBufferVK::Barrier(const BarrierDesc& barrierDesc) {
         out.dstAccessMask = GetAccessFlags(in.after.access);
         out.oldLayout = GetImageLayout(in.before.layout);
         out.newLayout = GetImageLayout(in.after.layout);
-        // "EXTERNAL_QUEUE" is the external queue family, which a transfer may name for either sharing mode
-        out.srcQueueFamilyIndex = in.srcQueue == EXTERNAL_QUEUE ? VK_QUEUE_FAMILY_EXTERNAL : ((in.srcQueue && !isConcurrent) ? srcQueue->GetFamilyIndex() : VK_QUEUE_FAMILY_IGNORED);
-        out.dstQueueFamilyIndex = in.dstQueue == EXTERNAL_QUEUE ? VK_QUEUE_FAMILY_EXTERNAL : ((in.dstQueue && !isConcurrent) ? dstQueue->GetFamilyIndex() : VK_QUEUE_FAMILY_IGNORED);
+        out.srcQueueFamilyIndex = GetQueueFamilyIndex(in.srcQueue, isConcurrent);
+        out.dstQueueFamilyIndex = GetQueueFamilyIndex(in.dstQueue, isConcurrent);
         out.image = textureVK.GetHandle();
         out.subresourceRange = {
             aspectFlags,

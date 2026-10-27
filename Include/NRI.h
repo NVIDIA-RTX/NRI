@@ -39,7 +39,7 @@ Implicit:
 #pragma once
 
 #define NRI_VERSION 190
-#define NRI_VERSION_DATE "9 October 2026"
+#define NRI_VERSION_DATE "27 October 2026"
 
 // C/C++ compatible interface (auto-selection or via "NRI_FORCE_C" macro)
 #include "NRIDescs.h"
@@ -69,11 +69,12 @@ NriStruct(CoreInterface) {
     const NriRef(TextureDesc)   (NRI_CALL *GetTextureDesc)          (const NriRef(Texture) texture);
     Nri(FormatSupportBits)      (NRI_CALL *GetFormatSupport)        (const NriRef(Device) device, Nri(Format) format);
 
-    // Returns one of the pre-created queues (see "DeviceCreationDesc" or wrapper extensions)
-    // Return codes: "UNSUPPORTED" (no queues of "queueType") or "INVALID_ARGUMENT" (if "queueIndex" is out of bounds).
-    // Getting "COMPUTE" and/or "COPY" queues switches VK sharing mode to "VK_SHARING_MODE_CONCURRENT" for resources created without "queueExclusive" flag.
-    // This approach is used to minimize number of "queue ownership transfers", but also adds a requirement to "get" all async queues BEFORE creation of
-    // resources participating into multi-queue activities. Explicit use of "queueExclusive" removes any restrictions.
+    // Returns a pre-created queue (see "DeviceCreationDesc" or wrapper extensions).
+    // "UNSUPPORTED" if no queues of "queueType"; "INVALID_ARGUMENT" if "queueIndex" is out of range.
+    // VK: with only one queue type obtained (e.g. "GRAPHICS"), NRI can use "EXCLUSIVE" sharing internally: no local ownership transfers are needed.
+    // Additional queues (e.g. "COMPUTE" or "COPY") enable "CONCURRENT" sharing for new resources where needed.
+    // Get all participating queues before resource creation; explicit "SharingMode::EXCLUSIVE" textures are exempt.
+    // Buffers follow D3D12: ownership transfers are only needed to or from an external user
     Nri(Result)         (NRI_CALL *GetQueue)                        (NriRef(Device) device, Nri(QueueType) queueType, uint32_t queueIndex, NriOut NriRef(Queue*) queue);
 
     // Create (doesn't assume allocation of big chunks of memory on the device, but it happens for some entities implicitly)
@@ -283,14 +284,11 @@ NriStruct(CoreInterface) {
     uint64_t            (NRI_CALL *GetTextureNativeObject)          (const NriPtr(Texture) texture);             // ID3D11Resource*                 | ID3D12Resource*             | VkImage                            | WGPUTexture
     uint64_t            (NRI_CALL *GetDescriptorNativeObject)       (const NriPtr(Descriptor) descriptor);       // ID3D11View/ID3D11SamplerState*  | D3D12_CPU_DESCRIPTOR_HANDLE | VkImageView/VkBufferView/VkSampler | WGPUTextureView/WGPUBuffer/WGPUSampler
 
-    // Shared handles (see "BufferDesc::shared", "TextureDesc::shared" and "FenceDesc::shared"): every call creates a new handle, which the caller owns
+    // Shared handles: each successful call returns a new caller-owned handle (see "SharedHandle")
     Nri(Result)         (NRI_CALL *GetBufferSharedHandle)           (const NriRef(Buffer) buffer, NriOut NriRef(SharedHandle) sharedHandle);
     Nri(Result)         (NRI_CALL *GetTextureSharedHandle)          (const NriRef(Texture) texture, NriOut NriRef(SharedHandle) sharedHandle);
     Nri(Result)         (NRI_CALL *GetFenceSharedHandle)            (const NriRef(Fence) fence, NriOut NriRef(SharedHandle) sharedHandle);
-
-    // Closes the caller-owned handle and clears the struct; zero-initialized or already-cleared structs are allowed
-    // If an import transfers ownership, clear the struct without calling this function
-    void                (NRI_CALL *DestroySharedHandle)            (NriRef(SharedHandle) sharedHandle);
+    void                (NRI_CALL *DestroySharedHandle)            (NriRef(SharedHandle) sharedHandle); // closes the caller-owned handle and clears the struct
 };
 
 NriNamespaceEnd

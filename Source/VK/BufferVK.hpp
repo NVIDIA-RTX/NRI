@@ -26,15 +26,27 @@ Result BufferVK::Create(const BufferDesc& bufferDesc) {
     FillCreateInfo(info);
     m_IsConcurrent = info.sharingMode == VK_SHARING_MODE_CONCURRENT;
 
+    const auto& vk = m_Device.GetDispatchTable();
+
     VkExternalMemoryBufferCreateInfo externalInfo = {VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_BUFFER_CREATE_INFO};
     externalInfo.handleTypes = SHARED_MEMORY_HANDLE_TYPE;
 
     if (m_Desc.shared) {
+        VkPhysicalDeviceExternalBufferInfo query = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_BUFFER_INFO};
+        query.flags = info.flags;
+        query.usage = info.usage;
+        query.handleType = SHARED_MEMORY_HANDLE_TYPE;
+
+        VkExternalBufferProperties props = {VK_STRUCTURE_TYPE_EXTERNAL_BUFFER_PROPERTIES};
+        vk.GetPhysicalDeviceExternalBufferProperties(m_Device, &query, &props);
+
+        if (!(props.externalMemoryProperties.externalMemoryFeatures & VK_EXTERNAL_MEMORY_FEATURE_EXPORTABLE_BIT))
+            return Result::UNSUPPORTED;
+
         externalInfo.pNext = info.pNext;
         info.pNext = &externalInfo;
     }
 
-    const auto& vk = m_Device.GetDispatchTable();
     VkBuffer handle = VK_NULL_HANDLE;
     VkResult vkResult = vk.CreateBuffer(m_Device, &info, m_Device.GetVkAllocationCallbacks(), &handle);
     NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateBuffer");
@@ -86,8 +98,6 @@ Result BufferVK::AllocateAndBindMemory(MemoryLocation memoryLocation, float prio
     if (memoryTypeInfo.mustBeDedicated)
         committed = true;
 
-    const bool isVideoOnly = IsVideoOnly();
-
     if (m_Desc.shared) {
         Result result = m_Device.AllocateSharedMemory(memoryDesc, priority, m_Handle, VK_NULL_HANDLE, m_SharedMemory);
         if (result != Result::SUCCESS)
@@ -103,12 +113,7 @@ Result BufferVK::AllocateAndBindMemory(MemoryLocation memoryLocation, float prio
         VkResult vkResult = vk.BindBufferMemory2(m_Device, 1, &bindBufferMemoryInfo);
         NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkBindBufferMemory2");
 
-        if (m_Device.m_IsSupported.deviceAddress && !isVideoOnly) {
-            VkBufferDeviceAddressInfo bufferDeviceAddressInfo = {VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO};
-            bufferDeviceAddressInfo.buffer = m_Handle;
-
-            m_DeviceAddress = vk.GetBufferDeviceAddress(m_Device, &bufferDeviceAddressInfo);
-        }
+        UpdateDeviceAddress();
 
         return Result::SUCCESS;
     }
@@ -118,7 +123,7 @@ Result BufferVK::AllocateAndBindMemory(MemoryLocation memoryLocation, float prio
     memoryRequirements.alignment = memoryDesc.alignment; // can't use "vmaAllocateMemoryForBuffer" because of alignment (see "GetMemoryDesc")
     memoryRequirements.memoryTypeBits = 1u << memoryTypeInfo.index;
 
-    if (isVideoOnly) {
+    if (IsVideoOnly(m_Desc)) {
         VkBufferCreateInfo info = {VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
         FillCreateInfo(info);
 
@@ -184,14 +189,7 @@ Result BufferVK::AllocateAndBindMemory(MemoryLocation memoryLocation, float prio
         }
     }
 
-    // Get device address
-    if (m_Device.m_IsSupported.deviceAddress && !isVideoOnly) {
-        VkBufferDeviceAddressInfo bufferDeviceAddressInfo = {VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO};
-        bufferDeviceAddressInfo.buffer = m_Handle;
-
-        const auto& vk = m_Device.GetDispatchTable();
-        m_DeviceAddress = vk.GetBufferDeviceAddress(m_Device, &bufferDeviceAddressInfo);
-    }
+    UpdateDeviceAddress();
 
     return Result::SUCCESS;
 }
@@ -227,14 +225,7 @@ Result BufferVK::BindMemory(MemoryVK& memory, uint64_t offset, bool bindMemory) 
         }
     }
 
-    // Get device address
-    if (m_Device.m_IsSupported.deviceAddress && !IsVideoOnly()) {
-        VkBufferDeviceAddressInfo bufferDeviceAddressInfo = {VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO};
-        bufferDeviceAddressInfo.buffer = m_Handle;
-
-        const auto& vk = m_Device.GetDispatchTable();
-        m_DeviceAddress = vk.GetBufferDeviceAddress(m_Device, &bufferDeviceAddressInfo);
-    }
+    UpdateDeviceAddress();
 
     return Result::SUCCESS;
 }
@@ -243,11 +234,15 @@ Result BufferVK::GetSharedHandle(SharedHandle& sharedHandle) const {
     return m_Device.GetSharedMemoryHandle(m_SharedMemory, m_SharedSize, m_SharedHandle, sharedHandle);
 }
 
-bool BufferVK::IsVideoOnly() const {
-    constexpr uint32_t videoUsageMask = (uint32_t)BufferUsageBits::VIDEO_DECODE | (uint32_t)BufferUsageBits::VIDEO_ENCODE;
-    const uint32_t usageMask = (uint32_t)m_Desc.usage;
+void BufferVK::UpdateDeviceAddress() {
+    if (!m_Device.m_IsSupported.deviceAddress || IsVideoOnly(m_Desc))
+        return;
 
-    return (usageMask & videoUsageMask) != 0 && (usageMask & ~videoUsageMask) == 0;
+    VkBufferDeviceAddressInfo info = {VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO};
+    info.buffer = m_Handle;
+
+    const auto& vk = m_Device.GetDispatchTable();
+    m_DeviceAddress = vk.GetBufferDeviceAddress(m_Device, &info);
 }
 
 void BufferVK::FillCreateInfo(VkBufferCreateInfo& info) const {
