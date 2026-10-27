@@ -3060,17 +3060,6 @@ Result DeviceVK::GetSharedSemaphoreHandle(VkSemaphore semaphore, void*& exported
 #endif
 }
 
-void DeviceVK::CloseSharedHandle(void*& exportedHandle) {
-#ifdef VK_USE_PLATFORM_WIN32_KHR
-    if (exportedHandle) {
-        CloseHandle((HANDLE)exportedHandle);
-        exportedHandle = nullptr;
-    }
-#else
-    MaybeUnused(exportedHandle);
-#endif
-}
-
 NRI_INLINE Result DeviceVK::CreateCommittedBuffer(MemoryLocation memoryLocation, float priority, const BufferDesc& bufferDesc, Buffer*& buffer) {
     Result result = CreateImplementation<BufferVK>(buffer, bufferDesc);
 

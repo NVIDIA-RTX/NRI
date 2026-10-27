@@ -1,7 +1,7 @@
 // © 2021 NVIDIA Corporation
 
 FenceVK::~FenceVK() {
-    m_Device.CloseSharedHandle(m_SharedHandle);
+    CloseSharedHandle(m_SharedHandle);
 
     if (m_OwnsNativeObjects && m_Handle) {
         const auto& vk = m_Device.GetDispatchTable();

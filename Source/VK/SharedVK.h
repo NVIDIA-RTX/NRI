@@ -70,6 +70,17 @@ constexpr VkVideoCodecOperationFlagsKHR VIDEO_ENCODE_CODEC_OPERATION_MASK = 0xFF
 constexpr VkVideoEncodeFeedbackFlagsKHR VIDEO_ENCODE_REQUIRED_FEEDBACK_FLAGS = VK_VIDEO_ENCODE_FEEDBACK_BITSTREAM_BUFFER_OFFSET_BIT_KHR | VK_VIDEO_ENCODE_FEEDBACK_BITSTREAM_BYTES_WRITTEN_BIT_KHR;
 constexpr uint32_t VIDEO_ENCODE_FEEDBACK_QUERY_NUM = 64;
 
+static inline void CloseSharedHandle(void*& exportedHandle) {
+#ifdef VK_USE_PLATFORM_WIN32_KHR
+    if (exportedHandle) {
+        CloseHandle((HANDLE)exportedHandle);
+        exportedHandle = nullptr;
+    }
+#else
+    MaybeUnused(exportedHandle);
+#endif
+}
+
 struct MemoryTypeInfo {
     MemoryTypeIndex index;
     MemoryLocation location;

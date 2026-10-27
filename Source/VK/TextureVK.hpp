@@ -9,7 +9,7 @@ TextureVK::~TextureVK() {
         else
             vk.DestroyImage(m_Device, m_Handle, m_Device.GetVkAllocationCallbacks());
 
-        m_Device.CloseSharedHandle(m_SharedHandle);
+        CloseSharedHandle(m_SharedHandle);
 
         if (m_SharedMemory)
             vk.FreeMemory(m_Device, m_SharedMemory, m_Device.GetVkAllocationCallbacks());
