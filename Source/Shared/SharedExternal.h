@@ -15,6 +15,12 @@
 #include <unordered_map>
 #include <vector>
 
+#ifdef _WIN32
+#    include <windows.h>
+#else
+#    include <unistd.h>
+#endif
+
 #if (NRI_ENABLE_D3D11_SUPPORT || NRI_ENABLE_D3D12_SUPPORT)
 #    include <dxgi1_6.h>
 #else
@@ -391,6 +397,26 @@ void* GetSharedLibraryFunction(Library& library, const char* name);
 void UnloadSharedLibrary(Library& library);
 
 // Helpers
+static inline void NRI_CALL DestroySharedHandle(SharedHandle& sharedHandle) {
+    switch (sharedHandle.type) {
+#ifdef _WIN32
+        case SharedHandleType::OPAQUE_WIN32:
+        case SharedHandleType::D3D12_RESOURCE:
+        case SharedHandleType::D3D12_FENCE:
+            CloseHandle((HANDLE)sharedHandle.handle);
+            break;
+#else
+        case SharedHandleType::OPAQUE_FD:
+            close((int)(intptr_t)sharedHandle.handle);
+            break;
+#endif
+        default:
+            break;
+    }
+
+    sharedHandle = {};
+}
+
 template <typename T>
 static inline T Align(T x, size_t alignment) {
     return (T)((size_t(x) + alignment - 1) & ~(alignment - 1));

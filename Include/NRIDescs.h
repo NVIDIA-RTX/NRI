@@ -883,7 +883,7 @@ NriEnum(SharedHandleType, uint8_t,
 );
 
 NriStruct(SharedHandle) {
-    void* handle;               // NT handle (Windows) or file descriptor cast to a pointer (Linux), owned by the caller ("CloseHandle" / "close")
+    void* handle;               // NT handle (Windows) or file descriptor cast to a pointer (Linux), owned by the caller ("DestroySharedHandle")
     Nri(SharedHandleType) type;
     uint64_t size;              // resources only: the allocation size, for "VkMemoryAllocateInfo::allocationSize" or "CUDA_EXTERNAL_MEMORY_HANDLE_DESC::size" on import (0 for fences)
 };

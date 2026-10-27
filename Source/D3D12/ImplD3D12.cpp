@@ -723,6 +723,7 @@ Result DeviceD3D12::FillFunctionTable(CoreInterface& table) const {
     table.GetBufferSharedHandle = ::GetBufferSharedHandle;
     table.GetTextureSharedHandle = ::GetTextureSharedHandle;
     table.GetFenceSharedHandle = ::GetFenceSharedHandle;
+    table.DestroySharedHandle = DestroySharedHandle;
 
     return Result::SUCCESS;
 }

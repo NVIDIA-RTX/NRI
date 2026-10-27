@@ -830,6 +830,7 @@ Result DeviceD3D11::FillFunctionTable(CoreInterface& table) const {
     table.GetBufferSharedHandle = ::GetBufferSharedHandle;
     table.GetTextureSharedHandle = ::GetTextureSharedHandle;
     table.GetFenceSharedHandle = ::GetFenceSharedHandle;
+    table.DestroySharedHandle = DestroySharedHandle;
 
     if (m_IsDeferredContextEmulated) {
         table.BeginCommandBuffer = ::EmuBeginCommandBuffer;

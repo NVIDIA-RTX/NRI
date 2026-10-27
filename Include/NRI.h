@@ -287,6 +287,10 @@ NriStruct(CoreInterface) {
     Nri(Result)         (NRI_CALL *GetBufferSharedHandle)           (const NriRef(Buffer) buffer, NriOut NriRef(SharedHandle) sharedHandle);
     Nri(Result)         (NRI_CALL *GetTextureSharedHandle)          (const NriRef(Texture) texture, NriOut NriRef(SharedHandle) sharedHandle);
     Nri(Result)         (NRI_CALL *GetFenceSharedHandle)            (const NriRef(Fence) fence, NriOut NriRef(SharedHandle) sharedHandle);
+
+    // Closes the caller-owned handle and clears the struct; zero-initialized or already-cleared structs are allowed
+    // If an import transfers ownership, clear the struct without calling this function
+    void                (NRI_CALL *DestroySharedHandle)            (NriRef(SharedHandle) sharedHandle);
 };
 
 NriNamespaceEnd
