@@ -86,6 +86,8 @@ Result BufferVK::AllocateAndBindMemory(MemoryLocation memoryLocation, float prio
     if (memoryTypeInfo.mustBeDedicated)
         committed = true;
 
+    const bool isVideoOnly = IsVideoOnly();
+
     if (m_Desc.shared) {
         Result result = m_Device.AllocateSharedMemory(memoryDesc, priority, m_Handle, VK_NULL_HANDLE, m_SharedMemory);
         if (result != Result::SUCCESS)
@@ -101,7 +103,7 @@ Result BufferVK::AllocateAndBindMemory(MemoryLocation memoryLocation, float prio
         VkResult vkResult = vk.BindBufferMemory2(m_Device, 1, &bindBufferMemoryInfo);
         NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkBindBufferMemory2");
 
-        if (m_Device.m_IsSupported.deviceAddress) {
+        if (m_Device.m_IsSupported.deviceAddress && !isVideoOnly) {
             VkBufferDeviceAddressInfo bufferDeviceAddressInfo = {VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO};
             bufferDeviceAddressInfo.buffer = m_Handle;
 
@@ -116,7 +118,6 @@ Result BufferVK::AllocateAndBindMemory(MemoryLocation memoryLocation, float prio
     memoryRequirements.alignment = memoryDesc.alignment; // can't use "vmaAllocateMemoryForBuffer" because of alignment (see "GetMemoryDesc")
     memoryRequirements.memoryTypeBits = 1u << memoryTypeInfo.index;
 
-    const bool isVideoOnly = IsVideoOnly();
     if (isVideoOnly) {
         VkBufferCreateInfo info = {VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
         FillCreateInfo(info);
