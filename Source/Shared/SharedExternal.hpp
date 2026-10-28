@@ -975,6 +975,9 @@ void DeviceBase::ReportMessage(Message messageType, Result result, const char* f
     written += vsnprintf(buf + written, sizeof(buf) - written, format, argptr);
     va_end(argptr);
 
+    if (messageType == Message::ERROR && result == Result::OUT_OF_DATE)
+        messageType = Message::WARNING;
+
     m_CallbackInterface.MessageCallback(messageType, file, line, buf, m_CallbackInterface.userArg);
 
     // Abort execution
