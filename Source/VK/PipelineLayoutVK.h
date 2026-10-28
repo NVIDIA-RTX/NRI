@@ -93,6 +93,7 @@ private:
     BindingInfo m_BindingInfo;
     Vector<VkDescriptorSetLayout> m_DescriptorSetLayouts;
     Vector<VkSampler> m_ImmutableSamplers;
+    StageBits m_ShaderStages = StageBits::NONE;
     bool m_IsDescriptorHeap = false;
 };
 

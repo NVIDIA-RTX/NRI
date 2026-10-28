@@ -1,9 +1,6 @@
 // © 2026 NVIDIA Corporation
 
 WGPUShaderStage nri::GetShaderStageFlags(StageBits stageBits) {
-    if (stageBits == StageBits::ALL)
-        return WGPUShaderStage_Vertex | WGPUShaderStage_Fragment | WGPUShaderStage_Compute;
-
     WGPUShaderStage flags = WGPUShaderStage_None;
 
     if (stageBits & StageBits::VERTEX_SHADER)

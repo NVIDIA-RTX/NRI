@@ -103,7 +103,10 @@ PipelineLayoutMetal::~PipelineLayoutMetal() {
         Destroy(sampler);
 }
 
-Result PipelineLayoutMetal::Create(const PipelineLayoutDesc& desc) {
+Result PipelineLayoutMetal::Create(const PipelineLayoutDesc& pipelineLayoutDesc) {
+    PipelineLayoutDesc desc = pipelineLayoutDesc;
+    desc.shaderStages = GetEffectiveShaderStages(desc.shaderStages);
+
     uint32_t offset = 0;
 
     // The root signature hash identifies converted shaders in pipeline caches

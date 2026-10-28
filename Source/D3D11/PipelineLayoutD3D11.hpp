@@ -49,15 +49,13 @@ static inline bool IsShaderVisible(StageBits shaderVisibility, StageBits stage) 
 }
 
 static inline StageBits GetShaderVisibility(StageBits shaderStages, StageBits pipelineLayoutShaderStages) {
-    if (shaderStages == StageBits::ALL)
-        shaderStages = StageBits::ALL_SHADERS;
-    if (pipelineLayoutShaderStages == StageBits::ALL)
-        pipelineLayoutShaderStages = StageBits::ALL_SHADERS;
-
-    return (StageBits)(shaderStages & pipelineLayoutShaderStages);
+    return (StageBits)(GetEffectiveShaderStages(shaderStages, pipelineLayoutShaderStages) & pipelineLayoutShaderStages);
 }
 
-Result PipelineLayoutD3D11::Create(const PipelineLayoutDesc& pipelineLayoutDesc) {
+Result PipelineLayoutD3D11::Create(const PipelineLayoutDesc& pipelineLayoutDescInput) {
+    PipelineLayoutDesc pipelineLayoutDesc = pipelineLayoutDescInput;
+    pipelineLayoutDesc.shaderStages = GetEffectiveShaderStages(pipelineLayoutDesc.shaderStages);
+
     // Descriptor sets
     for (uint32_t i = 0; i < pipelineLayoutDesc.descriptorSetNum; i++) {
         const DescriptorSetDesc& set = pipelineLayoutDesc.descriptorSets[i];

@@ -51,6 +51,10 @@ static inline bool IsTextureViewLayoutValid(const TextureViewDesc& desc, const T
     }
 }
 
+static inline bool IsShaderStageMaskValid(StageBits shaderStages) {
+    return (shaderStages & StageBits::ALL_SHADERS) == (uint32_t)shaderStages;
+}
+
 static inline bool IsShaderStageValid(StageBits shaderStages, uint32_t& uniqueShaderStages, StageBits allowedStages) {
     uint32_t x = (uint32_t)(shaderStages & allowedStages);
     uint32_t n = 0;
@@ -520,8 +524,11 @@ NRI_INLINE Result DeviceVal::CreateDescriptor(const SamplerDesc& samplerDesc, De
     return result;
 }
 
-NRI_INLINE Result DeviceVal::CreatePipelineLayout(const PipelineLayoutDesc& pipelineLayoutDesc, PipelineLayout*& pipelineLayout) {
-    NRI_RETURN_ON_FAILURE(this, pipelineLayoutDesc.shaderStages != StageBits::NONE, Result::INVALID_ARGUMENT, "'shaderStages' can't be 'NONE'");
+NRI_INLINE Result DeviceVal::CreatePipelineLayout(const PipelineLayoutDesc& pipelineLayoutDescInput, PipelineLayout*& pipelineLayout) {
+    PipelineLayoutDesc pipelineLayoutDesc = pipelineLayoutDescInput;
+    pipelineLayoutDesc.shaderStages = GetEffectiveShaderStages(pipelineLayoutDesc.shaderStages);
+
+    NRI_RETURN_ON_FAILURE(this, IsShaderStageMaskValid(pipelineLayoutDesc.shaderStages), Result::INVALID_ARGUMENT, "'shaderStages' must be 'ALL' or a shader stage mask");
 
     const DeviceDesc& deviceDesc = GetDesc();
     if (pipelineLayoutDesc.flags & PipelineLayoutBits::ENABLE_DRAW_PARAMETERS_EMULATION)
@@ -550,11 +557,9 @@ NRI_INLINE Result DeviceVal::CreatePipelineLayout(const PipelineLayoutDesc& pipe
             NRI_RETURN_ON_FAILURE(this, !(range.flags & DescriptorRangeBits::PARTIALLY_BOUND) || deviceDesc.tiers.resourceBinding != 0, Result::INVALID_ARGUMENT, "'descriptorSets[%u].ranges[%u].flags' has 'PARTIALLY_BOUND', but 'tiers.resourceBinding' is 0", i, j);
             NRI_RETURN_ON_FAILURE(this, !(range.flags & DescriptorRangeBits::VARIABLE_SIZED_ARRAY) || deviceDesc.tiers.bindless != 0, Result::INVALID_ARGUMENT, "'descriptorSets[%u].ranges[%u].flags' has 'VARIABLE_SIZED_ARRAY', but 'tiers.bindless' is 0", i, j);
             NRI_RETURN_ON_FAILURE(this, !(range.flags & DescriptorRangeBits::VARIABLE_SIZED_ARRAY) || deviceDesc.tiers.resourceBinding >= 2, Result::INVALID_ARGUMENT, "'descriptorSets[%u].ranges[%u].flags' has 'VARIABLE_SIZED_ARRAY', but 'tiers.resourceBinding' is less than 2", i, j);
-            if (range.shaderStages != StageBits::ALL) {
-                const uint32_t filteredVisibilityMask = range.shaderStages & pipelineLayoutDesc.shaderStages;
-
-                NRI_RETURN_ON_FAILURE(this, (uint32_t)range.shaderStages == filteredVisibilityMask, Result::INVALID_ARGUMENT, "'descriptorSets[%u].ranges[%u].shaderStages' is not compatible with 'shaderStages'", i, j);
-            }
+            NRI_RETURN_ON_FAILURE(this, IsShaderStageMaskValid(range.shaderStages), Result::INVALID_ARGUMENT, "'descriptorSets[%u].ranges[%u].shaderStages' must be 'ALL' or a shader stage mask", i, j);
+            const StageBits shaderStages = GetEffectiveShaderStages(range.shaderStages, pipelineLayoutDesc.shaderStages);
+            NRI_RETURN_ON_FAILURE(this, (shaderStages & pipelineLayoutDesc.shaderStages) == (uint32_t)shaderStages, Result::INVALID_ARGUMENT, "'descriptorSets[%u].ranges[%u].shaderStages' is not compatible with 'shaderStages'", i, j);
         }
 
         NRI_RETURN_ON_FAILURE(this, variableSizedArrayNum <= 1, Result::INVALID_ARGUMENT, "'descriptorSets[%u]' has more than one 'VARIABLE_SIZED_ARRAY' range", i);
@@ -580,6 +585,7 @@ NRI_INLINE Result DeviceVal::CreatePipelineLayout(const PipelineLayoutDesc& pipe
     NRI_RETURN_ON_FAILURE(this, pipelineLayoutDesc.rootDescriptorNum == 0 || pipelineLayoutDesc.rootDescriptors != nullptr, Result::INVALID_ARGUMENT, "'rootDescriptors' is NULL");
     for (uint32_t i = 0; i < pipelineLayoutDesc.rootDescriptorNum; i++) {
         const RootDescriptorDesc& rootDescriptorDesc = pipelineLayoutDesc.rootDescriptors[i];
+        NRI_RETURN_ON_FAILURE(this, IsShaderStageMaskValid(rootDescriptorDesc.shaderStages), Result::INVALID_ARGUMENT, "'rootDescriptors[%u].shaderStages' must be 'ALL' or a shader stage mask", i);
 
         bool isDescriptorTypeValid = rootDescriptorDesc.descriptorType == DescriptorType::CONSTANT_BUFFER
             || rootDescriptorDesc.descriptorType == DescriptorType::STRUCTURED_BUFFER
@@ -591,6 +597,7 @@ NRI_INLINE Result DeviceVal::CreatePipelineLayout(const PipelineLayoutDesc& pipe
 
     NRI_RETURN_ON_FAILURE(this, pipelineLayoutDesc.rootSamplerNum == 0 || pipelineLayoutDesc.rootSamplers != nullptr, Result::INVALID_ARGUMENT, "'rootSamplers' is NULL");
     for (uint32_t i = 0; i < pipelineLayoutDesc.rootSamplerNum; i++) {
+        NRI_RETURN_ON_FAILURE(this, IsShaderStageMaskValid(pipelineLayoutDesc.rootSamplers[i].shaderStages), Result::INVALID_ARGUMENT, "'rootSamplers[%u].shaderStages' must be 'ALL' or a shader stage mask", i);
         const SamplerDesc& samplerDesc = pipelineLayoutDesc.rootSamplers[i].desc;
         NRI_RETURN_ON_FAILURE(this, samplerDesc.filters.mag < Filter::MAX_NUM, Result::INVALID_ARGUMENT, "'rootSamplers[%u].desc.filters.mag' is invalid", i);
         NRI_RETURN_ON_FAILURE(this, samplerDesc.filters.min < Filter::MAX_NUM, Result::INVALID_ARGUMENT, "'rootSamplers[%u].desc.filters.min' is invalid", i);
@@ -605,6 +612,7 @@ NRI_INLINE Result DeviceVal::CreatePipelineLayout(const PipelineLayoutDesc& pipe
     NRI_RETURN_ON_FAILURE(this, pipelineLayoutDesc.rootConstantNum == 0 || pipelineLayoutDesc.rootConstants != nullptr, Result::INVALID_ARGUMENT, "'rootConstants' is NULL");
     uint64_t rootConstantSize = 0;
     for (uint32_t i = 0; i < pipelineLayoutDesc.rootConstantNum; i++) {
+        NRI_RETURN_ON_FAILURE(this, IsShaderStageMaskValid(pipelineLayoutDesc.rootConstants[i].shaderStages), Result::INVALID_ARGUMENT, "'rootConstants[%u].shaderStages' must be 'ALL' or a shader stage mask", i);
         NRI_RETURN_ON_FAILURE(this, pipelineLayoutDesc.rootConstants[i].size != 0 && IsAligned(pipelineLayoutDesc.rootConstants[i].size, 4), Result::INVALID_ARGUMENT, "'rootConstants[%u].size' must be non-zero and 4-byte aligned", i);
         rootConstantSize += pipelineLayoutDesc.rootConstants[i].size;
     }

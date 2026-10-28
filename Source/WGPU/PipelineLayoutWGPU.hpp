@@ -728,7 +728,10 @@ const DescriptorSetMappingWGPU& PipelineLayoutWGPU::GetDescriptorSetMapping(uint
     return m_SetMappings[setIndex];
 }
 
-Result PipelineLayoutWGPU::Create(const PipelineLayoutDesc& pipelineLayoutDesc) {
+Result PipelineLayoutWGPU::Create(const PipelineLayoutDesc& pipelineLayoutDescInput) {
+    PipelineLayoutDesc pipelineLayoutDesc = pipelineLayoutDescInput;
+    pipelineLayoutDesc.shaderStages = GetEffectiveShaderStages(pipelineLayoutDesc.shaderStages);
+
     const auto bindingOffsets = GetBindingOffsets(m_Device, pipelineLayoutDesc);
 
     WGPUBindGroupLayoutDescriptor emptyLayoutDesc = WGPU_BIND_GROUP_LAYOUT_DESCRIPTOR_INIT;
@@ -783,7 +786,7 @@ Result PipelineLayoutWGPU::Create(const PipelineLayoutDesc& pipelineLayoutDesc) 
             rangeMapping.descriptorOffset = descriptorOffset;
             rangeMapping.bindingBase = bindingBase;
             rangeMapping.descriptorNum = range.descriptorNum;
-            rangeMapping.visibility = GetShaderStageFlags(range.shaderStages);
+            rangeMapping.visibility = GetShaderStageFlags(GetEffectiveShaderStages(range.shaderStages, pipelineLayoutDesc.shaderStages));
             rangeMapping.storageTextureFormat = range.descriptorType == DescriptorType::STORAGE_TEXTURE ? WGPUTextureFormat_R32Float : WGPUTextureFormat_Undefined;
             rangeMapping.isArray = isArray;
 
@@ -827,7 +830,7 @@ Result PipelineLayoutWGPU::Create(const PipelineLayoutDesc& pipelineLayoutDesc) 
             range.baseRegisterIndex = binding;
             range.descriptorNum = 1;
             range.descriptorType = DescriptorType::SAMPLER;
-            range.shaderStages = rootSampler.shaderStages;
+            range.shaderStages = GetEffectiveShaderStages(rootSampler.shaderStages, pipelineLayoutDesc.shaderStages);
             FillLayoutEntry(entries[i], range, binding);
             if (rootSampler.desc.compareOp != CompareOp::NONE)
                 entries[i].sampler.type = WGPUSamplerBindingType_Comparison;
@@ -847,7 +850,7 @@ Result PipelineLayoutWGPU::Create(const PipelineLayoutDesc& pipelineLayoutDesc) 
             if (!sampler)
                 return Result::FAILURE;
 
-            m_RootSamplers.push_back({sampler, GetShaderStageFlags(rootSampler.shaderStages), binding});
+            m_RootSamplers.push_back({sampler, GetShaderStageFlags(range.shaderStages), binding});
 
             bindGroupEntries[i] = WGPU_BIND_GROUP_ENTRY_INIT;
             bindGroupEntries[i].binding = binding;
@@ -863,12 +866,12 @@ Result PipelineLayoutWGPU::Create(const PipelineLayoutDesc& pipelineLayoutDesc) 
             range.baseRegisterIndex = binding;
             range.descriptorNum = 1;
             range.descriptorType = rootDescriptor.descriptorType;
-            range.shaderStages = rootDescriptor.shaderStages;
+            range.shaderStages = GetEffectiveShaderStages(rootDescriptor.shaderStages, pipelineLayoutDesc.shaderStages);
             WGPUBindGroupLayoutEntry& entry = entries[pipelineLayoutDesc.rootSamplerNum + i];
             FillLayoutEntry(entry, range, binding);
             entry.buffer.hasDynamicOffset = hasDynamicOffset ? WGPU_TRUE : WGPU_FALSE;
 
-            m_RootDescriptors.push_back({GetShaderStageFlags(rootDescriptor.shaderStages), binding, uint32_t(-1), rootDescriptor.descriptorType});
+            m_RootDescriptors.push_back({GetShaderStageFlags(range.shaderStages), binding, uint32_t(-1), rootDescriptor.descriptorType});
         }
 
         for (;;) {

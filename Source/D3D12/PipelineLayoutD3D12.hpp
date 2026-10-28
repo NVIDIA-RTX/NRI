@@ -24,29 +24,28 @@ static inline D3D12_DESCRIPTOR_RANGE_FLAGS GetDescriptorRangeFlags(const Descrip
 
 static inline D3D12_ROOT_SIGNATURE_FLAGS GetRootSignatureStageFlags(const PipelineLayoutDesc& pipelineLayoutDesc, const DeviceD3D12& device) {
     D3D12_ROOT_SIGNATURE_FLAGS flags = D3D12_ROOT_SIGNATURE_FLAG_NONE;
-    StageBits shaderStages = pipelineLayoutDesc.shaderStages == StageBits::ALL ? StageBits::ALL_SHADERS : pipelineLayoutDesc.shaderStages;
 
-    if (shaderStages & StageBits::VERTEX_SHADER) {
+    if (pipelineLayoutDesc.shaderStages & StageBits::VERTEX_SHADER) {
         // The optimization is minor (based on https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_root_signature_flags)
         flags |= D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT; // TODO: do we care if a vertex shader doesn't use IA?
     } else
         flags |= D3D12_ROOT_SIGNATURE_FLAG_DENY_VERTEX_SHADER_ROOT_ACCESS;
 
-    if (!(shaderStages & StageBits::TESS_CONTROL_SHADER))
+    if (!(pipelineLayoutDesc.shaderStages & StageBits::TESS_CONTROL_SHADER))
         flags |= D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS;
-    if (!(shaderStages & StageBits::TESS_EVALUATION_SHADER))
+    if (!(pipelineLayoutDesc.shaderStages & StageBits::TESS_EVALUATION_SHADER))
         flags |= D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS;
-    if (!(shaderStages & StageBits::GEOMETRY_SHADER))
+    if (!(pipelineLayoutDesc.shaderStages & StageBits::GEOMETRY_SHADER))
         flags |= D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS;
-    if (!(shaderStages & StageBits::FRAGMENT_SHADER))
+    if (!(pipelineLayoutDesc.shaderStages & StageBits::FRAGMENT_SHADER))
         flags |= D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS;
 
     // Windows versions prior to 20H1 (which introduced DirectX Ultimate) can produce errors when the following flags are added. To avoid this, we
     // only add these mesh shading pipeline flags when the device (and thus Windows) supports mesh shading
     if (device.GetDesc().features.meshShader) {
-        if (!(shaderStages & StageBits::TASK_SHADER))
+        if (!(pipelineLayoutDesc.shaderStages & StageBits::TASK_SHADER))
             flags |= D3D12_ROOT_SIGNATURE_FLAG_DENY_AMPLIFICATION_SHADER_ROOT_ACCESS;
-        if (!(shaderStages & StageBits::MESH_SHADER))
+        if (!(pipelineLayoutDesc.shaderStages & StageBits::MESH_SHADER))
             flags |= D3D12_ROOT_SIGNATURE_FLAG_DENY_MESH_SHADER_ROOT_ACCESS;
     }
 
@@ -59,7 +58,10 @@ static inline D3D12_ROOT_SIGNATURE_FLAGS GetRootSignatureStageFlags(const Pipeli
     return flags;
 }
 
-Result PipelineLayoutD3D12::Create(const PipelineLayoutDesc& pipelineLayoutDesc) {
+Result PipelineLayoutD3D12::Create(const PipelineLayoutDesc& pipelineLayoutDescInput) {
+    PipelineLayoutDesc pipelineLayoutDesc = pipelineLayoutDescInput;
+    pipelineLayoutDesc.shaderStages = GetEffectiveShaderStages(pipelineLayoutDesc.shaderStages);
+
     uint32_t rangeNum = 0;
     uint32_t rangeMaxNum = 0;
     for (uint32_t i = 0; i < pipelineLayoutDesc.descriptorSetNum; i++)
@@ -139,7 +141,7 @@ Result PipelineLayoutD3D12::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
             }
 
             // Try to group ranges
-            D3D12_SHADER_VISIBILITY shaderVisibility = GetShaderVisibility(descriptorRangeDesc.shaderStages);
+            D3D12_SHADER_VISIBILITY shaderVisibility = GetShaderVisibility(GetEffectiveShaderStages(descriptorRangeDesc.shaderStages, pipelineLayoutDesc.shaderStages));
             D3D12_DESCRIPTOR_RANGE_TYPE rangeType = GetDescriptorRangesType(descriptorRangeDesc.descriptorType);
 
             if (groupedRangeNum && (rootTable.ShaderVisibility != shaderVisibility || groupedRangeType != rangeType)) {
@@ -185,7 +187,7 @@ Result PipelineLayoutD3D12::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
 
             D3D12_ROOT_PARAMETER1 rootConstants = {};
             rootConstants.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
-            rootConstants.ShaderVisibility = GetShaderVisibility(rootConstantDesc.shaderStages);
+            rootConstants.ShaderVisibility = GetShaderVisibility(GetEffectiveShaderStages(rootConstantDesc.shaderStages, pipelineLayoutDesc.shaderStages));
             rootConstants.Constants.ShaderRegister = rootConstantDesc.registerIndex;
             rootConstants.Constants.RegisterSpace = pipelineLayoutDesc.rootRegisterSpace;
             rootConstants.Constants.Num32BitValues = rootConstantDesc.size / 4;
@@ -202,7 +204,7 @@ Result PipelineLayoutD3D12::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
             const RootDescriptorDesc& rootDescriptorDesc = pipelineLayoutDesc.rootDescriptors[i];
 
             D3D12_ROOT_PARAMETER1 rootDescriptor = {};
-            rootDescriptor.ShaderVisibility = GetShaderVisibility(rootDescriptorDesc.shaderStages);
+            rootDescriptor.ShaderVisibility = GetShaderVisibility(GetEffectiveShaderStages(rootDescriptorDesc.shaderStages, pipelineLayoutDesc.shaderStages));
             rootDescriptor.Descriptor.ShaderRegister = rootDescriptorDesc.registerIndex;
             rootDescriptor.Descriptor.RegisterSpace = pipelineLayoutDesc.rootRegisterSpace;
             rootDescriptor.Descriptor.Flags = D3D12_ROOT_DESCRIPTOR_FLAG_NONE; // TODO: better flags?
@@ -240,7 +242,7 @@ Result PipelineLayoutD3D12::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
         staticSamplerDesc.MaxLOD = samplerDesc.mipMax;
         staticSamplerDesc.ShaderRegister = rootSamplerDesc.registerIndex;
         staticSamplerDesc.RegisterSpace = pipelineLayoutDesc.rootRegisterSpace;
-        staticSamplerDesc.ShaderVisibility = GetShaderVisibility(rootSamplerDesc.shaderStages);
+        staticSamplerDesc.ShaderVisibility = GetShaderVisibility(GetEffectiveShaderStages(rootSamplerDesc.shaderStages, pipelineLayoutDesc.shaderStages));
 
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
         if (samplerDesc.unnormalizedCoordinates)

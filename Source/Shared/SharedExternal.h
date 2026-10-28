@@ -397,6 +397,13 @@ void* GetSharedLibraryFunction(Library& library, const char* name);
 void UnloadSharedLibrary(Library& library);
 
 // Helpers
+static inline StageBits GetEffectiveShaderStages(StageBits shaderStages, StageBits pipelineLayoutShaderStages = StageBits::ALL_SHADERS) {
+    if (pipelineLayoutShaderStages == StageBits::ALL)
+        pipelineLayoutShaderStages = StageBits::ALL_SHADERS;
+
+    return (shaderStages == StageBits::ALL || shaderStages == StageBits::ALL_SHADERS) ? pipelineLayoutShaderStages : shaderStages;
+}
+
 static inline void NRI_CALL DestroySharedHandle(SharedHandle& sharedHandle) {
     switch (sharedHandle.type) {
 #ifdef _WIN32

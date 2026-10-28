@@ -448,10 +448,10 @@ NriBits(FormatSupportBits, uint32_t,
 // https://microsoft.github.io/DirectX-Specs/d3d/D3D12EnhancedBarriers.html#d3d12_barrier_sync
 NriBits(StageBits, uint32_t,
     // Special
-    ALL                             = 0,            // Lazy default for barriers                          Shader stage
+    ALL                             = 0,            // Lazy default for barriers and "shaderStages"
     NONE                            = 0x7FFFFFFF,
 
-    // Graphics                                     // Invoked by "CmdDraw*"
+    // Graphics                                     // Invoked by "CmdDraw*"                              Shader stage
     INDEX_INPUT                     = NriBit(0),    //    Index buffer consumption
     VERTEX_SHADER                   = NriBit(1),    //    Vertex shader                                   X (required within GRAPHICS bind point)
     TESS_CONTROL_SHADER             = NriBit(2),    //    Tessellation control (hull) shader              X
@@ -515,6 +515,7 @@ NriBits(StageBits, uint32_t,
                                     | NriMember(StageBits, ANY_HIT_SHADER)
                                     | NriMember(StageBits, CALLABLE_SHADER),
 
+    // For descriptor and root visibility, "ALL" and "ALL_SHADERS" resolve to "PipelineLayoutDesc::shaderStages"
     ALL_SHADERS                     = NriMember(StageBits, GRAPHICS_SHADERS)
                                     | NriMember(StageBits, COMPUTE_SHADER)
                                     | NriMember(StageBits, RAY_TRACING_SHADERS),
