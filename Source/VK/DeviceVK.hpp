@@ -1552,6 +1552,12 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         m_Desc.other.timestampFrequencyHz = uint64_t(1e9 / double(limits.timestampPeriod) + 0.5);
         m_Desc.other.drawIndirectMaxNum = limits.maxDrawIndirectCount;
         m_Desc.other.samplerLodBiasMax = limits.maxSamplerLodBias;
+
+#ifdef __APPLE__
+        if (IsExtensionSupported(VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME, desiredDeviceExts) && !PortabilitySubsetFeatures.samplerMipLodBias)
+            m_Desc.other.samplerLodBiasMax = 0.0f;
+#endif
+
         m_Desc.other.samplerAnisotropyMax = limits.maxSamplerAnisotropy;
         m_Desc.other.texelOffsetMin = (int8_t)limits.minTexelOffset;
         m_Desc.other.texelOffsetMax = (uint8_t)limits.maxTexelOffset;
