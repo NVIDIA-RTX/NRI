@@ -29,22 +29,14 @@ Result DescriptorD3D11::Create(const TextureViewDesc& textureViewDesc) {
 
     if (textureDesc.type == TextureType::TEXTURE_1D) {
         switch (textureViewDescFixed.type) {
-            case TextureView::TEXTURE: {
-                D3D11_SHADER_RESOURCE_VIEW_DESC desc = {};
-                desc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE1D;
-                desc.Texture1D.MostDetailedMip = textureViewDescFixed.mipOffset;
-                desc.Texture1D.MipLevels = mipNum;
-                desc.Format = format;
-
-                hr = m_Device->CreateShaderResourceView(textureD3D11, &desc, (ID3D11ShaderResourceView**)&m_Descriptor);
-            } break;
+            case TextureView::TEXTURE:
             case TextureView::TEXTURE_ARRAY: {
                 D3D11_SHADER_RESOURCE_VIEW_DESC desc = {};
                 desc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE1DARRAY;
                 desc.Texture1DArray.MostDetailedMip = textureViewDescFixed.mipOffset;
                 desc.Texture1DArray.MipLevels = mipNum;
                 desc.Texture1DArray.FirstArraySlice = textureViewDescFixed.layerOffset;
-                desc.Texture1DArray.ArraySize = layerNum;
+                desc.Texture1DArray.ArraySize = textureViewDescFixed.type == TextureView::TEXTURE_ARRAY ? layerNum : 1;
                 desc.Format = format;
 
                 hr = m_Device->CreateShaderResourceView(textureD3D11, &desc, (ID3D11ShaderResourceView**)&m_Descriptor);
@@ -101,52 +93,32 @@ Result DescriptorD3D11::Create(const TextureViewDesc& textureViewDesc) {
     } else if (textureDesc.type == TextureType::TEXTURE_2D) {
         switch (textureViewDescFixed.type) {
             case TextureView::SUBPASS_INPUT:
-            case TextureView::TEXTURE: {
-                D3D11_SHADER_RESOURCE_VIEW_DESC desc = {};
-                if (textureDesc.sampleNum > 1)
-                    desc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2DMS;
-                else {
-                    desc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-                    desc.Texture2D.MostDetailedMip = textureViewDescFixed.mipOffset;
-                    desc.Texture2D.MipLevels = mipNum;
-                }
-                desc.Format = GetPatchedShaderResourceViewFormat(format, textureViewDescFixed.planes);
-
-                hr = m_Device->CreateShaderResourceView(textureD3D11, &desc, (ID3D11ShaderResourceView**)&m_Descriptor);
-            } break;
+            case TextureView::TEXTURE:
             case TextureView::TEXTURE_ARRAY: {
                 D3D11_SHADER_RESOURCE_VIEW_DESC desc = {};
                 if (textureDesc.sampleNum > 1) {
                     desc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2DMSARRAY;
                     desc.Texture2DMSArray.FirstArraySlice = textureViewDescFixed.layerOffset;
-                    desc.Texture2DMSArray.ArraySize = layerNum;
+                    desc.Texture2DMSArray.ArraySize = textureViewDescFixed.type == TextureView::TEXTURE_ARRAY ? layerNum : 1;
                 } else {
                     desc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2DARRAY;
                     desc.Texture2DArray.MostDetailedMip = textureViewDescFixed.mipOffset;
                     desc.Texture2DArray.MipLevels = mipNum;
                     desc.Texture2DArray.FirstArraySlice = textureViewDescFixed.layerOffset;
-                    desc.Texture2DArray.ArraySize = layerNum;
+                    desc.Texture2DArray.ArraySize = textureViewDescFixed.type == TextureView::TEXTURE_ARRAY ? layerNum : 1;
                 }
                 desc.Format = GetPatchedShaderResourceViewFormat(format, textureViewDescFixed.planes);
 
                 hr = m_Device->CreateShaderResourceView(textureD3D11, &desc, (ID3D11ShaderResourceView**)&m_Descriptor);
             } break;
-            case TextureView::TEXTURE_CUBE: {
-                D3D11_SHADER_RESOURCE_VIEW_DESC desc = {};
-                desc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURECUBE;
-                desc.TextureCube.MostDetailedMip = textureViewDescFixed.mipOffset;
-                desc.TextureCube.MipLevels = mipNum;
-                desc.Format = GetPatchedShaderResourceViewFormat(format, textureViewDescFixed.planes);
-
-                hr = m_Device->CreateShaderResourceView(textureD3D11, &desc, (ID3D11ShaderResourceView**)&m_Descriptor);
-            } break;
+            case TextureView::TEXTURE_CUBE:
             case TextureView::TEXTURE_CUBE_ARRAY: {
                 D3D11_SHADER_RESOURCE_VIEW_DESC desc = {};
                 desc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURECUBEARRAY;
                 desc.TextureCubeArray.MostDetailedMip = textureViewDescFixed.mipOffset;
                 desc.TextureCubeArray.MipLevels = mipNum;
                 desc.TextureCubeArray.First2DArrayFace = textureViewDescFixed.layerOffset;
-                desc.TextureCubeArray.NumCubes = textureViewDescFixed.layerNum / 6;
+                desc.TextureCubeArray.NumCubes = textureViewDescFixed.type == TextureView::TEXTURE_CUBE_ARRAY ? layerNum / 6 : 1;
                 desc.Format = GetPatchedShaderResourceViewFormat(format, textureViewDescFixed.planes);
 
                 hr = m_Device->CreateShaderResourceView(textureD3D11, &desc, (ID3D11ShaderResourceView**)&m_Descriptor);

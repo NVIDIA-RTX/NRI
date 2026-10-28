@@ -992,8 +992,8 @@ NriStruct(TextureViewDesc) {
     NriOptional Nri(Format) format;         // inherits "TextureDesc::format" if "UNKNOWN"
     Nri(Dim_t) mipOffset;
     Nri(Dim_t) mipNum;                      // can be "REMAINING"
-    Nri(Dim_t) layerOffset;
-    Nri(Dim_t) layerNum;                    // can be "REMAINING"
+    Nri(Dim_t) layerOffset;                 // 0 for "TEXTURE_3D" (D3D11: must be 0 for "STORAGE_TEXTURE")
+    Nri(Dim_t) layerNum;                    // can be "REMAINING"; array views may expose 1 layer (6 for cube arrays)
     Nri(Dim_t) sliceOffset;
     Nri(Dim_t) sliceNum;                    // can be "REMAINING" (METAL: used only by "CmdClearStorage", shader views expose all slices, attachments use "sliceOffset")
     Nri(PlaneBits) planes;                  // accessible planes (missing planes are read-only for "DEPTH_STENCIL_ATTACHMENT" if "layout" is not provided, i.e. "UNDEFINED")
