@@ -2305,11 +2305,11 @@ static Result NRI_CALL CreateUpscaler(Device& device, const UpscalerDesc& upscal
     if (upscalerDesc.type == UpscalerType::NIS && !deviceVal.GetDesc().shaderFeatures.storageWriteWithoutFormat)
         NRI_RETURN_ON_FAILURE(&deviceVal, upscalerDesc.outputFormat > Format::UNKNOWN && upscalerDesc.outputFormat < Format::MAX_NUM, Result::INVALID_ARGUMENT, "'outputFormat' is invalid");
 
-    if (upscalerDesc.type == UpscalerType::METALFX_TEMPORAL || upscalerDesc.type == UpscalerType::METALFX_DENOISED)
+    if (upscalerDesc.type == UpscalerType::METALFX_TEMPORAL || upscalerDesc.type == UpscalerType::METALFX_DENOISER)
         NRI_RETURN_ON_FAILURE(&deviceVal, !(upscalerDesc.flags & (UpscalerBits::DEPTH_LINEAR | UpscalerBits::MV_JITTERED)), Result::UNSUPPORTED, "'DEPTH_LINEAR' and 'MV_JITTERED' are unsupported by MetalFX");
 
-    if (upscalerDesc.type == UpscalerType::METALFX_DENOISED)
-        NRI_RETURN_ON_FAILURE(&deviceVal, !(upscalerDesc.flags & UpscalerBits::MV_UPSCALED), Result::UNSUPPORTED, "'MV_UPSCALED' is unsupported by 'METALFX_DENOISED'");
+    if (upscalerDesc.type == UpscalerType::METALFX_DENOISER)
+        NRI_RETURN_ON_FAILURE(&deviceVal, !(upscalerDesc.flags & UpscalerBits::MV_UPSCALED), Result::UNSUPPORTED, "'MV_UPSCALED' is unsupported by 'METALFX_DENOISER'");
 
     upscaler = nullptr;
     UpscalerImpl* impl = nullptr;
@@ -2364,7 +2364,7 @@ static void NRI_CALL CmdDispatchUpscale(CommandBuffer& commandBuffer, Upscaler& 
         return;
 
     // MetalFX encodes directly into the native command buffer, bypassing command validation
-    const bool isMetalFx = upscalerVal.m_Desc.type == UpscalerType::METALFX_SPATIAL || upscalerVal.m_Desc.type == UpscalerType::METALFX_TEMPORAL || upscalerVal.m_Desc.type == UpscalerType::METALFX_DENOISED;
+    const bool isMetalFx = upscalerVal.m_Desc.type == UpscalerType::METALFX_SPATIAL || upscalerVal.m_Desc.type == UpscalerType::METALFX_TEMPORAL || upscalerVal.m_Desc.type == UpscalerType::METALFX_DENOISER;
 
     if (isMetalFx) {
         const TextureDesc& outputDesc = ((TextureVal*)dispatchUpscaleDesc.output.texture)->GetDesc();
@@ -2380,7 +2380,7 @@ static void NRI_CALL CmdDispatchUpscale(CommandBuffer& commandBuffer, Upscaler& 
         const DescriptorVal& outputDescriptorVal = *(DescriptorVal*)dispatchUpscaleDesc.output.descriptor;
         NRI_RETURN_ON_FAILURE(&deviceVal, deviceVal.GetDesc().shaderFeatures.storageWriteWithoutFormat || outputDescriptorVal.GetFormat() == upscalerVal.m_Desc.outputFormat, ReturnVoid(), "'output.descriptor' format does not match 'UpscalerDesc::outputFormat'");
         NRI_RETURN_ON_FAILURE(&deviceVal, dispatchUpscaleDesc.settings.nis.sharpness >= 0.0f && dispatchUpscaleDesc.settings.nis.sharpness <= 1.0f, ReturnVoid(), "'settings.nis.sharpness' is out of range");
-    } else if (upscalerVal.m_Desc.type == UpscalerType::DLRR || upscalerVal.m_Desc.type == UpscalerType::METALFX_DENOISED) {
+    } else if (upscalerVal.m_Desc.type == UpscalerType::DLRR || upscalerVal.m_Desc.type == UpscalerType::METALFX_DENOISER) {
         const DenoiserGuides& guides = dispatchUpscaleDesc.guides.denoiser;
 
         if (!ValidateUpscalerResource(deviceVal, guides.mv, "guides.denoiser.mv", DescriptorType::TEXTURE))
@@ -2404,10 +2404,10 @@ static void NRI_CALL CmdDispatchUpscale(CommandBuffer& commandBuffer, Upscaler& 
         if (!ValidateOptionalUpscalerResource(deviceVal, guides.preTransparency, "guides.denoiser.preTransparency", false))
             return;
 
-        if (upscalerVal.m_Desc.type == UpscalerType::METALFX_DENOISED) {
-            NRI_RETURN_ON_FAILURE(&deviceVal, !guides.sss.texture, ReturnVoid(), "'guides.denoiser.sss' is unsupported by 'METALFX_DENOISED'");
-            NRI_RETURN_ON_FAILURE(&deviceVal, !guides.preTransparency.texture, ReturnVoid(), "'guides.denoiser.preTransparency' is unsupported by 'METALFX_DENOISED'");
-            NRI_RETURN_ON_FAILURE(&deviceVal, !(dispatchUpscaleDesc.flags & DispatchUpscaleBits::USE_SPECULAR_MOTION), ReturnVoid(), "'USE_SPECULAR_MOTION' is unsupported by 'METALFX_DENOISED'");
+        if (upscalerVal.m_Desc.type == UpscalerType::METALFX_DENOISER) {
+            NRI_RETURN_ON_FAILURE(&deviceVal, !guides.sss.texture, ReturnVoid(), "'guides.denoiser.sss' is unsupported by 'METALFX_DENOISER'");
+            NRI_RETURN_ON_FAILURE(&deviceVal, !guides.preTransparency.texture, ReturnVoid(), "'guides.denoiser.preTransparency' is unsupported by 'METALFX_DENOISER'");
+            NRI_RETURN_ON_FAILURE(&deviceVal, !(dispatchUpscaleDesc.flags & DispatchUpscaleBits::USE_SPECULAR_MOTION), ReturnVoid(), "'USE_SPECULAR_MOTION' is unsupported by 'METALFX_DENOISER'");
         }
     } else if (upscalerVal.m_Desc.type != UpscalerType::METALFX_SPATIAL) {
         const UpscalerGuides& guides = dispatchUpscaleDesc.guides.upscaler;

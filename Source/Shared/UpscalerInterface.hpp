@@ -515,7 +515,7 @@ struct MetalFx {
 };
 
 static inline bool IsMetalFx(UpscalerType type) {
-    return type == UpscalerType::METALFX_SPATIAL || type == UpscalerType::METALFX_TEMPORAL || type == UpscalerType::METALFX_DENOISED;
+    return type == UpscalerType::METALFX_SPATIAL || type == UpscalerType::METALFX_TEMPORAL || type == UpscalerType::METALFX_DENOISER;
 }
 
 static inline MTL::Texture* MetalFxGetTexture(const CoreInterface& NRI, const UpscalerResource& resource) {
@@ -646,7 +646,7 @@ bool nri::IsMetalFxSupportedMetal(NS::Object* device, UpscalerType type) {
     if (type == UpscalerType::METALFX_TEMPORAL)
         return MTLFX::TemporalScalerDescriptor::supportsMetal4FX(deviceNative);
 
-    if (type == UpscalerType::METALFX_DENOISED)
+    if (type == UpscalerType::METALFX_DENOISER)
         return MTLFX::TemporalDenoisedScalerDescriptor::supportsMetal4FX(deviceNative);
 
     return true;
@@ -1490,7 +1490,7 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
 
             scaleMin = MTLFX::TemporalScalerDescriptor::supportedInputContentMinScale(deviceNative);
             scaleMax = MTLFX::TemporalScalerDescriptor::supportedInputContentMaxScale(deviceNative);
-        } else if (upscalerDesc.type == UpscalerType::METALFX_DENOISED) {
+        } else if (upscalerDesc.type == UpscalerType::METALFX_DENOISER) {
             scaleMin = MTLFX::TemporalDenoisedScalerDescriptor::supportedInputContentMinScale(deviceNative);
             scaleMax = MTLFX::TemporalDenoisedScalerDescriptor::supportedInputContentMaxScale(deviceNative);
         }
@@ -1549,7 +1549,7 @@ void UpscalerImpl::GetUpscalerProps(UpscalerProps& upscalerProps) const {
     if (m_Desc.type == UpscalerType::NIS || m_Desc.type == UpscalerType::METALFX_SPATIAL) {
         upscalerProps.renderResolutionMin.w = 0;
         upscalerProps.renderResolutionMin.h = 0;
-    } else if (m_Desc.type != UpscalerType::METALFX_DENOISED && (m_Desc.mode == UpscalerMode::ULTRA_QUALITY || m_Desc.mode == UpscalerMode::QUALITY || m_Desc.mode == UpscalerMode::BALANCED)) {
+    } else if (m_Desc.type != UpscalerType::METALFX_DENOISER && (m_Desc.mode == UpscalerMode::ULTRA_QUALITY || m_Desc.mode == UpscalerMode::QUALITY || m_Desc.mode == UpscalerMode::BALANCED)) {
         upscalerProps.renderResolutionMin.w = m_Desc.upscaleResolution.w / 2;
         upscalerProps.renderResolutionMin.h = m_Desc.upscaleResolution.h / 2;
     } else
