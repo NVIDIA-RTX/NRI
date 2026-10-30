@@ -54,8 +54,8 @@ endif()
 
 # Options
 set(NRI_AGILITY_SDK_DIR "AgilitySDK" CACHE STRING "Directory where Agility SDK will be copied relative to the directory with binaries")
-set(NRI_AGILITY_SDK_VERSION_MAJOR "619" CACHE STRING "Agility SDK major version") # 721 ("D3D12_ERROR_INVALID_REDIST" if Windows developer mode is not enabled)
-set(NRI_AGILITY_SDK_VERSION_MINOR "6" CACHE STRING "Agility SDK minor version") # 3-preview
+set(NRI_AGILITY_SDK_VERSION_MAJOR "620" CACHE STRING "Agility SDK major version") # 722 ("D3D12_ERROR_INVALID_REDIST" if Windows developer mode is not enabled)
+set(NRI_AGILITY_SDK_VERSION_MINOR "1" CACHE STRING "Agility SDK minor version") # 0-preview
 set(NRI_WGPU_VERSION "v29.0.1.1")
 set(NRI_SHADERS_PATH "${CMAKE_CURRENT_SOURCE_DIR}/_Shaders" CACHE STRING "Shader output path override")
 set(NRI_NVAPI_CUSTOM_PATH "" CACHE STRING "Path to a custom NVAPI library directory")
@@ -231,7 +231,7 @@ if(NRI_ENABLE_METAL_SUPPORT)
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
-        URL "https://github.com/apple/metal-cpp/archive/refs/tags/release/metal-cpp_macOS27_iOS27.zip"
+        URL "https://github.com/apple/metal-cpp/archive/refs/tags/release/metal-cpp_macOS27.0.1_iOS27.0.1.zip"
     )
     list(APPEND DEPS metal_cpp)
 endif()
@@ -243,7 +243,7 @@ if(NRI_ENABLE_VK_SUPPORT)
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
-        URL "https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/v1.4.365.zip"
+        URL "https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/v1.4.367.zip"
     )
     list(APPEND DEPS vulkan_headers)
 
@@ -253,7 +253,7 @@ if(NRI_ENABLE_VK_SUPPORT)
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
-        URL "https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator/archive/bfb2ca99e1e7e9684dc06546b552ee3eff4b10aa.zip"
+        URL "https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator/archive/0f1a757da579831283413295cc7f3b47eb521c77.zip"
     )
     list(APPEND DEPS vma)
 endif()
@@ -280,28 +280,15 @@ if(NRI_ENABLE_NGX_SDK)
 endif()
 
 if(NRI_ENABLE_FFX_SDK)
-    # Keep the legacy SDK for Vulkan (the newer FSR SDK only supports D3D12)
-    if(NRI_ENABLE_VK_SUPPORT)
-        fetchcontent_declare(
-            ffx
-            DOWNLOAD_EXTRACT_TIMESTAMP 1
-            DOWNLOAD_NO_PROGRESS 1
-            SOURCE_SUBDIR "ignore CMakeLists.txt"
-            URL "https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/releases/download/v1.1.4/FidelityFX-SDK-v1.1.4.zip"
-        )
-        list(APPEND DEPS ffx)
-    endif()
-
-    if(NRI_ENABLE_D3D12_SUPPORT)
-        fetchcontent_declare(
-            fsr
-            DOWNLOAD_EXTRACT_TIMESTAMP 1
-            DOWNLOAD_NO_PROGRESS 1
-            SOURCE_SUBDIR "ignore CMakeLists.txt"
-            URL "https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/archive/refs/tags/v2.3.0.zip"
-        )
-        list(APPEND DEPS fsr)
-    endif()
+    # AMD FidelityFX SDK (D3D12 and Vulkan)
+    fetchcontent_declare(
+        fsr
+        DOWNLOAD_EXTRACT_TIMESTAMP 1
+        DOWNLOAD_NO_PROGRESS 1
+        SOURCE_SUBDIR "ignore CMakeLists.txt"
+        URL "https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/archive/refs/tags/v2.4.0.zip"
+    )
+    list(APPEND DEPS fsr)
 endif()
 
 if(NRI_ENABLE_XESS_SDK)
@@ -323,7 +310,7 @@ if(NRI_ENABLE_D3D12_SUPPORT)
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
-        URL "https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator/archive/b73737b0b4cde0b5ab80d685209cdc0d81cf878e.zip"
+        URL "https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator/archive/1753823e86d274ae1a2a55e6b9f9d206c3c30945.zip"
     )
     list(APPEND DEPS d3d12ma)
 endif()
@@ -510,12 +497,9 @@ target_include_directories(NRI_Shared
         $<$<BOOL:${NRI_ENABLE_NGX_SDK}>:
             ${ngx_SOURCE_DIR}/include
         >
-        $<$<AND:$<BOOL:${NRI_ENABLE_FFX_SDK}>,$<BOOL:${NRI_ENABLE_D3D12_SUPPORT}>>:
+        $<$<BOOL:${NRI_ENABLE_FFX_SDK}>:
             ${fsr_SOURCE_DIR}/Kits/FidelityFX/api/include
             ${fsr_SOURCE_DIR}/Kits/FidelityFX/upscalers/include
-        >
-        $<$<AND:$<BOOL:${NRI_ENABLE_FFX_SDK}>,$<NOT:$<BOOL:${NRI_ENABLE_D3D12_SUPPORT}>>>:
-            ${ffx_SOURCE_DIR}/ffx-api/include/ffx_api
         >
         $<$<BOOL:${NRI_ENABLE_XESS_SDK}>:
             ${xess_SOURCE_DIR}/inc/xess
@@ -1457,17 +1441,29 @@ if(NRI_ENABLE_FFX_SDK)
         )
     endif()
 
-    if(NRI_ENABLE_VK_SUPPORT AND WIN32)
-        find_file(FFX_VK_DLL
+    if(NRI_ENABLE_VK_SUPPORT)
+        find_file(FSR_VK_LOADER_DLL
             NAMES
-                amd_fidelityfx_vk.dll
+                amd_fidelityfx_loader_vk.dll
             PATHS
-                "${ffx_SOURCE_DIR}/PrebuiltSignedDLL"
+                "${fsr_SOURCE_DIR}/Kits/FidelityFX/signedbin"
+            NO_DEFAULT_PATH
+            NO_CACHE
+            REQUIRED
+        )
+        find_file(FSR_VK_UPSCALER_DLL
+            NAMES
+                amd_fidelityfx_upscaler_vk.dll
+            PATHS
+                "${fsr_SOURCE_DIR}/Kits/FidelityFX/signedbin"
+            NO_DEFAULT_PATH
+            NO_CACHE
+            REQUIRED
         )
         add_custom_command(TARGET NRI
             POST_BUILD
-                COMMAND ${CMAKE_COMMAND} -E copy_if_different ${FFX_VK_DLL} "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
-            VERBATIM
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different ${FSR_VK_LOADER_DLL} ${FSR_VK_UPSCALER_DLL} "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
+                VERBATIM
         )
     endif()
 endif()
