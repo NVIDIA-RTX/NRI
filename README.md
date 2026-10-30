@@ -5,18 +5,18 @@
 *NRI* is a modular, extensible, low-level rendering interface for *D3D12*, *Vulkan*, *D3D11*, *WebGPU* and *Metal*, with an API suitable for console backends. It exposes low-level GAPI features while simplifying usage and reducing the amount of code needed (especially compared with *Vulkan*).
 
 Goals:
-- Generalization and unification of GAPIs, building on the explicit models of *D3D12* ([spec](https://microsoft.github.io/DirectX-Specs/)) and *Vulkan* ([spec](https://registry.khronos.org/vulkan/specs/latest/html/vkspec.html))
-- Explicitness (providing access to low-level features of modern GAPIs)
-- Quality-of-life and high-level extensions (e.g., streaming and upscaling)
-- Low overhead
-- Cross-platform and vendor-independent (AMD/Intel friendly)
-- *D3D11* support ([spec](https://microsoft.github.io/DirectX-Specs/d3d/archive/D3D11_3_FunctionalSpec.htm)) (as much as possible)
+- A consistent programming model for modern GAPIs, building on the explicit models of *D3D12* ([spec](https://microsoft.github.io/DirectX-Specs/)) and *Vulkan* ([spec](https://registry.khronos.org/vulkan/specs/latest/html/vkspec.html))
+- Explicitness (providing access to low-level features of modern GAPIs) with less code
+- Practical helpers and extensions that simplify rendering tasks (e.g., data streaming) and feature integration (e.g., upscalers)
+- Low CPU overhead
+- Cross-platform and vendor-independent support (AMD/Intel and console friendly)
+- *D3D11* ([spec](https://microsoft.github.io/DirectX-Specs/d3d/archive/D3D11_3_FunctionalSpec.htm)) and *WGPU* support where practical
 
 Non-goals:
 - Exposing entities that do not exist in GAPIs
 - High-level (*D3D11*-like) abstraction
-- Hidden management of any kind (except for some high-level extensions where it's desired)
-- Automatic barriers (better handled in a higher-level abstraction)
+- Hidden management (except where explicitly provided by high-level extensions)
+- Automatic barriers (better handled by a higher-level abstraction)
 
 Supported GAPIs:
 - *Vulkan 1.4+, 1.3++ or 1.2+++* - older core versions require more extensions, with a *Vulkan 1.2* + _VK_KHR_synchronization2_ baseline
