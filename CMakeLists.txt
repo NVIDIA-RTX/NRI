@@ -280,7 +280,7 @@ if(NRI_ENABLE_NGX_SDK)
 endif()
 
 if(NRI_ENABLE_FFX_SDK)
-    # AMD FidelityFX SDK (D3D12 and Vulkan)
+    # AMD FidelityFX SDK
     fetchcontent_declare(
         fsr
         DOWNLOAD_EXTRACT_TIMESTAMP 1
