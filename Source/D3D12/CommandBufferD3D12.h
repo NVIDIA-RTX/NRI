@@ -3,9 +3,9 @@
 #pragma once
 
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
-typedef ID3D12GraphicsCommandList10 ID3D12GraphicsCommandListBest;
-typedef ID3D12VideoDecodeCommandList3 ID3D12VideoDecodeCommandListBest;
-typedef ID3D12VideoEncodeCommandList4 ID3D12VideoEncodeCommandListBest;
+typedef ID3D12GraphicsCommandList12 ID3D12GraphicsCommandListBest;
+typedef ID3D12VideoDecodeCommandList4 ID3D12VideoDecodeCommandListBest;
+typedef ID3D12VideoEncodeCommandList5 ID3D12VideoEncodeCommandListBest;
 #else
 typedef ID3D12GraphicsCommandList6 ID3D12GraphicsCommandListBest;
 typedef ID3D12VideoDecodeCommandList2 ID3D12VideoDecodeCommandListBest;

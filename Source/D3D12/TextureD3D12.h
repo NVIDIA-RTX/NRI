@@ -3,7 +3,7 @@
 #pragma once
 
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
-typedef ID3D12Resource2 ID3D12ResourceBest;
+typedef ID3D12Resource3 ID3D12ResourceBest;
 #else
 typedef ID3D12Resource ID3D12ResourceBest;
 #endif

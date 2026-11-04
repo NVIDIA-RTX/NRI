@@ -3,6 +3,8 @@
 static uint8_t QueryLatestInterface(ComPtr<ID3D12GraphicsCommandList>& in, ComPtr<ID3D12GraphicsCommandListBest>& out) {
     static const IID versions[] = {
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
+        __uuidof(ID3D12GraphicsCommandList12),
+        __uuidof(ID3D12GraphicsCommandList11),
         __uuidof(ID3D12GraphicsCommandList10),
         __uuidof(ID3D12GraphicsCommandList9),
         __uuidof(ID3D12GraphicsCommandList8),
@@ -34,6 +36,7 @@ static uint8_t QueryLatestInterface(ComPtr<ID3D12GraphicsCommandList>& in, ComPt
 static uint8_t QueryLatestInterface(ComPtr<ID3D12VideoDecodeCommandList>& in, ComPtr<ID3D12VideoDecodeCommandListBest>& out) {
     static const IID versions[] = {
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
+        __uuidof(ID3D12VideoDecodeCommandList4),
         __uuidof(ID3D12VideoDecodeCommandList3),
 #endif
         // D3D12 Ultimate initial release
@@ -58,6 +61,7 @@ static uint8_t QueryLatestInterface(ComPtr<ID3D12VideoDecodeCommandList>& in, Co
 static uint8_t QueryLatestInterface(ComPtr<ID3D12VideoEncodeCommandList>& in, ComPtr<ID3D12VideoEncodeCommandListBest>& out) {
     static const IID versions[] = {
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
+        __uuidof(ID3D12VideoEncodeCommandList5),
         __uuidof(ID3D12VideoEncodeCommandList4),
         __uuidof(ID3D12VideoEncodeCommandList3),
         __uuidof(ID3D12VideoEncodeCommandList2),

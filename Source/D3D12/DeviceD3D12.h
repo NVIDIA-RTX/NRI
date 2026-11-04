@@ -3,7 +3,7 @@
 #pragma once
 
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
-typedef ID3D12Device15 ID3D12DeviceBest;
+typedef ID3D12Device16 ID3D12DeviceBest;
 #else
 typedef ID3D12Device8 ID3D12DeviceBest;
 #endif
@@ -64,6 +64,10 @@ struct DeviceD3D12 final : public DeviceBase {
 
     inline uint8_t GetVersion() const {
         return m_Version;
+    }
+
+    inline bool HasNativeAsyncCommands() const {
+        return m_HasNativeAsyncCommands;
     }
 
     inline bool HasNvExt() const {
@@ -162,6 +166,7 @@ private:
     HostCopyLayoutD3D12 GetHostCopyLayout(const TextureD3D12& texture, const TextureRegionDesc& region, uint64_t& offset) const;
     Result AcquireTransferContext(QueueD3D12& queue, TransferContextD3D12*& context);
     void ReleaseTransferContext(TransferContextD3D12& context);
+    HRESULT CheckFeatureSupport(D3D12_FEATURE feature, void* data, uint32_t size) const;
     HRESULT CreateVma();
     void FillDesc(bool disableD3D12EnhancedBarrier);
     void InitializeNvExt(bool disableNVAPIInitialization, bool isImported);
@@ -202,6 +207,7 @@ private:
     uint8_t m_Version = 0;
     bool m_IsWrapped = false;
     bool m_IsMemoryZeroInitializationEnabled = false;
+    bool m_HasNativeAsyncCommands = false;
 
     std::array<Lock, D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES> m_FreeDescriptorLocks;
     Lock m_DescriptorHeapLock;
