@@ -82,6 +82,7 @@ NriStruct(DeviceCreationDesc) {
     // Vulkan specific
     Nri(VKBindingOffsets) vkBindingOffsets;
     NriOptional Nri(VKExtensions) vkExtensions; // to enable
+    NriOptional const void* vkInstanceCreateInfoNext; // appended to "VkInstanceCreateInfo::pNext" after NRI's "VkDebugUtilsMessengerCreateInfoEXT" and "VkValidationFeaturesEXT" (i.e. "VkLayerSettingsCreateInfoEXT")
 
     // Switches (disabled by default)
     bool enableNRIValidation;                   // embedded validation layer, checks for NRI specifics
