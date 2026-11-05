@@ -1603,6 +1603,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         m_Desc.features.presentFromCompute = true;
         m_Desc.features.waitableSwapChain = m_Desc.features.swapChain != 0 && PresentIdFeatures.presentId != 0 && PresentWaitFeatures.presentWait != 0;
         m_Desc.features.resizableSwapChain = m_Desc.features.swapChain != 0 && m_IsSupported.swapChainMaintenance1 != 0;
+        m_Desc.features.latestReadySwapChain = m_Desc.features.swapChain != 0 && m_IsSupported.fifoLatestReady != 0;
         m_Desc.features.layerBasedMultiview = features11.multiview;
         m_Desc.features.textureCompressionBC = features.features.textureCompressionBC;
         m_Desc.features.textureCompressionETC2 = features.features.textureCompressionETC2;

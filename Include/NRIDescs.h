@@ -2288,6 +2288,7 @@ NriStruct(DeviceDesc) {
         bool presentFromCompute;                                  // see "SwapChainDesc::queue"
         bool waitableSwapChain;                                   // see "SwapChainDesc::waitable"
         bool resizableSwapChain;                                  // swap chain can be resized without triggering an "OUT_OF_DATE" error
+        bool latestReadySwapChain;                                // see "SwapChainBits::LATEST_READY"
 
         // Multi view
         bool flexibleMultiview;                                   // see "Multiview::FLEXIBLE"

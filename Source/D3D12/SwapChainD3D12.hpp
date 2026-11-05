@@ -163,6 +163,7 @@ Result SwapChainD3D12::Create(const SwapChainDesc& swapChainDesc) {
         m_Flags &= ~SwapChainBits::ALLOW_TEARING;
     if (!m_FrameLatencyWaitableObject)
         m_Flags &= ~SwapChainBits::WAITABLE;
+    m_Flags &= ~SwapChainBits::LATEST_READY; // DXGI has no such mode
 
     return Result::SUCCESS;
 }
