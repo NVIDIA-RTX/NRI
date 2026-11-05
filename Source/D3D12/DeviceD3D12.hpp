@@ -496,8 +496,16 @@ Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD
     // IMPORTANT: Must be called before the D3D12 device is created, or the D3D12 runtime removes the device
     if (desc.enableGraphicsAPIValidation) {
         ComPtr<ID3D12Debug> debugController;
-        if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController))))
+        if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController)))) {
             debugController->EnableDebugLayer();
+
+            if (desc.enableD3D12GpuBasedValidation) {
+                ComPtr<ID3D12Debug1> debugController1;
+
+                if (SUCCEEDED(debugController->QueryInterface(IID_PPV_ARGS(&debugController1))))
+                    debugController1->SetEnableGPUBasedValidation(true);
+            }
+        }
     }
 
     { // Get adapter
