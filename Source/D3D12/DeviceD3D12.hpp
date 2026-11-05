@@ -496,7 +496,7 @@ Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
     // Agility SDK from a path, for hosts that cannot export "D3D12SDKVersion" / "D3D12SDKPath" (managed runtimes, plugins).
     // Applied to the process state so that every D3D12 entry point below, including the debug layer and AGS, uses the SDK.
-    // IMPORTANT: Must be called before any other D3D12 entry point in this process
+    // IMPORTANT: must precede the first D3D12 device the process keeps (devices created and released by adapter enumeration do not count). Process-wide: once applied, the inbox runtime is unreachable
     if (desc.d3d12AgilitySdkPath && !m_IsWrapped) {
         ComPtr<ID3D12SDKConfiguration1> sdkConfiguration;
         HRESULT hr = D3D12GetInterface(CLSID_D3D12SDKConfiguration, IID_PPV_ARGS(&sdkConfiguration));
