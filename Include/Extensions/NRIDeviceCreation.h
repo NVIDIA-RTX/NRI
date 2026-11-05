@@ -93,6 +93,7 @@ NriStruct(DeviceCreationDesc) {
     // Switches (enabled by default)
     bool disableVKRayTracing;                   // to save CPU memory in some implementations
     bool disableD3D12EnhancedBarriers;          // even if AgilitySDK is in use, some apps still use legacy barriers. It can be important for integrations
+    bool disableD3D12BreakOnError;              // D3D12: don't "SetBreakOnSeverity" for "ERROR" and "CORRUPTION" (messages still go through "CallbackInterface", if supported)
 };
 
 // if "adapterDescs == NULL", then "adapterDescNum" is set to the number of adapters
