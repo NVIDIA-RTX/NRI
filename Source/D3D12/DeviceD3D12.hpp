@@ -493,6 +493,26 @@ Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD
     // Get adapter description as early as possible for meaningful error reporting
     m_Desc.adapterDesc = *desc.adapterDesc;
 
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
+    // Agility SDK from a path, for hosts that cannot export "D3D12SDKVersion" / "D3D12SDKPath" (managed runtimes, plugins).
+    // Applied to the process state so that every D3D12 entry point below, including the debug layer and AGS, uses the SDK.
+    // IMPORTANT: Must be called before any other D3D12 entry point in this process
+    if (desc.d3d12AgilitySdkPath && !m_IsWrapped) {
+        ComPtr<ID3D12SDKConfiguration1> sdkConfiguration;
+        HRESULT hr = D3D12GetInterface(CLSID_D3D12SDKConfiguration, IID_PPV_ARGS(&sdkConfiguration));
+        NRI_RETURN_ON_BAD_HRESULT(this, hr, "D3D12GetInterface(CLSID_D3D12SDKConfiguration)");
+
+        ComPtr<ID3D12DeviceFactory> deviceFactory;
+        hr = sdkConfiguration->CreateDeviceFactory(NRI_AGILITY_SDK_VERSION_MAJOR, desc.d3d12AgilitySdkPath, IID_PPV_ARGS(&deviceFactory));
+        NRI_RETURN_ON_BAD_HRESULT(this, hr, "ID3D12SDKConfiguration1::CreateDeviceFactory");
+
+        hr = deviceFactory->ApplyToGlobalState();
+        NRI_RETURN_ON_BAD_HRESULT(this, hr, "ID3D12DeviceFactory::ApplyToGlobalState");
+
+        NRI_REPORT_INFO(this, "Using Agility SDK v1.%u from '%s'", (uint32_t)NRI_AGILITY_SDK_VERSION_MAJOR, desc.d3d12AgilitySdkPath);
+    }
+#endif
+
     // IMPORTANT: Must be called before the D3D12 device is created, or the D3D12 runtime removes the device
     if (desc.enableGraphicsAPIValidation) {
         ComPtr<ID3D12Debug> debugController;
