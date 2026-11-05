@@ -59,6 +59,16 @@ Result StreamerImpl::Create(const StreamerDesc& desc) {
 
     m_Desc = desc;
 
+    // Pre-allocate the dynamic buffer if an initial per-frame size is requested (otherwise it grows on demand)
+    if (desc.dynamicBufferDesc.size) {
+        m_DynamicBufferOffset = desc.dynamicBufferDesc.size;
+
+        if (!Grow())
+            return Result::FAILURE;
+
+        m_DynamicBufferOffset = 0;
+    }
+
     return Result::SUCCESS;
 }
 
