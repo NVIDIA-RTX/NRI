@@ -368,16 +368,16 @@ static void UpdateAdaptersVK(AdapterDesc* adapterDescs, uint32_t& adapterDescNum
     VkInstance instance = VK_NULL_HANDLE;
     Uid_t uidNeeded = {};
     VkResult vkResult = VK_SUCCESS;
-    uint32_t deviceGroupNum = 0;
+    uint32_t physicalDeviceNum = 0;
     uint32_t maxFamilyNum = 1;
-    VkPhysicalDeviceGroupProperties* deviceGroupProperties = nullptr;
+    VkPhysicalDevice* physicalDevices = nullptr;
     VkQueueFamilyProperties2* familyProps2 = nullptr;
     VkQueueFamilyVideoPropertiesKHR* familyVideoProps = nullptr;
 
     PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr = nullptr;
     PFN_vkCreateInstance vkCreateInstance = nullptr;
     PFN_vkDestroyInstance vkDestroyInstance = nullptr;
-    PFN_vkEnumeratePhysicalDeviceGroups vkEnumeratePhysicalDeviceGroups = nullptr;
+    PFN_vkEnumeratePhysicalDevices vkEnumeratePhysicalDevices = nullptr;
     PFN_vkGetPhysicalDeviceProperties2 vkGetPhysicalDeviceProperties2 = nullptr;
     PFN_vkGetPhysicalDeviceMemoryProperties vkGetPhysicalDeviceMemoryProperties = nullptr;
     PFN_vkGetPhysicalDeviceQueueFamilyProperties2 vkGetPhysicalDeviceQueueFamilyProperties2 = nullptr;
@@ -411,30 +411,26 @@ static void UpdateAdaptersVK(AdapterDesc* adapterDescs, uint32_t& adapterDescNum
 
     // Get needed functions
     vkDestroyInstance = (PFN_vkDestroyInstance)vkGetInstanceProcAddr(instance, "vkDestroyInstance");
-    vkEnumeratePhysicalDeviceGroups = (PFN_vkEnumeratePhysicalDeviceGroups)vkGetInstanceProcAddr(instance, "vkEnumeratePhysicalDeviceGroups");
+    vkEnumeratePhysicalDevices = (PFN_vkEnumeratePhysicalDevices)vkGetInstanceProcAddr(instance, "vkEnumeratePhysicalDevices");
     vkGetPhysicalDeviceProperties2 = (PFN_vkGetPhysicalDeviceProperties2)vkGetInstanceProcAddr(instance, "vkGetPhysicalDeviceProperties2");
     vkGetPhysicalDeviceMemoryProperties = (PFN_vkGetPhysicalDeviceMemoryProperties)vkGetInstanceProcAddr(instance, "vkGetPhysicalDeviceMemoryProperties");
     vkGetPhysicalDeviceQueueFamilyProperties2 = (PFN_vkGetPhysicalDeviceQueueFamilyProperties2)vkGetInstanceProcAddr(instance, "vkGetPhysicalDeviceQueueFamilyProperties2");
 
-    if (!vkDestroyInstance || !vkEnumeratePhysicalDeviceGroups || !vkGetPhysicalDeviceProperties2)
+    if (!vkDestroyInstance || !vkEnumeratePhysicalDevices || !vkGetPhysicalDeviceProperties2)
         goto CLEANUP;
 
-    vkResult = vkEnumeratePhysicalDeviceGroups(instance, &deviceGroupNum, nullptr);
+    vkResult = vkEnumeratePhysicalDevices(instance, &physicalDeviceNum, nullptr);
     if (vkResult != VK_SUCCESS)
         goto CLEANUP;
 
-    // Query device groups
-    deviceGroupProperties = (VkPhysicalDeviceGroupProperties*)alloca(sizeof(VkPhysicalDeviceGroupProperties) * deviceGroupNum);
-    for (uint32_t i = 0; i < deviceGroupNum; i++) {
-        deviceGroupProperties[i].sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GROUP_PROPERTIES;
-        deviceGroupProperties[i].pNext = nullptr;
-    }
-    vkEnumeratePhysicalDeviceGroups(instance, &deviceGroupNum, deviceGroupProperties);
+    // Query physical devices (a device is created on one physical device, not on a group)
+    physicalDevices = (VkPhysicalDevice*)alloca(sizeof(VkPhysicalDevice) * physicalDeviceNum);
+    vkEnumeratePhysicalDevices(instance, &physicalDeviceNum, physicalDevices);
 
     // Max queue families
     if (vkGetPhysicalDeviceQueueFamilyProperties2) {
-        for (uint32_t i = 0; i < deviceGroupNum; i++) {
-            VkPhysicalDevice physicalDevice = deviceGroupProperties[i].physicalDevices[0];
+        for (uint32_t i = 0; i < physicalDeviceNum; i++) {
+            VkPhysicalDevice physicalDevice = physicalDevices[i];
 
             uint32_t familyNum = 0;
             vkGetPhysicalDeviceQueueFamilyProperties2(physicalDevice, &familyNum, nullptr);
@@ -463,9 +459,9 @@ static void UpdateAdaptersVK(AdapterDesc* adapterDescs, uint32_t& adapterDescNum
         uidNeeded = ConstructUid(deviceIDProperties.deviceLUID, deviceIDProperties.deviceUUID, deviceIDProperties.deviceLUIDValid);
     }
 
-    // Query device groups properties
-    for (uint32_t i = 0; i < deviceGroupNum && adapterDescNum < ADAPTER_MAX_NUM; i++) {
-        VkPhysicalDevice physicalDevice = deviceGroupProperties[i].physicalDevices[0];
+    // Query physical devices properties
+    for (uint32_t i = 0; i < physicalDeviceNum && adapterDescNum < ADAPTER_MAX_NUM; i++) {
+        VkPhysicalDevice physicalDevice = physicalDevices[i];
 
         VkPhysicalDeviceProperties2 deviceProps2 = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2};
 

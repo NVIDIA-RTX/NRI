@@ -784,27 +784,23 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         m_PhysicalDevice = (VkPhysicalDevice)descVK.vkPhysicalDevice;
 
         if (!isWrapper) {
-            uint32_t deviceGroupNum = 0;
-            VkResult vkResult = m_VK.EnumeratePhysicalDeviceGroups(m_Instance, &deviceGroupNum, nullptr);
-            NRI_RETURN_ON_BAD_VKRESULT(this, vkResult, "vkEnumeratePhysicalDeviceGroups");
+            // Physical devices, not groups: a device is created on one physical device, and some overlay layers (RTSS) know only physical devices returned by "vkEnumeratePhysicalDevices"
+            uint32_t physicalDeviceNum = 0;
+            VkResult vkResult = m_VK.EnumeratePhysicalDevices(m_Instance, &physicalDeviceNum, nullptr);
+            NRI_RETURN_ON_BAD_VKRESULT(this, vkResult, "vkEnumeratePhysicalDevices");
 
-            Scratch<VkPhysicalDeviceGroupProperties> deviceGroups = NRI_ALLOCATE_SCRATCH(*this, VkPhysicalDeviceGroupProperties, deviceGroupNum);
-            for (uint32_t j = 0; j < deviceGroupNum; j++) {
-                deviceGroups[j].sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GROUP_PROPERTIES;
-                deviceGroups[j].pNext = nullptr;
-            }
-
-            vkResult = m_VK.EnumeratePhysicalDeviceGroups(m_Instance, &deviceGroupNum, deviceGroups);
-            NRI_RETURN_ON_BAD_VKRESULT(this, vkResult, "vkEnumeratePhysicalDeviceGroups");
+            Scratch<VkPhysicalDevice> physicalDevices = NRI_ALLOCATE_SCRATCH(*this, VkPhysicalDevice, physicalDeviceNum);
+            vkResult = m_VK.EnumeratePhysicalDevices(m_Instance, &physicalDeviceNum, physicalDevices);
+            NRI_RETURN_ON_BAD_VKRESULT(this, vkResult, "vkEnumeratePhysicalDevices");
 
             uint32_t i = 0;
-            for (i = 0; i < deviceGroupNum; i++) {
+            for (i = 0; i < physicalDeviceNum; i++) {
                 VkPhysicalDeviceProperties2 props = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2};
 
                 VkPhysicalDeviceIDProperties idProps = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES};
                 props.pNext = &idProps;
 
-                m_VK.GetPhysicalDeviceProperties2(deviceGroups[i].physicalDevices[0], &props);
+                m_VK.GetPhysicalDeviceProperties2(physicalDevices[i], &props);
 
                 uint32_t majorVersion = VK_API_VERSION_MAJOR(props.properties.apiVersion);
                 m_MinorVersion = std::min(VK_API_VERSION_MINOR(props.properties.apiVersion), VK_API_VERSION_MINOR(m_InstanceVersion));
@@ -820,12 +816,9 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
                     break;
             }
 
-            NRI_RETURN_ON_FAILURE(this, i != deviceGroupNum, Result::INVALID_ARGUMENT, "Can't create a device: physical device not found");
+            NRI_RETURN_ON_FAILURE(this, i != physicalDeviceNum, Result::INVALID_ARGUMENT, "Can't create a device: physical device not found");
 
-            if (deviceGroups[i].physicalDeviceCount > 1 && deviceGroups[i].subsetAllocation == VK_FALSE)
-                NRI_REPORT_WARNING(this, "The device group does not support memory allocation on a subset of the physical devices");
-
-            m_PhysicalDevice = deviceGroups[i].physicalDevices[0];
+            m_PhysicalDevice = physicalDevices[i];
         }
     }
 
@@ -2308,7 +2301,7 @@ Result DeviceVK::ResolveInstanceDispatchTable(const Vector<const char*>& desired
     GET_INSTANCE_FUNC(GetPhysicalDeviceExternalSemaphoreProperties);
     GET_INSTANCE_FUNC(CreateDevice);
     GET_INSTANCE_FUNC(GetDeviceQueue2);
-    GET_INSTANCE_FUNC(EnumeratePhysicalDeviceGroups);
+    GET_INSTANCE_FUNC(EnumeratePhysicalDevices);
     GET_INSTANCE_FUNC(GetPhysicalDeviceProperties2);
     GET_INSTANCE_FUNC(GetPhysicalDeviceFeatures2);
     GET_INSTANCE_FUNC(GetPhysicalDeviceQueueFamilyProperties2);
