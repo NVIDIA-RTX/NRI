@@ -911,7 +911,9 @@ NRI_API Result NRI_CALL nriCreateDevice(const DeviceCreationDesc& deviceCreation
     std::array<AdapterDesc, ADAPTER_MAX_NUM> adapterDescs = {};
     AdapterDesc adapterDesc = {};
     if (!modifiedDeviceCreationDesc.adapterDesc) {
-        nriEnumerateAdapters(adapterDescs.data(), adapterDescNum);
+        // A VK device needs the VK pass only; the D3D pass would create D3D12 devices and keep "D3D12Core.dll" loaded. A D3D12 adapter desc depends on the VK pass (queue counts), so other APIs probe everything
+        GraphicsAPI desiredGraphicsAPIs = modifiedDeviceCreationDesc.graphicsAPI == GraphicsAPI::VK ? GraphicsAPI::VK : GraphicsAPI::ALL;
+        nriEnumerateAdapters(adapterDescs.data(), adapterDescNum, desiredGraphicsAPIs);
         for (uint32_t i = 0; i < adapterDescNum; i++) {
             if (adapterDescs[i].supportedGraphicsAPIs & modifiedDeviceCreationDesc.graphicsAPI) {
                 adapterDesc = adapterDescs[i];

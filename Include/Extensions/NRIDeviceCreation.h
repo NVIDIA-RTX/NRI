@@ -89,17 +89,20 @@ NriStruct(DeviceCreationDesc) {
     // Vulkan specific
     Nri(VKBindingOffsets) vkBindingOffsets;
     NriOptional Nri(VKExtensions) vkExtensions; // to enable
+    NriOptional const void* vkInstanceCreateInfoNext; // appended to "VkInstanceCreateInfo::pNext" after NRI's "VkDebugUtilsMessengerCreateInfoEXT" and "VkValidationFeaturesEXT" (i.e. "VkLayerSettingsCreateInfoEXT")
 
     // Switches (disabled by default)
     bool enableNRIValidation;                   // embedded validation layer, checks for NRI specifics
     bool enableGraphicsAPIValidation;           // GAPI-provided validation layer (D3D12: process-global; METAL: ignored, set "MTL_DEBUG_LAYER=1" instead)
     bool enableD3D11CommandBufferEmulation;     // enable? but why? (auto-enabled if deferred contexts are not supported)
     bool enableD3D12RayTracingValidation;       // slow but useful, can only be enabled if envvar "NV_ALLOW_RAYTRACING_VALIDATION" is set to "1"
+    bool enableD3D12GpuBasedValidation;         // D3D12: "ID3D12Debug1::SetEnableGPUBasedValidation" (slow, process-global, requires "enableGraphicsAPIValidation")
     bool enableMemoryZeroInitialization;        // page-clears are fast, but memory is not cleared by default in VK
 
     // Switches (enabled by default)
     bool disableVKRayTracing;                   // to save CPU memory in some implementations
     bool disableD3D12EnhancedBarriers;          // even if AgilitySDK is in use, some apps still use legacy barriers. It can be important for integrations
+    bool disableD3D12BreakOnError;              // D3D12: don't "SetBreakOnSeverity" for "ERROR" and "CORRUPTION" (messages still go through "CallbackInterface", if supported)
 };
 
 // if "adapterDescs == NULL", then "adapterDescNum" is set to the number of adapters

@@ -769,7 +769,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         if (!isWrapper) {
             ProcessInstanceExtensions(desiredInstanceExts);
 
-            res = CreateInstance(desc.enableGraphicsAPIValidation, desiredInstanceExts);
+            res = CreateInstance(desc.enableGraphicsAPIValidation, desiredInstanceExts, desc.vkInstanceCreateInfoNext);
             if (res != Result::SUCCESS)
                 return res;
         }
@@ -2082,7 +2082,7 @@ void DeviceVK::GetMicromapBuildSizesInfo(const MicromapDesc& micromapDesc, VkMic
     vk.GetMicromapBuildSizesEXT(m_Device, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &buildInfo, &sizesInfo);
 }
 
-Result DeviceVK::CreateInstance(bool enableGraphicsAPIValidation, const Vector<const char*>& desiredInstanceExts) {
+Result DeviceVK::CreateInstance(bool enableGraphicsAPIValidation, const Vector<const char*>& desiredInstanceExts, const void* instanceCreateInfoNext) {
     Vector<const char*> layers(GetStdAllocator());
     if (enableGraphicsAPIValidation)
         layers.push_back("VK_LAYER_KHRONOS_validation");
@@ -2134,6 +2134,9 @@ Result DeviceVK::CreateInstance(bool enableGraphicsAPIValidation, const Vector<c
 
     if (enableGraphicsAPIValidation)
         PNEXTCHAIN_APPEND_STRUCT(validationFeatures);
+
+    // Caller's structures go last
+    *_tail = instanceCreateInfoNext;
 
     vkResult = m_VK.CreateInstance(&instanceCreateInfo, m_AllocationCallbackPtr, &m_Instance);
     NRI_RETURN_ON_BAD_VKRESULT(this, vkResult, "vkCreateInstance");
