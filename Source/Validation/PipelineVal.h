@@ -26,6 +26,7 @@ struct PipelineVal final : public ObjectVal {
 
 private:
     const PipelineLayout* m_PipelineLayout = nullptr;
+    uint32_t m_ShaderGroupNum = 0; // unknown for wrapped pipelines
 };
 
 } // namespace nri

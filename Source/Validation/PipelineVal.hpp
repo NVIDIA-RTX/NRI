@@ -16,12 +16,16 @@ PipelineVal::PipelineVal(DeviceVal& device, Pipeline* pipeline, const ComputePip
 
 PipelineVal::PipelineVal(DeviceVal& device, Pipeline* pipeline, const RayTracingPipelineDesc& rayTracingPipelineDesc)
     : ObjectVal(device, pipeline)
-    , m_PipelineLayout(rayTracingPipelineDesc.pipelineLayout) {
+    , m_PipelineLayout(rayTracingPipelineDesc.pipelineLayout)
+    , m_ShaderGroupNum(rayTracingPipelineDesc.shaderGroupNum) {
 }
 
 NRI_INLINE Result PipelineVal::WriteShaderGroupIdentifiers(uint32_t baseShaderGroupIndex, uint32_t shaderGroupNum, uint32_t dstStride, void* dst) {
     const uint32_t identifierSize = m_Device.GetDesc().shaderStage.rayTracing.shaderGroupIdentifierSize;
 
+    NRI_RETURN_ON_FAILURE(&m_Device, shaderGroupNum != 0, Result::INVALID_ARGUMENT, "'shaderGroupNum' is 0");
+    NRI_RETURN_ON_FAILURE(&m_Device, (m_ShaderGroupNum == 0 || (uint64_t)baseShaderGroupIndex + shaderGroupNum <= m_ShaderGroupNum), Result::INVALID_ARGUMENT, "'baseShaderGroupIndex + shaderGroupNum' > the pipeline's 'shaderGroupNum=%u'", m_ShaderGroupNum);
+    NRI_RETURN_ON_FAILURE(&m_Device, dst != nullptr, Result::INVALID_ARGUMENT, "'dst' is NULL");
     NRI_RETURN_ON_FAILURE(&m_Device, dstStride >= identifierSize, Result::INVALID_ARGUMENT, "'dstStride' is less than 'shaderStage.rayTracing.shaderGroupIdentifierSize'");
 
     return GetRayTracingInterfaceImpl().WriteShaderGroupIdentifiers(*GetImpl(), baseShaderGroupIndex, shaderGroupNum, dstStride, dst);

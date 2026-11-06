@@ -1897,7 +1897,7 @@ NRI_INLINE Result DeviceVal::CreatePipeline(const RayTracingPipelineDesc& rayTra
 
     pipeline = nullptr;
     if (result == Result::SUCCESS)
-        result = WrapImplementation<PipelineVal>(pipeline, pipelineImpl, m_iCoreImpl.DestroyPipeline);
+        result = WrapImplementation<PipelineVal>(pipeline, pipelineImpl, m_iCoreImpl.DestroyPipeline, rayTracingPipelineDesc);
 
     return result;
 }
