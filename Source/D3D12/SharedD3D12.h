@@ -45,6 +45,35 @@ struct D3D12_RAYTRACING_OPACITY_MICROMAP_HISTOGRAM_ENTRY {
 
 namespace nri {
 
+// Queried interfaces: newer versions retain runtime fallback when the query list is updated too
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
+typedef ID3D12Device16 ID3D12DeviceBest;
+typedef ID3D12GraphicsCommandList12 ID3D12GraphicsCommandListBest;
+typedef ID3D12VideoDecodeCommandList4 ID3D12VideoDecodeCommandListBest;
+typedef ID3D12VideoEncodeCommandList5 ID3D12VideoEncodeCommandListBest;
+typedef ID3D12InfoQueue1 ID3D12InfoQueueBest;
+#else
+typedef ID3D12Device8 ID3D12DeviceBest;
+typedef ID3D12GraphicsCommandList6 ID3D12GraphicsCommandListBest;
+typedef ID3D12VideoDecodeCommandList2 ID3D12VideoDecodeCommandListBest;
+typedef ID3D12VideoEncodeCommandList ID3D12VideoEncodeCommandListBest;
+typedef ID3D12InfoQueue ID3D12InfoQueueBest;
+#endif
+typedef IDXGISwapChain4 IDXGISwapChainBest;
+
+// Interfaces requested directly during creation: raising these versions raises the minimum runtime requirement (creation functions)
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
+typedef ID3D12Resource2 ID3D12ResourceBest;
+typedef ID3D12VideoDecoder1 ID3D12VideoDecoderBest;
+typedef ID3D12VideoDecoderHeap1 ID3D12VideoDecoderHeapBest;
+typedef ID3D12VideoEncoder ID3D12VideoEncoderBest;
+typedef ID3D12VideoEncoderHeap1 ID3D12VideoEncoderHeapBest;
+#else
+typedef ID3D12Resource ID3D12ResourceBest;
+typedef ID3D12VideoDecoder ID3D12VideoDecoderBest;
+typedef ID3D12VideoDecoderHeap ID3D12VideoDecoderHeapBest;
+#endif
+
 struct AccelerationStructureD3D12;
 struct BufferD3D12;
 struct CommandAllocatorD3D12;

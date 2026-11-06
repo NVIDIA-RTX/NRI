@@ -2,12 +2,6 @@
 
 #pragma once
 
-#if NRI_ENABLE_AGILITY_SDK_SUPPORT
-typedef ID3D12Resource3 ID3D12ResourceBest;
-#else
-typedef ID3D12Resource ID3D12ResourceBest;
-#endif
-
 namespace nri {
 
 struct BufferD3D12 final : public DebugNameBase {

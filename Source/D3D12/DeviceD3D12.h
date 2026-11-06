@@ -2,12 +2,6 @@
 
 #pragma once
 
-#if NRI_ENABLE_AGILITY_SDK_SUPPORT
-typedef ID3D12Device16 ID3D12DeviceBest;
-#else
-typedef ID3D12Device8 ID3D12DeviceBest;
-#endif
-
 namespace nri {
 
 struct HostCopyLayoutD3D12 {

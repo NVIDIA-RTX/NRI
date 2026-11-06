@@ -2,16 +2,6 @@
 
 #pragma once
 
-#if NRI_ENABLE_AGILITY_SDK_SUPPORT
-typedef ID3D12VideoDecoder1 ID3D12VideoDecoderBest;
-typedef ID3D12VideoDecoderHeap1 ID3D12VideoDecoderHeapBest;
-typedef ID3D12VideoEncoder1 ID3D12VideoEncoderBest;
-typedef ID3D12VideoEncoderHeap1 ID3D12VideoEncoderHeapBest;
-#else
-typedef ID3D12VideoDecoder ID3D12VideoDecoderBest;
-typedef ID3D12VideoDecoderHeap ID3D12VideoDecoderHeapBest;
-#endif
-
 namespace nri {
 
 struct VideoSessionD3D12 final : public DebugNameBase {

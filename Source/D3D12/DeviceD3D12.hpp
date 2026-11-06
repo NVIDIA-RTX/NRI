@@ -187,8 +187,6 @@ static const char* GetDredObjectName(const char* ansiName, const wchar_t* wideNa
 }
 
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
-typedef ID3D12InfoQueue1 ID3D12InfoQueueBest;
-
 static void __stdcall MessageCallback(D3D12_MESSAGE_CATEGORY category, D3D12_MESSAGE_SEVERITY severity, D3D12_MESSAGE_ID id, LPCSTR message, void* context) {
     MaybeUnused(id, category);
 
@@ -204,8 +202,6 @@ static void __stdcall MessageCallback(D3D12_MESSAGE_CATEGORY category, D3D12_MES
     device.ReportMessage(messageType, result, __FILE__, __LINE__, "[%u] %s", id, message);
 }
 
-#else
-typedef ID3D12InfoQueue ID3D12InfoQueueBest;
 #endif
 
 #if NRI_ENABLE_NVAPI

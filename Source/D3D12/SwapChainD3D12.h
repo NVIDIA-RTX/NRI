@@ -2,9 +2,6 @@
 
 #pragma once
 
-struct IDXGISwapChain4;
-typedef IDXGISwapChain4 IDXGISwapChainBest;
-
 namespace nri {
 
 struct SwapChainD3D12 final : public DisplayDescHelper, DebugNameBase {

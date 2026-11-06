@@ -928,6 +928,87 @@ static inline D3D12_VIDEO_ENCODER_AV1_FRAME_TYPE GetVideoEncodeAV1FrameType(Vide
     }
 }
 
+static inline void EncodeVideoFrame(ID3D12VideoEncodeCommandListBest* commandList, uint8_t version, ID3D12VideoEncoder* encoder, ID3D12VideoEncoderHeap1* heap, VideoCodec codec,
+    const D3D12_VIDEO_ENCODER_ENCODEFRAME_INPUT_ARGUMENTS1& input, const D3D12_VIDEO_ENCODER_ENCODEFRAME_OUTPUT_ARGUMENTS1& output) {
+    if (version >= 4) {
+        commandList->EncodeFrame1(encoder, heap, &input, &output);
+        return;
+    }
+
+    NRI_CHECK(version >= 2, "Video encoding requires ID3D12VideoEncodeCommandList2");
+
+    D3D12_VIDEO_ENCODER_ENCODEFRAME_INPUT_ARGUMENTS legacyInput = {};
+    legacyInput.SequenceControlDesc = input.SequenceControlDesc;
+    legacyInput.PictureControlDesc.IntraRefreshFrameIndex = input.PictureControlDesc.IntraRefreshFrameIndex;
+    legacyInput.PictureControlDesc.Flags = input.PictureControlDesc.Flags;
+    legacyInput.PictureControlDesc.ReferenceFrames = input.PictureControlDesc.ReferenceFrames;
+    legacyInput.pInputFrame = input.pInputFrame;
+    legacyInput.InputFrameSubresource = input.InputFrameSubresource;
+    legacyInput.CurrentFrameBitstreamMetadataSize = input.CurrentFrameBitstreamMetadataSize;
+
+    const D3D12_VIDEO_ENCODER_PICTURE_CONTROL_CODEC_DATA1& codecData = input.PictureControlDesc.PictureControlCodecData;
+    D3D12_VIDEO_ENCODER_PICTURE_CONTROL_CODEC_DATA& legacyCodecData = legacyInput.PictureControlDesc.PictureControlCodecData;
+    legacyCodecData.DataSize = codecData.DataSize;
+
+    D3D12_VIDEO_ENCODER_PICTURE_CONTROL_CODEC_DATA_HEVC legacyHevc = {};
+    if (codec == VideoCodec::H264)
+        legacyCodecData.pH264PicData = codecData.pH264PicData;
+    else if (codec == VideoCodec::H265) {
+        const D3D12_VIDEO_ENCODER_PICTURE_CONTROL_CODEC_DATA_HEVC2& hevc = *codecData.pHEVCPicData;
+        legacyHevc.Flags = hevc.Flags;
+        legacyHevc.FrameType = hevc.FrameType;
+        legacyHevc.slice_pic_parameter_set_id = hevc.slice_pic_parameter_set_id;
+        legacyHevc.PictureOrderCountNumber = hevc.PictureOrderCountNumber;
+        legacyHevc.TemporalLayerIndex = hevc.TemporalLayerIndex;
+        legacyHevc.List0ReferenceFramesCount = hevc.List0ReferenceFramesCount;
+        legacyHevc.pList0ReferenceFrames = hevc.pList0ReferenceFrames;
+        legacyHevc.List1ReferenceFramesCount = hevc.List1ReferenceFramesCount;
+        legacyHevc.pList1ReferenceFrames = hevc.pList1ReferenceFrames;
+        legacyHevc.ReferenceFramesReconPictureDescriptorsCount = hevc.ReferenceFramesReconPictureDescriptorsCount;
+        legacyHevc.pReferenceFramesReconPictureDescriptors = hevc.pReferenceFramesReconPictureDescriptors;
+        legacyHevc.List0RefPicModificationsCount = hevc.List0RefPicModificationsCount;
+        legacyHevc.pList0RefPicModifications = hevc.pList0RefPicModifications;
+        legacyHevc.List1RefPicModificationsCount = hevc.List1RefPicModificationsCount;
+        legacyHevc.pList1RefPicModifications = hevc.pList1RefPicModifications;
+        legacyHevc.QPMapValuesCount = hevc.QPMapValuesCount;
+        legacyHevc.pRateControlQPMap = hevc.pRateControlQPMap;
+
+        // The legacy API derives active reference counts from the list lengths, as NRI does for HEVC2.
+        legacyCodecData.DataSize = sizeof(legacyHevc);
+        legacyCodecData.pHEVCPicData = &legacyHevc;
+    } else
+        legacyCodecData.pAV1PicData = codecData.pAV1PicData;
+
+    D3D12_VIDEO_ENCODER_ENCODEFRAME_OUTPUT_ARGUMENTS legacyOutput = {};
+    legacyOutput.Bitstream = output.Bitstream.FrameOutputBuffer;
+    legacyOutput.ReconstructedPicture = output.ReconstructedPicture;
+    legacyOutput.EncoderOutputMetadata = output.EncoderOutputMetadata;
+
+    commandList->EncodeFrame(encoder, heap, &legacyInput, &legacyOutput);
+}
+
+static inline void ResolveVideoEncoderOutputMetadata(ID3D12VideoEncodeCommandListBest* commandList, uint8_t version,
+    const D3D12_VIDEO_ENCODER_RESOLVE_METADATA_INPUT_ARGUMENTS1& input, const D3D12_VIDEO_ENCODER_RESOLVE_METADATA_OUTPUT_ARGUMENTS1& output) {
+    if (version >= 4) {
+        commandList->ResolveEncoderOutputMetadata1(&input, &output);
+        return;
+    }
+
+    NRI_CHECK(version >= 2, "Video metadata resolve requires ID3D12VideoEncodeCommandList2");
+
+    D3D12_VIDEO_ENCODER_RESOLVE_METADATA_INPUT_ARGUMENTS legacyInput = {};
+    legacyInput.EncoderCodec = input.EncoderCodec;
+    legacyInput.EncoderProfile = input.EncoderProfile;
+    legacyInput.EncoderInputFormat = input.EncoderInputFormat;
+    legacyInput.EncodedPictureEffectiveResolution = input.EncodedPictureEffectiveResolution;
+    legacyInput.HWLayoutMetadata = input.HWLayoutMetadata;
+
+    D3D12_VIDEO_ENCODER_RESOLVE_METADATA_OUTPUT_ARGUMENTS legacyOutput = {};
+    legacyOutput.ResolvedLayoutMetadata = output.ResolvedLayoutMetadata;
+
+    commandList->ResolveEncoderOutputMetadata(&legacyInput, &legacyOutput);
+}
+
 static_assert(offsetof(VideoEncodeFeedback, errorFlags) == offsetof(D3D12_VIDEO_ENCODER_OUTPUT_METADATA, EncodeErrorFlags));
 static_assert(offsetof(VideoEncodeFeedback, encodedBitstreamWrittenBytes) == offsetof(D3D12_VIDEO_ENCODER_OUTPUT_METADATA, EncodedBitstreamWrittenBytesCount));
 static_assert(offsetof(VideoEncodeFeedback, writtenSubregionNum) == offsetof(D3D12_VIDEO_ENCODER_OUTPUT_METADATA, WrittenSubregionsCount));
@@ -1915,7 +1996,7 @@ NRI_INLINE void CommandBufferD3D12::EncodeVideo(const VideoEncodeDesc& videoEnco
 
     ID3D12VideoEncodeCommandListBest* commandList = GetVideoEncodeCommandList();
 
-    commandList->EncodeFrame1(session.GetEncoder(), session.GetEncoderHeap(), &input, &output);
+    EncodeVideoFrame(commandList, m_Version, session.GetEncoder(), session.GetEncoderHeap(), sessionDesc.codec, input, output);
 
     if (videoEncodeDesc.resolvedMetadata) {
         D3D12_RESOURCE_BARRIER metadataReady = {};
@@ -1926,7 +2007,7 @@ NRI_INLINE void CommandBufferD3D12::EncodeVideo(const VideoEncodeDesc& videoEnco
         metadataReady.Transition.StateAfter = D3D12_RESOURCE_STATE_VIDEO_ENCODE_READ;
         commandList->ResourceBarrier(1, &metadataReady); // TODO-VIDEO: support enhanced barriers too
 
-        commandList->ResolveEncoderOutputMetadata1(&resolveInput, &resolveOutput);
+        ResolveVideoEncoderOutputMetadata(commandList, m_Version, resolveInput, resolveOutput);
 
         std::swap(metadataReady.Transition.StateBefore, metadataReady.Transition.StateAfter);
         commandList->ResourceBarrier(1, &metadataReady);
