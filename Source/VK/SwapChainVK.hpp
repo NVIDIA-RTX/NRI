@@ -230,8 +230,13 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
         VkResult vkResult = vk.GetPhysicalDeviceSurfacePresentModesKHR(m_Device, m_Surface, &surfacePresentModeNum, surfacePresentModes.data());
         NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkGetPhysicalDeviceSurfacePresentModesKHR");
 
+        // "LATEST_READY" with "VSYNC": queued like "FIFO", but the newest ready image is taken at vblank
+        bool latestReady = (swapChainDesc.flags & SwapChainBits::LATEST_READY) && m_Device.m_IsSupported.fifoLatestReady;
+        VkPresentModeKHR cappedMode = (swapChainDesc.flags & SwapChainBits::ALLOW_TEARING) ? VK_PRESENT_MODE_FIFO_RELAXED_KHR : VK_PRESENT_MODE_FIFO_KHR;
+
         const VkPresentModeKHR cappedModes[] = {
-            (swapChainDesc.flags & SwapChainBits::ALLOW_TEARING) ? VK_PRESENT_MODE_FIFO_RELAXED_KHR : VK_PRESENT_MODE_FIFO_KHR,
+            latestReady ? VK_PRESENT_MODE_FIFO_LATEST_READY_EXT : cappedMode,
+            cappedMode,
             VK_PRESENT_MODE_FIFO_KHR, // guaranteed to be supported
         };
 
@@ -452,6 +457,9 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
         m_Flags &= ~SwapChainBits::ALLOW_LOW_LATENCY;
     if (!m_Device.GetDesc().features.waitableSwapChain)
         m_Flags &= ~SwapChainBits::WAITABLE;
+
+    if (presentMode != VK_PRESENT_MODE_FIFO_LATEST_READY_EXT)
+        m_Flags &= ~SwapChainBits::LATEST_READY;
 
     return Result::SUCCESS;
 }
