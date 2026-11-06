@@ -493,6 +493,32 @@ Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD
     // Get adapter description as early as possible for meaningful error reporting
     m_Desc.adapterDesc = *desc.adapterDesc;
 
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
+    if (desc.d3d12AgilitySdkPath && !m_IsWrapped) {
+        // Resolve on demand so that a NULL path does not require this export on older Windows versions
+        auto getInterface = (decltype(&D3D12GetInterface))GetProcAddress(GetModuleHandleW(L"d3d12.dll"), "D3D12GetInterface");
+        NRI_RETURN_ON_FAILURE(this, getInterface != nullptr, Result::UNSUPPORTED, "D3D12GetInterface is not supported");
+
+        ComPtr<ID3D12SDKConfiguration1> sdkConfiguration;
+        HRESULT hr = getInterface(CLSID_D3D12SDKConfiguration, IID_PPV_ARGS(&sdkConfiguration));
+        NRI_RETURN_ON_BAD_HRESULT(this, hr, "D3D12GetInterface(CLSID_D3D12SDKConfiguration)");
+
+        ComPtr<ID3D12DeviceFactory> deviceFactory;
+        hr = sdkConfiguration->CreateDeviceFactory(NRI_AGILITY_SDK_VERSION_MAJOR, desc.d3d12AgilitySdkPath, IID_PPV_ARGS(&deviceFactory));
+        NRI_RETURN_ON_BAD_HRESULT(this, hr, "ID3D12SDKConfiguration1::CreateDeviceFactory");
+
+        // Preserve process-global settings (the debug layer, GPU validation, DRED and experimental features)
+        hr = deviceFactory->InitializeFromGlobalState();
+        NRI_RETURN_ON_BAD_HRESULT(this, hr, "ID3D12DeviceFactory::InitializeFromGlobalState");
+
+        // Apply to the process state so that every D3D12 entry point below, including the debug layer and AGS, uses the SDK. The runtime rejects SDK changes incompatible with live devices
+        hr = deviceFactory->ApplyToGlobalState();
+        NRI_RETURN_ON_BAD_HRESULT(this, hr, "ID3D12DeviceFactory::ApplyToGlobalState");
+
+        NRI_REPORT_INFO(this, "Using Agility SDK v1.%u from '%s'", (uint32_t)NRI_AGILITY_SDK_VERSION_MAJOR, desc.d3d12AgilitySdkPath);
+    }
+#endif
+
     // IMPORTANT: Must be called before the D3D12 device is created, or the D3D12 runtime removes the device
     if (desc.enableGraphicsAPIValidation) {
         ComPtr<ID3D12Debug> debugController;
