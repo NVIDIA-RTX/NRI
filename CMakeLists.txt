@@ -219,7 +219,7 @@ if(NRI_ENABLE_NVTX_SUPPORT)
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
-        URL "https://github.com/NVIDIA/NVTX/archive/refs/tags/v3.6.0.zip"
+        URL "https://github.com/NVIDIA/NVTX/archive/refs/tags/v3.7.0.zip"
     )
     list(APPEND DEPS nvtx)
 endif()
@@ -243,7 +243,7 @@ if(NRI_ENABLE_VK_SUPPORT)
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
-        URL "https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/v1.4.367.zip"
+        URL "https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/v1.4.368.zip"
     )
     list(APPEND DEPS vulkan_headers)
 
