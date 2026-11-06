@@ -78,7 +78,13 @@ NriStruct(DeviceCreationDesc) {
     // D3D specific
     NriOptional uint32_t d3dShaderExtRegister;  // vendor specific shader extensions (default is "NRI_SHADER_EXT_REGISTER", space is always "0")
     NriOptional uint32_t d3dZeroBufferSize;     // no "memset" functionality in D3D, "CmdZeroBuffer" implemented via a bunch of copies (4 Mb by default)
-    NriOptional const char* d3d12AgilitySdkPath; // directory holding "D3D12Core.dll" of the Agility SDK NRI was built against; if set, the SDK is loaded through "ID3D12SDKConfiguration1::CreateDeviceFactory" and applied to the process, so the host executable needs no "D3D12SDKVersion" / "D3D12SDKPath" exports (requires "NRI_ENABLE_AGILITY_SDK_SUPPORT")
+
+    // Directory holding "D3D12Core.dll" of the Agility SDK NRI was built against:
+    // - useful for hosts that cannot export "D3D12SDKVersion" / "D3D12SDKPath" (managed runtimes, plugins)
+    // - process-global: NULL keeps the current SDK selection, including a previously supplied custom path
+    // - existing global configuration is preserved; switching to a different runtime fails while incompatible devices remain alive
+    // - may be silently ignored if not supported
+    NriOptional const char* d3d12AgilitySdkPath;
 
     // Vulkan specific
     Nri(VKBindingOffsets) vkBindingOffsets;
