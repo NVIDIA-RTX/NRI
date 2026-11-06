@@ -46,11 +46,13 @@ NriEnum(Gravity, uint8_t,
 
 NriBits(SwapChainBits, uint8_t,
     NONE                = 0,
-    VSYNC               = NriBit(0), // cap framerate to the monitor refresh rate
+    VSYNC               = NriBit(0), // cap framerate to the monitor refresh rate (except with "LATEST_READY")
     WAITABLE            = NriBit(1), // unlock "WaitForPresent" reducing latency (requires "features.waitableSwapChain")
     ALLOW_TEARING       = NriBit(2), // allow screen tearing if possible (METAL: "displaySyncEnabled = NO", may show partially rendered frames)
     ALLOW_LOW_LATENCY   = NriBit(3), // allow "NRILowLatency" functionality (requires "features.lowLatency")
-    LATEST_READY        = NriBit(4)  // VK: with "VSYNC" prefer "FIFO_LATEST_READY" (the newest ready image at vblank, no tearing) over "FIFO" (requires "features.latestReadySwapChain", ignored otherwise)
+
+    // Multiple ready frames may be consumed per vblank, discarding older frames; rendering can exceed the monitor refresh rate. Silently ignored if not supported
+    LATEST_READY        = NriBit(4)  // VK: with "VSYNC" prefer "FIFO_LATEST_READY" (the newest ready image at VBLANK, no tearing) over "FIFO" (requires "features.latestReadySwapChain")
 );
 
 NriStruct(WindowsWindow) {  // Expects "WIN32" platform macro
