@@ -35,7 +35,7 @@ Result QueryPoolVK::Create(const QueryPoolDesc& queryPoolDesc) {
         | VK_QUERY_PIPELINE_STATISTIC_TESSELLATION_EVALUATION_SHADER_INVOCATIONS_BIT
         | VK_QUERY_PIPELINE_STATISTIC_COMPUTE_SHADER_INVOCATIONS_BIT;
 
-    if (m_Device.GetDesc().features.meshShader)
+    if (m_Device.GetDesc().features.meshShaderPipelineStats)
         pipelineStatistics |= VK_QUERY_PIPELINE_STATISTIC_TASK_SHADER_INVOCATIONS_BIT_EXT | VK_QUERY_PIPELINE_STATISTIC_MESH_SHADER_INVOCATIONS_BIT_EXT;
 
     VkQueryPoolCreateInfo poolInfo = {VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO, nullptr, (VkQueryPoolCreateFlags)0, m_Type, queryPoolDesc.capacity, pipelineStatistics};
@@ -44,7 +44,7 @@ Result QueryPoolVK::Create(const QueryPoolDesc& queryPoolDesc) {
     VkResult vkResult = vk.CreateQueryPool(m_Device, &poolInfo, m_Device.GetVkAllocationCallbacks(), &m_Handle);
     NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateQueryPool");
 
-    m_QuerySize = (m_Type == VK_QUERY_TYPE_PIPELINE_STATISTICS ? (m_Device.GetDesc().features.meshShader ? 13 : 11) : 1) * sizeof(uint64_t);
+    m_QuerySize = (m_Type == VK_QUERY_TYPE_PIPELINE_STATISTICS ? (m_Device.GetDesc().features.meshShaderPipelineStats ? 13 : 11) : 1) * sizeof(uint64_t);
 
     return Result::SUCCESS;
 }
@@ -53,7 +53,7 @@ Result QueryPoolVK::Create(const QueryPoolVKDesc& queryPoolVKDesc) {
     m_OwnsNativeObjects = false;
     m_Type = (VkQueryType)queryPoolVKDesc.vkQueryType;
     m_Handle = (VkQueryPool)queryPoolVKDesc.vkQueryPool;
-    m_QuerySize = (m_Type == VK_QUERY_TYPE_PIPELINE_STATISTICS ? (m_Device.GetDesc().features.meshShader ? 13 : 11) : 1) * sizeof(uint64_t);
+    m_QuerySize = (m_Type == VK_QUERY_TYPE_PIPELINE_STATISTICS ? (m_Device.GetDesc().features.meshShaderPipelineStats ? 13 : 11) : 1) * sizeof(uint64_t);
 
     return Result::SUCCESS;
 }
