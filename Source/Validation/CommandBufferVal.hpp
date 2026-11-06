@@ -108,7 +108,11 @@ static inline bool IsTextureLayoutSupported(const TextureDesc& textureDesc, Layo
     return true;
 }
 
-static inline bool IsDrawParametersEmulationEnabled(const PipelineLayoutDesc& pipelineLayoutDesc) {
+static inline bool IsDrawParametersEmulationEnabled(GraphicsAPI graphicsAPI, const PipelineLayoutDesc& pipelineLayoutDesc) {
+    // Emulation exists only in D3D12 and METAL, other backends use native draw parameters and their indirect records stay "Draw(Indexed)Desc"
+    if (graphicsAPI != GraphicsAPI::D3D12 && graphicsAPI != GraphicsAPI::METAL)
+        return false;
+
     return (pipelineLayoutDesc.flags & PipelineLayoutBits::ENABLE_DRAW_PARAMETERS_EMULATION) != 0 && (pipelineLayoutDesc.shaderStages & StageBits::VERTEX_SHADER) != 0;
 }
 
@@ -1030,7 +1034,7 @@ NRI_INLINE void CommandBufferVal::DrawIndirect(const Buffer& buffer, uint64_t of
     NRI_RETURN_ON_FAILURE(&m_Device, !countBuffer || deviceDesc.features.drawIndirectCount, ReturnVoid(), "'countBuffer' is not supported");
 
     const PipelineLayoutDesc& pipelineLayoutDesc = m_PipelineLayout->GetPipelineLayoutDesc();
-    bool enableDrawParametersEmulation = IsDrawParametersEmulationEnabled(pipelineLayoutDesc);
+    bool enableDrawParametersEmulation = IsDrawParametersEmulationEnabled(deviceDesc.graphicsAPI, pipelineLayoutDesc);
     uint32_t minStride = enableDrawParametersEmulation ? sizeof(DrawBaseDesc) : sizeof(DrawDesc);
     NRI_RETURN_ON_FAILURE(&m_Device, stride >= minStride, ReturnVoid(), "'stride' is too small, expected >= %u", minStride);
     NRI_RETURN_ON_FAILURE(&m_Device, (stride % 4) == 0, ReturnVoid(), "'stride' must be 4-byte aligned");
@@ -1050,7 +1054,7 @@ NRI_INLINE void CommandBufferVal::DrawIndexedIndirect(const Buffer& buffer, uint
     NRI_RETURN_ON_FAILURE(&m_Device, !countBuffer || deviceDesc.features.drawIndirectCount, ReturnVoid(), "'countBuffer' is not supported");
 
     const PipelineLayoutDesc& pipelineLayoutDesc = m_PipelineLayout->GetPipelineLayoutDesc();
-    bool enableDrawParametersEmulation = IsDrawParametersEmulationEnabled(pipelineLayoutDesc);
+    bool enableDrawParametersEmulation = IsDrawParametersEmulationEnabled(deviceDesc.graphicsAPI, pipelineLayoutDesc);
     uint32_t minStride = enableDrawParametersEmulation ? sizeof(DrawIndexedBaseDesc) : sizeof(DrawIndexedDesc);
     NRI_RETURN_ON_FAILURE(&m_Device, stride >= minStride, ReturnVoid(), "'stride' is too small, expected >= %u", minStride);
     NRI_RETURN_ON_FAILURE(&m_Device, (stride % 4) == 0, ReturnVoid(), "'stride' must be 4-byte aligned");
