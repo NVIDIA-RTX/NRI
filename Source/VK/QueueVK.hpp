@@ -81,13 +81,14 @@ NRI_INLINE void QueueVK::GetCalibratedTimestamps(uint64_t& timestampGPU, uint64_
 
 NRI_INLINE Result QueueVK::Submit(const QueueSubmitDesc& queueSubmitDesc) {
     ExclusiveScope lock(*m_Lock);
+    const VkPipelineStageFlags2 unsupportedStages = m_Device.GetUnsupportedPipelineStages();
 
     Scratch<VkSemaphoreSubmitInfo> waitSemaphores = NRI_ALLOCATE_SCRATCH(m_Device, VkSemaphoreSubmitInfo, queueSubmitDesc.waitFenceNum);
     for (uint32_t i = 0; i < queueSubmitDesc.waitFenceNum; i++) {
         waitSemaphores[i] = {VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO};
         waitSemaphores[i].semaphore = *(FenceVK*)queueSubmitDesc.waitFences[i].fence;
         waitSemaphores[i].value = queueSubmitDesc.waitFences[i].value;
-        waitSemaphores[i].stageMask = GetPipelineStageFlags(queueSubmitDesc.waitFences[i].stages);
+        waitSemaphores[i].stageMask = GetPipelineStageFlags(queueSubmitDesc.waitFences[i].stages) & ~unsupportedStages;
     }
 
     Scratch<VkCommandBufferSubmitInfo> commandBuffers = NRI_ALLOCATE_SCRATCH(m_Device, VkCommandBufferSubmitInfo, queueSubmitDesc.commandBufferNum);
@@ -101,7 +102,7 @@ NRI_INLINE Result QueueVK::Submit(const QueueSubmitDesc& queueSubmitDesc) {
         signalSemaphores[i] = {VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO};
         signalSemaphores[i].semaphore = *(FenceVK*)queueSubmitDesc.signalFences[i].fence;
         signalSemaphores[i].value = queueSubmitDesc.signalFences[i].value;
-        signalSemaphores[i].stageMask = GetPipelineStageFlags(queueSubmitDesc.signalFences[i].stages);
+        signalSemaphores[i].stageMask = GetPipelineStageFlags(queueSubmitDesc.signalFences[i].stages) & ~unsupportedStages;
     }
 
     VkSubmitInfo2 submitInfo = {VK_STRUCTURE_TYPE_SUBMIT_INFO_2};

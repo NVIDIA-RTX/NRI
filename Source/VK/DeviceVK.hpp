@@ -1660,6 +1660,33 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         m_Desc.features.tessellationShader = features.features.tessellationShader != 0;
         m_Desc.features.geometryShader = features.features.geometryShader != 0;
         m_Desc.features.meshShader = MeshShaderFeatures.meshShader != 0 && MeshShaderFeatures.taskShader != 0;
+
+        // Remove unavailable shader stages from umbrella masks and explicit visibility masks.
+        if (!features.features.tessellationShader) {
+            m_SupportedShaderStages &= ~StageBits::TESSELLATION_SHADERS;
+            m_UnsupportedPipelineStages |= VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT | VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT;
+        }
+
+        if (!features.features.geometryShader) {
+            m_SupportedShaderStages &= ~StageBits::GEOMETRY_SHADER;
+            m_UnsupportedPipelineStages |= VK_PIPELINE_STAGE_2_GEOMETRY_SHADER_BIT;
+        }
+
+        if (!MeshShaderFeatures.taskShader) {
+            m_SupportedShaderStages &= ~StageBits::TASK_SHADER;
+            m_UnsupportedPipelineStages |= VK_PIPELINE_STAGE_2_TASK_SHADER_BIT_EXT;
+        }
+
+        if (!MeshShaderFeatures.meshShader) {
+            m_SupportedShaderStages &= ~StageBits::MESH_SHADER;
+            m_UnsupportedPipelineStages |= VK_PIPELINE_STAGE_2_MESH_SHADER_BIT_EXT;
+        }
+
+        if (!RayTracingPipelineFeatures.rayTracingPipeline) {
+            m_SupportedShaderStages &= ~StageBits::RAY_TRACING_SHADERS;
+            m_UnsupportedPipelineStages |= VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR;
+        }
+
         m_Desc.features.lowLatency = m_IsSupported.presentId != 0 && IsExtensionSupported(VK_NV_LOW_LATENCY_2_EXTENSION_NAME, desiredDeviceExts);
         m_Desc.features.componentSwizzle = true;
         m_Desc.features.independentFrontAndBackStencilReferenceAndMasks = true;

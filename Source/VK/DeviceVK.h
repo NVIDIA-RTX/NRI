@@ -199,6 +199,14 @@ struct DeviceVK final : public DeviceBase {
         return m_Vma;
     }
 
+    inline StageBits GetSupportedShaderStages() const {
+        return m_SupportedShaderStages;
+    }
+
+    inline VkPipelineStageFlags2 GetUnsupportedPipelineStages() const {
+        return m_UnsupportedPipelineStages;
+    }
+
     template <typename Implementation, typename Interface, typename... Args>
     [[nodiscard]] inline Result CreateImplementation(Interface*& entity, Args&&... args) {
         return nri::CreateImplementation(GetAllocationCallbacks(), entity, Allocate<Implementation>(GetAllocationCallbacks(), *this), std::forward<Args>(args)...);
@@ -333,6 +341,8 @@ private:
     uint32_t m_MinorVersion = 0;
     VkTimeDomainKHR m_CalibratedTimestampCPUTimeDomain = VK_TIME_DOMAIN_DEVICE_KHR;
     uint64_t m_NonCoherentAtomSize = 1;
+    VkPipelineStageFlags2 m_UnsupportedPipelineStages = 0;
+    StageBits m_SupportedShaderStages = StageBits::ALL_SHADERS;
     DeviceLostDump m_DeviceLostDump = {};
     bool m_OwnsNativeObjects = true;
     bool m_IsMemoryZeroInitializationEnabled = false;

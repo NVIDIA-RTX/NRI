@@ -1,5 +1,10 @@
 // © 2021 NVIDIA Corporation
 
+static inline VkShaderStageFlags GetSupportedShaderStageFlags(const DeviceVK& device, StageBits shaderStages, StageBits pipelineLayoutShaderStages) {
+    const StageBits stages = GetEffectiveShaderStages(shaderStages, pipelineLayoutShaderStages);
+    return GetShaderStageFlags(stages) & GetShaderStageFlags(device.GetSupportedShaderStages());
+}
+
 static inline SamplerDesc GetEmbeddedSamplerDesc(const SamplerDesc& samplerDesc) {
     SamplerDesc embeddedSamplerDesc = samplerDesc;
     const Color& borderColor = samplerDesc.borderColor;
@@ -32,6 +37,7 @@ PipelineLayoutVK::~PipelineLayoutVK() {
 
 Result PipelineLayoutVK::Create(const PipelineLayoutDesc& pipelineLayoutDesc) {
     m_ShaderStages = GetEffectiveShaderStages(pipelineLayoutDesc.shaderStages);
+    m_ShaderStages &= m_Device.GetSupportedShaderStages();
 
     // Binding offsets
     bool ignoreGlobalSPIRVOffsets = (pipelineLayoutDesc.flags & PipelineLayoutBits::IGNORE_GLOBAL_SPIRV_OFFSETS) != 0;
@@ -68,7 +74,7 @@ Result PipelineLayoutVK::Create(const PipelineLayoutDesc& pipelineLayoutDesc) {
         uint32_t offset = 0;
         for (uint32_t i = 0; i < pipelineLayoutDesc.rootConstantNum; i++) {
             const RootConstantDesc& rootConstantDesc = pipelineLayoutDesc.rootConstants[i];
-            m_BindingInfo.pushConstants.push_back({GetShaderStageFlags(GetEffectiveShaderStages(rootConstantDesc.shaderStages, m_ShaderStages)), offset});
+            m_BindingInfo.pushConstants.push_back({GetSupportedShaderStageFlags(m_Device, rootConstantDesc.shaderStages, m_ShaderStages), offset});
             offset += rootConstantDesc.size;
         }
 
@@ -127,7 +133,7 @@ Result PipelineLayoutVK::Create(const PipelineLayoutDesc& pipelineLayoutDesc) {
 
         VkPushConstantRange& range = pushConstantRanges[i];
         range = {};
-        range.stageFlags = GetShaderStageFlags(GetEffectiveShaderStages(pushConstantDesc.shaderStages, m_ShaderStages));
+        range.stageFlags = GetSupportedShaderStageFlags(m_Device, pushConstantDesc.shaderStages, m_ShaderStages);
         range.offset = offset;
         range.size = pushConstantDesc.size;
 
@@ -228,7 +234,7 @@ uint32_t PipelineLayoutVK::SetupDescriptorHeapMappings(VkShaderStageFlagBits sta
 
     for (uint32_t i = 0; i < m_BindingInfo.rootConstants.size(); i++) {
         const RootConstantDesc& desc = m_BindingInfo.rootConstants[i];
-        if (!(GetShaderStageFlags(GetEffectiveShaderStages(desc.shaderStages, m_ShaderStages)) & stage))
+        if (!(GetSupportedShaderStageFlags(m_Device, desc.shaderStages, m_ShaderStages) & stage))
             continue;
 
         VkDescriptorSetAndBindingMappingEXT& mapping = mappings[mappingNum++];
@@ -243,7 +249,7 @@ uint32_t PipelineLayoutVK::SetupDescriptorHeapMappings(VkShaderStageFlagBits sta
 
     for (uint32_t i = 0; i < m_BindingInfo.rootDescriptors.size(); i++) {
         const RootDescriptorDesc& desc = m_BindingInfo.rootDescriptors[i];
-        if (!(GetShaderStageFlags(GetEffectiveShaderStages(desc.shaderStages, m_ShaderStages)) & stage))
+        if (!(GetSupportedShaderStageFlags(m_Device, desc.shaderStages, m_ShaderStages) & stage))
             continue;
 
         VkDescriptorSetAndBindingMappingEXT& mapping = mappings[mappingNum++];
@@ -275,7 +281,7 @@ uint32_t PipelineLayoutVK::SetupDescriptorHeapMappings(VkShaderStageFlagBits sta
     }
 
     for (const RootSamplerDesc& desc : m_BindingInfo.rootSamplers) {
-        if (!(GetShaderStageFlags(GetEffectiveShaderStages(desc.shaderStages, m_ShaderStages)) & stage))
+        if (!(GetSupportedShaderStageFlags(m_Device, desc.shaderStages, m_ShaderStages) & stage))
             continue;
 
         const SamplerDesc samplerDesc = GetEmbeddedSamplerDesc(desc.desc);
@@ -370,7 +376,7 @@ void PipelineLayoutVK::CreateSetLayout(VkDescriptorSetLayout* setLayout, const D
             binding = {};
             binding.binding = baseBindingIndex + j;
             binding.descriptorCount = isArray ? range.descriptorNum : 1;
-            binding.stageFlags = GetShaderStageFlags(GetEffectiveShaderStages(range.shaderStages, m_ShaderStages));
+            binding.stageFlags = GetSupportedShaderStageFlags(m_Device, range.shaderStages, m_ShaderStages);
 
             bindingFlags[bindingNum] = flags;
 
@@ -404,7 +410,7 @@ void PipelineLayoutVK::CreateSetLayout(VkDescriptorSetLayout* setLayout, const D
         binding.binding = rootSamplerDesc.registerIndex + bindingOffsets[(uint32_t)DescriptorType::SAMPLER];
         binding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
         binding.descriptorCount = 1;
-        binding.stageFlags = GetShaderStageFlags(GetEffectiveShaderStages(rootSamplerDesc.shaderStages, m_ShaderStages));
+        binding.stageFlags = GetSupportedShaderStageFlags(m_Device, rootSamplerDesc.shaderStages, m_ShaderStages);
         binding.pImmutableSamplers = &immutableSamplers[i];
 
         bindingFlags[bindingNum] = 0;

@@ -2638,6 +2638,8 @@ NRI_INLINE void CommandBufferVK::DispatchIndirect(const Buffer& buffer, uint64_t
 }
 
 NRI_INLINE void CommandBufferVK::Barrier(const BarrierDesc& barrierDesc) {
+    const VkPipelineStageFlags2 unsupportedStages = m_Device.GetUnsupportedPipelineStages();
+
     // Global
     Scratch<VkMemoryBarrier2> memoryBarriers = NRI_ALLOCATE_SCRATCH(m_Device, VkMemoryBarrier2, barrierDesc.globalNum);
     for (uint32_t i = 0; i < barrierDesc.globalNum; i++) {
@@ -2645,9 +2647,9 @@ NRI_INLINE void CommandBufferVK::Barrier(const BarrierDesc& barrierDesc) {
 
         VkMemoryBarrier2& out = memoryBarriers[i];
         out = {VK_STRUCTURE_TYPE_MEMORY_BARRIER_2};
-        out.srcStageMask = GetPipelineStageFlags(in.before.stages);
+        out.srcStageMask = GetPipelineStageFlags(in.before.stages) & ~unsupportedStages;
         out.srcAccessMask = GetAccessFlags(in.before.access);
-        out.dstStageMask = GetPipelineStageFlags(in.after.stages);
+        out.dstStageMask = GetPipelineStageFlags(in.after.stages) & ~unsupportedStages;
         out.dstAccessMask = GetAccessFlags(in.after.access);
     }
 
@@ -2660,9 +2662,9 @@ NRI_INLINE void CommandBufferVK::Barrier(const BarrierDesc& barrierDesc) {
 
         VkBufferMemoryBarrier2& out = bufferBarriers[i];
         out = {VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2};
-        out.srcStageMask = GetPipelineStageFlags(in.before.stages);
+        out.srcStageMask = GetPipelineStageFlags(in.before.stages) & ~unsupportedStages;
         out.srcAccessMask = GetAccessFlags(in.before.access);
-        out.dstStageMask = GetPipelineStageFlags(in.after.stages);
+        out.dstStageMask = GetPipelineStageFlags(in.after.stages) & ~unsupportedStages;
         out.dstAccessMask = GetAccessFlags(in.after.access);
         out.srcQueueFamilyIndex = GetQueueFamilyIndex(in.srcQueue, isConcurrent);
         out.dstQueueFamilyIndex = GetQueueFamilyIndex(in.dstQueue, isConcurrent);
@@ -2683,9 +2685,9 @@ NRI_INLINE void CommandBufferVK::Barrier(const BarrierDesc& barrierDesc) {
 
         VkImageMemoryBarrier2& out = textureBarriers[i];
         out = {VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2};
-        out.srcStageMask = GetPipelineStageFlags(in.before.stages);
+        out.srcStageMask = GetPipelineStageFlags(in.before.stages) & ~unsupportedStages;
         out.srcAccessMask = GetAccessFlags(in.before.access);
-        out.dstStageMask = GetPipelineStageFlags(in.after.stages);
+        out.dstStageMask = GetPipelineStageFlags(in.after.stages) & ~unsupportedStages;
         out.dstAccessMask = GetAccessFlags(in.after.access);
         out.oldLayout = GetImageLayout(in.before.layout);
         out.newLayout = GetImageLayout(in.after.layout);
