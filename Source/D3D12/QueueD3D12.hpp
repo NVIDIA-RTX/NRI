@@ -2,7 +2,7 @@
 
 Result QueueD3D12::Create(QueueType queueType, float priority) {
     D3D12_COMMAND_QUEUE_DESC queueDesc = {};
-    queueDesc.Priority = priority > 0.5f ? D3D12_COMMAND_QUEUE_PRIORITY_HIGH : D3D12_COMMAND_QUEUE_PRIORITY_NORMAL; // TODO: values in between? check D3D12_FEATURE_COMMAND_QUEUE_PRIORITY support?
+    queueDesc.Priority = priority > 0.0f ? D3D12_COMMAND_QUEUE_PRIORITY_HIGH : D3D12_COMMAND_QUEUE_PRIORITY_NORMAL; // TODO: check priority support
     queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
     queueDesc.NodeMask = NODE_MASK;
     queueDesc.Type = GetCommandListType(queueType);

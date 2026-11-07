@@ -57,7 +57,7 @@ NriStruct(VKExtensions) {
 
 // A collection of queues of the same type
 NriStruct(QueueFamilyDesc) {
-    NriOptional const float* queuePriorities;   // [-1; 1]: low < 0, normal = 0, high > 0 ("queueNum" entries expected)
+    NriOptional const float* queuePriorities; // "queueNum" entries in range [-1; 1] (low < 0, normal = 0, high > 0, D3D12: low == normal)
     uint32_t queueNum;
     Nri(QueueType) queueType;
 };
