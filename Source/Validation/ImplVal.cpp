@@ -2054,8 +2054,9 @@ static Result NRI_CALL CreateStreamer(Device& device, const StreamerDesc& stream
     NRI_RETURN_ON_FAILURE(&deviceVal, streamerDesc.dynamicBufferMemoryLocation < MemoryLocation::MAX_NUM, Result::INVALID_ARGUMENT, "'dynamicBufferMemoryLocation' is invalid");
     NRI_RETURN_ON_FAILURE(&deviceVal, streamerDesc.hostDataCapacity <= SIZE_MAX, Result::INVALID_ARGUMENT, "'hostDataCapacity' exceeds the HOST address space");
 
+    // "constantBufferMemoryLocation" is optional: no constant buffer is created without "constantBufferSize"
     bool isUpload = streamerDesc.constantBufferMemoryLocation == MemoryLocation::HOST_UPLOAD || streamerDesc.constantBufferMemoryLocation == MemoryLocation::DEVICE_UPLOAD;
-    NRI_RETURN_ON_FAILURE(&deviceVal, isUpload, Result::INVALID_ARGUMENT, "'constantBufferMemoryLocation' must be an UPLOAD heap");
+    NRI_RETURN_ON_FAILURE(&deviceVal, isUpload || !streamerDesc.constantBufferSize, Result::INVALID_ARGUMENT, "'constantBufferMemoryLocation' must be an UPLOAD heap");
 
     isUpload = streamerDesc.dynamicBufferMemoryLocation == MemoryLocation::HOST_UPLOAD || streamerDesc.dynamicBufferMemoryLocation == MemoryLocation::DEVICE_UPLOAD;
     NRI_RETURN_ON_FAILURE(&deviceVal, isUpload, Result::INVALID_ARGUMENT, "'dynamicBufferMemoryLocation' must be an UPLOAD heap");
