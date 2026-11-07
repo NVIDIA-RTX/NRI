@@ -1657,6 +1657,11 @@ void DeviceD3D12::GetMicromapPrebuildInfo(const MicromapDesc& micromapDesc, D3D1
     opacityMicromapArrayDesc.NumOmmHistogramEntries = micromapDesc.usageNum;
     opacityMicromapArrayDesc.pOmmHistogram = usages;
 
+    // Not dereferenced, but may be checked for null: dummy non-zero values stand for the build's buffers (DXR spec, "GetRaytracingAccelerationStructurePrebuildInfo")
+    opacityMicromapArrayDesc.InputBuffer = 256;
+    opacityMicromapArrayDesc.PerOmmDescs.StartAddress = 256;
+    opacityMicromapArrayDesc.PerOmmDescs.StrideInBytes = sizeof(MicromapTriangle);
+
     D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS accelerationStructureInputs = {};
     accelerationStructureInputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_OPACITY_MICROMAP_ARRAY;
     accelerationStructureInputs.Flags = GetMicromapFlags(micromapDesc.flags);
