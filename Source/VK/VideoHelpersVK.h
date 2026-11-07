@@ -451,9 +451,12 @@ static inline void FillVideoAV1ColorConfig(StdVideoAV1ColorConfig& colorConfig, 
     colorConfig.BitDepth = desc.bitDepth;
     colorConfig.subsampling_x = desc.subsamplingX;
     colorConfig.subsampling_y = desc.subsamplingY;
-    colorConfig.color_primaries = (StdVideoAV1ColorPrimaries)desc.colorPrimaries;
-    colorConfig.transfer_characteristics = (StdVideoAV1TransferCharacteristics)desc.transferCharacteristics;
-    colorConfig.matrix_coefficients = (StdVideoAV1MatrixCoefficients)desc.matrixCoefficients;
+
+    // Without a colour description AV1 infers "unspecified" for all three (0 is reserved for primaries and transfer)
+    bool hasColorDescription = !!(desc.flags & VideoAV1SequenceBits::COLOR_DESCRIPTION_PRESENT);
+    colorConfig.color_primaries = hasColorDescription ? (StdVideoAV1ColorPrimaries)desc.colorPrimaries : STD_VIDEO_AV1_COLOR_PRIMARIES_UNSPECIFIED;
+    colorConfig.transfer_characteristics = hasColorDescription ? (StdVideoAV1TransferCharacteristics)desc.transferCharacteristics : STD_VIDEO_AV1_TRANSFER_CHARACTERISTICS_UNSPECIFIED;
+    colorConfig.matrix_coefficients = hasColorDescription ? (StdVideoAV1MatrixCoefficients)desc.matrixCoefficients : STD_VIDEO_AV1_MATRIX_COEFFICIENTS_UNSPECIFIED;
     colorConfig.chroma_sample_position = (StdVideoAV1ChromaSamplePosition)desc.chromaSamplePosition;
 }
 
