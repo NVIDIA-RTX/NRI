@@ -24,7 +24,7 @@ struct DispatchTable {
     VK_FUNC(GetPhysicalDeviceExternalSemaphoreProperties);
     VK_FUNC(CreateDevice); // may return "VK_ERROR_DEVICE_LOST"
     VK_FUNC(GetDeviceQueue2);
-    VK_FUNC(EnumeratePhysicalDeviceGroups);
+    VK_FUNC(EnumeratePhysicalDevices);
     VK_FUNC(GetPhysicalDeviceProperties2);
     VK_FUNC(GetPhysicalDeviceFeatures2);
     VK_FUNC(GetPhysicalDeviceQueueFamilyProperties2);
