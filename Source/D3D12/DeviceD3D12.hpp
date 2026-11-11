@@ -589,7 +589,7 @@ Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD
 
             AGSDX12ReturnedParams agsParams = {};
             AGSReturnCode result = m_AmdExt.CreateDeviceD3D12(m_AmdExt.context, &deviceCreationParams, &extensionsParams, &agsParams);
-            NRI_RETURN_ON_FAILURE(this, result == AGS_SUCCESS, Result::FAILURE, "agsDriverExtensionsDX12_CreateDevice() failed: %d", (int32_t)result);
+            NRI_RETURN_ON_EXT_FAILURE(this, result == AGS_SUCCESS, Result::EXT_ERROR, "agsDriverExtensionsDX12_CreateDevice() failed, result = %d", (int32_t)result);
 
             deviceTemp = agsParams.pDevice;
             isShaderAtomicsI64Supported = agsParams.extensionsSupported.intrinsics19;
@@ -711,7 +711,10 @@ Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD
         // Enable ray tracing validation
         if (desc.enableD3D12RayTracingValidation) {
             NvAPI_Status status = NvAPI_D3D12_EnableRaytracingValidation(m_Device, NVAPI_D3D12_RAYTRACING_VALIDATION_FLAG_NONE);
-            if (status == NVAPI_OK)
+
+            if (status != NVAPI_OK)
+                NRI_REPORT_WARNING(this, "Ray tracing validation is disabled, because 'NvAPI_D3D12_EnableRaytracingValidation()' failed, result = %d (requires envvar \"NV_ALLOW_RAYTRACING_VALIDATION=1\")", (int32_t)status);
+            else
                 NRI_REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D12_RegisterRaytracingValidationMessageCallback(m_Device, NvapiMessageCallback, this, &m_CallbackHandle));
 
             // TODO: if enabled, call "NvAPI_D3D12_FlushRaytracingValidationMessages()" after each submit? present? DEVICE_LOST?
@@ -1339,8 +1342,10 @@ void DeviceD3D12::InitializeNvExt(bool disableNVAPIInitialization, bool isImport
         NRI_REPORT_WARNING(this, "NVAPI is disabled, because it's not loaded on the application side");
     else {
         NvAPI_Status status = NvAPI_Initialize();
+
         if (status != NVAPI_OK)
-            NRI_REPORT_ERROR(this, "NvAPI_Initialize(): failed, result=%d!", (int32_t)status);
+            NRI_REPORT_WARNING(this, "NVAPI is disabled, because 'NvAPI_Initialize()' failed, result = %d", (int32_t)status);
+
         m_NvExt.available = (status == NVAPI_OK);
     }
 #endif
@@ -1386,8 +1391,9 @@ void DeviceD3D12::InitializeAmdExt(AGSContext* agsContext, bool isImported) {
     AGSConfiguration config = {};
     if (!agsContext) {
         const AGSReturnCode result = m_AmdExt.Initialize(AGS_CURRENT_VERSION, &config, &agsContext, &gpuInfo);
+
         if (result != AGS_SUCCESS || !agsContext) {
-            NRI_REPORT_ERROR(this, "Failed to initialize AMDAGS: %d", (int32_t)result);
+            NRI_REPORT_WARNING(this, "AMDAGS is disabled, because 'agsInitialize()' failed, result = %d", (int32_t)result);
             UnloadSharedLibrary(*agsLibrary);
 
             return;

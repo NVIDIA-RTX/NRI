@@ -230,7 +230,7 @@ Result DeviceD3D11::Create(const DeviceCreationDesc& desc, const DeviceCreationD
                 result = m_AmdExt.CreateDeviceD3D11(m_AmdExt.context, &deviceCreationParams, &extensionsParams, &agsParams);
             }
 
-            NRI_RETURN_ON_FAILURE(this, result == AGS_SUCCESS, Result::FAILURE, "agsDriverExtensionsDX11_CreateDevice() returned %d", (int32_t)result);
+            NRI_RETURN_ON_EXT_FAILURE(this, result == AGS_SUCCESS, Result::EXT_ERROR, "agsDriverExtensionsDX11_CreateDevice() failed, result = %d", (int32_t)result);
 
             deviceTemp = (ID3D11DeviceBest*)agsParams.pDevice;
             isDepthBoundsTestSupported = agsParams.extensionsSupported.depthBoundsDeferredContexts;
@@ -669,8 +669,10 @@ void DeviceD3D11::InitializeNvExt(bool disableNVAPIInitialization, bool isImport
         NRI_REPORT_WARNING(this, "NVAPI is disabled, because it's not loaded on the application side");
     else {
         NvAPI_Status status = NvAPI_Initialize();
+
         if (status != NVAPI_OK)
-            NRI_REPORT_ERROR(this, "NvAPI_Initialize(): failed, result=%d!", (int32_t)status);
+            NRI_REPORT_WARNING(this, "NVAPI is disabled, because 'NvAPI_Initialize()' failed, result = %d", (int32_t)status);
+
         m_NvExt.available = (status == NVAPI_OK);
     }
 #endif
@@ -724,8 +726,9 @@ void DeviceD3D11::InitializeAmdExt(AGSContext* agsContext, bool isImported) {
     AGSConfiguration config = {};
     if (!agsContext) {
         AGSReturnCode result = m_AmdExt.Initialize(AGS_CURRENT_VERSION, &config, &agsContext, &gpuInfo);
+
         if (result != AGS_SUCCESS || !agsContext) {
-            NRI_REPORT_ERROR(this, "Failed to initialize AMDAGS: %d", (int32_t)result);
+            NRI_REPORT_WARNING(this, "AMDAGS is disabled, because 'agsInitialize()' failed, result = %d", (int32_t)result);
             UnloadSharedLibrary(*agsLibrary);
 
             return;
