@@ -55,7 +55,7 @@ endif()
 # Options
 set(NRI_AGILITY_SDK_DIR "AgilitySDK" CACHE STRING "Directory where Agility SDK will be copied relative to the directory with binaries")
 set(NRI_AGILITY_SDK_VERSION_MAJOR "620" CACHE STRING "Agility SDK major version") # 722 ("D3D12_ERROR_INVALID_REDIST" if Windows developer mode is not enabled)
-set(NRI_AGILITY_SDK_VERSION_MINOR "1" CACHE STRING "Agility SDK minor version") # 0-preview
+set(NRI_AGILITY_SDK_VERSION_MINOR "2" CACHE STRING "Agility SDK minor version") # 0-preview
 set(NRI_WGPU_VERSION "v29.0.1.1")
 set(NRI_SHADERS_PATH "${CMAKE_CURRENT_SOURCE_DIR}/_Shaders" CACHE STRING "Shader output path override")
 set(NRI_NVAPI_CUSTOM_PATH "" CACHE STRING "Path to a custom NVAPI library directory")
@@ -310,7 +310,7 @@ if(NRI_ENABLE_D3D12_SUPPORT)
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
-        URL "https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator/archive/1753823e86d274ae1a2a55e6b9f9d206c3c30945.zip"
+        URL "https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator/archive/600949266be004553f74c9ef809384380a9d44cf.zip"
     )
     list(APPEND DEPS d3d12ma)
 endif()
@@ -363,7 +363,7 @@ if(NRI_ENABLE_NVAPI)
             DOWNLOAD_EXTRACT_TIMESTAMP 1
             DOWNLOAD_NO_PROGRESS 1
             SOURCE_SUBDIR "ignore CMakeLists.txt"
-            URL "https://github.com/NVIDIA/nvapi/archive/70d337db9186e968eab622f7e786de7e437faf3d.zip"
+            URL "https://github.com/NVIDIA/nvapi/archive/51e5aae4bc40c3ccd3fb7d4dfd94256e7bfc496e.zip"
         )
         list(APPEND DEPS nvapi)
     endif()
@@ -377,7 +377,7 @@ if(NRI_ENABLE_SHADERMAKE AND NOT TARGET ShaderMake)
         shadermake
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
-        URL "https://github.com/NVIDIA-RTX/ShaderMake/archive/3f01623a76b092ac127d2debd79a672f55d77665.zip"
+        URL "https://github.com/NVIDIA-RTX/ShaderMake/archive/4f1ffd56dac27fc3d620ad7efeee42b4dd71fa72.zip"
     )
     list(APPEND DEPS shadermake)
 endif()
