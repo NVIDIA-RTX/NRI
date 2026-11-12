@@ -36,7 +36,7 @@ NriStruct(AllocationCallbacks) {
 
 NriStruct(CallbackInterface) {
     void (NRI_CALL *MessageCallback)(Nri(Message) messageType, const char* file, uint32_t line, const char* message, void* userArg);
-    NriOptional void (NRI_CALL *AbortExecution)(void* userArg); // break on "Message::ERROR" if provided
+    NriOptional void (NRI_CALL *AbortExecution)(void* userArg); // called when reporting a positive "Result"
     NriOptional void* userArg;
 };
 

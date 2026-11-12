@@ -714,8 +714,15 @@ Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD
 
             if (status != NVAPI_OK)
                 NRI_REPORT_WARNING(this, "Ray tracing validation is disabled, because 'NvAPI_D3D12_EnableRaytracingValidation()' failed, result = %d (requires envvar \"NV_ALLOW_RAYTRACING_VALIDATION=1\")", (int32_t)status);
-            else
-                NRI_REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D12_RegisterRaytracingValidationMessageCallback(m_Device, NvapiMessageCallback, this, &m_CallbackHandle));
+            else {
+                void* callbackHandle = nullptr;
+                status = NvAPI_D3D12_RegisterRaytracingValidationMessageCallback(m_Device, NvapiMessageCallback, this, &callbackHandle);
+
+                if (status == NVAPI_OK)
+                    m_CallbackHandle = callbackHandle;
+                else
+                    NRI_REPORT_WARNING(this, "NvAPI_D3D12_RegisterRaytracingValidationMessageCallback() failed, result = %d", (int32_t)status);
+            }
 
             // TODO: if enabled, call "NvAPI_D3D12_FlushRaytracingValidationMessages()" after each submit? present? DEVICE_LOST?
         }

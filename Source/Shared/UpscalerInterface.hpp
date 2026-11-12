@@ -1253,6 +1253,15 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
             if (nriResult != Result::SUCCESS)
                 return nriResult;
 
+            if (upscalerDesc.preset != 0) {
+                xess_network_model_t preset = (xess_network_model_t)(upscalerDesc.preset - 1);
+                result = xessSelectNetworkModel(m.xess->context, preset);
+
+                nriResult = XessReportResult((DeviceBase&)m_Device, result, "xessSelectNetworkModel");
+                if (nriResult != Result::SUCCESS)
+                    return nriResult;
+            }
+
             xess_quality_settings_t qualitySetting = XESS_QUALITY_SETTING_ULTRA_PERFORMANCE;
             if (upscalerDesc.mode == UpscalerMode::NATIVE)
                 qualitySetting = XESS_QUALITY_SETTING_AA;
@@ -1302,15 +1311,6 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
             nriResult = XessReportResult((DeviceBase&)m_Device, result, "xessD3D12Init");
             if (nriResult != Result::SUCCESS)
                 return nriResult;
-
-            if (upscalerDesc.preset != 0) {
-                xess_network_model_t preset = (xess_network_model_t)(upscalerDesc.preset - 1);
-                result = xessSelectNetworkModel(m.xess->context, preset);
-
-                nriResult = XessReportResult((DeviceBase&)m_Device, result, "xessSelectNetworkModel");
-                if (nriResult != Result::SUCCESS)
-                    return nriResult;
-            }
         }
 #    endif
     }
@@ -1575,12 +1575,20 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
             return Result::OUT_OF_MEMORY;
 
         // Scalers are created on the first dispatch, because resource formats are unknown here
+        NS::AutoreleasePool* autoreleasePool = NS::AutoreleasePool::alloc()->init();
+        NS::Error* error = nullptr;
         MTL4::CompilerDescriptor* compilerDesc = MTL4::CompilerDescriptor::alloc()->init();
-        m.metalfx->compiler = deviceNative->newCompiler(compilerDesc, nullptr);
+        m.metalfx->compiler = deviceNative->newCompiler(compilerDesc, &error);
         compilerDesc->release();
 
-        if (!m.metalfx->compiler)
-            return Result::FAILURE;
+        if (!m.metalfx->compiler) {
+            NRI_REPORT_EXT_ERROR(&(DeviceBase&)m_Device, "MetalFX compiler creation failed: %s", error ? error->localizedDescription()->utf8String() : "unknown error");
+            autoreleasePool->release();
+
+            return Result::EXT_ERROR;
+        }
+
+        autoreleasePool->release();
     }
 #endif
 
