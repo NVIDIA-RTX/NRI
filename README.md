@@ -46,6 +46,7 @@ There is [NVRHI](https://github.com/NVIDIA-RTX/NVRHI), which offers a higher-lev
  - *Platform Flexibility* - Windows, Linux, macOS, iOS, and Android support
  - *Developer Experience* - integrated GAPI and NRI validation, VK [printf](https://github.com/KhronosGroup/Vulkan-ValidationLayers/blob/main/docs/debug_printf.md), and timeline annotations (GAPI, [NVTX](https://github.com/NVIDIA/NVTX) and [PIX](https://devblogs.microsoft.com/pix/winpixeventruntime/), if "WinPixEventRuntime.dll" is nearby)
  - *Memory Management* - integration with *Vulkan Memory Allocator* and *D3D12 Memory Allocator* to ease memory management and memory reuse
+ - *C# bindings* - available through the community project [SharpNRI](https://github.com/Nullpoint56/SharpNRI)
 
 Available interfaces:
  - `NRI.h` - core functionality
