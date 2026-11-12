@@ -314,7 +314,7 @@ protected:
 
 #define NRI_REPORT_ERROR_ON_BAD_NVAPI_STATUS(deviceBase, expression) \
     if ((expression) != 0) { \
-        (deviceBase)->ReportMessage(Message::ERROR, Result::EXT_ERROR, __FILE__, __LINE__, "%s: " NRI_STRINGIFY(expression) " failed!", __FUNCTION__); \
+        (deviceBase)->ReportMessage(Message::ERROR, Result::FAILURE, __FILE__, __LINE__, "%s: " NRI_STRINGIFY(expression) " failed!", __FUNCTION__); \
     }
 
 #define NRI_RETURN_ON_FAILURE(deviceBase, condition, returnCode, format, ...) \

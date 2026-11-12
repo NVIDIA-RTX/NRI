@@ -110,8 +110,8 @@ NriBits(GraphicsAPI, uint8_t,
 
 NriEnum(Result, int8_t,
     // All bad, but optionally require an action ("callbackInterface.AbortExecution" is not triggered)
-    EXT_ERROR               = -5,   // a 3rd party library (NVAPI, AGS, NGX, FFX, XeSS, MetalFX) failed, the reason is reported (potential reasons: a missing or outdated library or driver)
-    NOT_READY              = -4,   // VK: zero surface extent during swap chain creation; WGPU: no swap chain texture available yet. Process window events and retry
+    EXT_ERROR               = -5,   // a potentially recoverable 3rd party SDK failure; details are reported
+    NOT_READY               = -4,   // VK: zero surface extent during swap chain creation; WGPU: no swap chain texture available yet. Process window events and retry
     DEVICE_LOST             = -3,   // may be returned by "QueueSubmit*", "*WaitIdle", "AcquireNextTexture", "QueuePresent", "WaitForPresent"
     OUT_OF_DATE             = -2,   // VK/WGPU: swap chain is out of date, can be triggered if "features.resizableSwapChain" is not supported; D3D12: shader cache is stale
     INVALID_SDK             = -1,   // D3D12: some interfaces are missing (potential reasons: unable to load "D3D12Core.dll", version or SDK mismatch, developer mode is not enabled)

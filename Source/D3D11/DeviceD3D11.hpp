@@ -230,7 +230,7 @@ Result DeviceD3D11::Create(const DeviceCreationDesc& desc, const DeviceCreationD
                 result = m_AmdExt.CreateDeviceD3D11(m_AmdExt.context, &deviceCreationParams, &extensionsParams, &agsParams);
             }
 
-            NRI_RETURN_ON_EXT_FAILURE(this, result == AGS_SUCCESS, Result::EXT_ERROR, "agsDriverExtensionsDX11_CreateDevice() failed, result = %d", (int32_t)result);
+            NRI_RETURN_ON_FAILURE(this, result == AGS_SUCCESS, Result::FAILURE, "agsDriverExtensionsDX11_CreateDevice() failed, result = %d", (int32_t)result);
 
             deviceTemp = (ID3D11DeviceBest*)agsParams.pDevice;
             isDepthBoundsTestSupported = agsParams.extensionsSupported.depthBoundsDeferredContexts;

@@ -589,7 +589,7 @@ Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD
 
             AGSDX12ReturnedParams agsParams = {};
             AGSReturnCode result = m_AmdExt.CreateDeviceD3D12(m_AmdExt.context, &deviceCreationParams, &extensionsParams, &agsParams);
-            NRI_RETURN_ON_EXT_FAILURE(this, result == AGS_SUCCESS, Result::EXT_ERROR, "agsDriverExtensionsDX12_CreateDevice() failed, result = %d", (int32_t)result);
+            NRI_RETURN_ON_FAILURE(this, result == AGS_SUCCESS, Result::FAILURE, "agsDriverExtensionsDX12_CreateDevice() failed, result = %d", (int32_t)result);
 
             deviceTemp = agsParams.pDevice;
             isShaderAtomicsI64Supported = agsParams.extensionsSupported.intrinsics19;
