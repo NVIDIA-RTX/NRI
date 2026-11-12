@@ -223,8 +223,9 @@ NRI_INLINE Result SwapChainD3D11::SetLatencySleepMode(const LatencySleepMode& la
     params.bUseMarkersToOptimize = true;
 
     NvAPI_Status status = NvAPI_D3D_SetSleepMode(m_Device.GetNativeObject(), &params);
+    NRI_RETURN_ON_EXT_FAILURE(&m_Device, status == NVAPI_OK, Result::EXT_ERROR, "NvAPI_D3D_SetSleepMode() failed, result = %d", (int32_t)status);
 
-    return status == NVAPI_OK ? Result::SUCCESS : Result::FAILURE;
+    return Result::SUCCESS;
 #else
     MaybeUnused(latencySleepMode);
 
@@ -239,8 +240,9 @@ NRI_INLINE Result SwapChainD3D11::SetLatencyMarker(uint64_t presentId, LatencyMa
     params.markerType = (NV_LATENCY_MARKER_TYPE)latencyMarker;
 
     NvAPI_Status status = NvAPI_D3D_SetLatencyMarker(m_Device.GetNativeObject(), &params);
+    NRI_RETURN_ON_EXT_FAILURE(&m_Device, status == NVAPI_OK, Result::EXT_ERROR, "NvAPI_D3D_SetLatencyMarker() failed, result = %d", (int32_t)status);
 
-    return status == NVAPI_OK ? Result::SUCCESS : Result::FAILURE;
+    return Result::SUCCESS;
 #else
     MaybeUnused(presentId);
     MaybeUnused(latencyMarker);
@@ -254,8 +256,9 @@ NRI_INLINE Result SwapChainD3D11::LatencySleep(uint64_t presentId) {
 
 #if NRI_ENABLE_NVAPI
     NvAPI_Status status = NvAPI_D3D_Sleep(m_Device.GetNativeObject());
+    NRI_RETURN_ON_EXT_FAILURE(&m_Device, status == NVAPI_OK, Result::EXT_ERROR, "NvAPI_D3D_Sleep() failed, result = %d", (int32_t)status);
 
-    return status == NVAPI_OK ? Result::SUCCESS : Result::FAILURE;
+    return Result::SUCCESS;
 #else
     return Result::UNSUPPORTED;
 #endif
@@ -286,7 +289,9 @@ NRI_INLINE Result SwapChainD3D11::GetLatencyReport(LatencyReport& latencyReport)
         return Result::SUCCESS;
     }
 
-    return Result::FAILURE;
+    NRI_REPORT_EXT_ERROR(&m_Device, "NvAPI_D3D_GetLatency() failed, result = %d", (int32_t)status);
+
+    return Result::EXT_ERROR;
 #else
     return Result::UNSUPPORTED;
 #endif

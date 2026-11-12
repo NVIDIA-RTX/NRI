@@ -189,8 +189,9 @@ Result DescriptorD3D11::Create(const TextureViewDesc& textureViewDesc) {
                     desc.Texture2D.MipSlice = 0;
 
                     NvAPI_Status status = NvAPI_D3D11_CreateShadingRateResourceView(m_Device.GetNativeObject(), textureD3D11, &desc, (ID3D11NvShadingRateResourceView**)&m_Descriptor);
-                    if (status == NVAPI_OK)
-                        hr = S_OK;
+                    NRI_RETURN_ON_FAILURE(&m_Device, status == NVAPI_OK, Result::FAILURE, "NvAPI_D3D11_CreateShadingRateResourceView() failed, result = %d", (int32_t)status);
+
+                    hr = S_OK;
                 }
 #endif
 

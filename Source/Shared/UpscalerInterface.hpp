@@ -213,10 +213,11 @@ static inline Result FfxConvertError(ffxReturnCode_t code) {
         case FFX_API_RETURN_ERROR_MEMORY:
             return Result::OUT_OF_MEMORY;
         case FFX_API_RETURN_NO_PROVIDER:
+        case FFX_API_RETURN_PROVIDER_NO_SUPPORT_NEW_DESCTYPE:
             return Result::UNSUPPORTED;
+        default:
+            return Result::EXT_ERROR;
     }
-
-    return Result::FAILURE;
 }
 
 static inline FfxApiSurfaceFormat FfxConvertFormat(Format format) {
@@ -367,23 +368,34 @@ struct XessGlobals {
 } g_xess;
 
 static inline Result XessConvertError(xess_result_t code) {
+    if (code >= XESS_RESULT_SUCCESS)
+        return Result::SUCCESS;
+
     switch (code) {
-        case XESS_RESULT_WARNING_NONEXISTING_FOLDER:
-        case XESS_RESULT_WARNING_OLD_DRIVER:
+        case XESS_RESULT_ERROR_UNINITIALIZED:
         case XESS_RESULT_ERROR_INVALID_ARGUMENT:
+        case XESS_RESULT_ERROR_INVALID_CONTEXT:
+        case XESS_RESULT_ERROR_WRONG_CALL_ORDER:
             return Result::INVALID_ARGUMENT;
-
-        case XESS_RESULT_SUCCESS:
-            return Result::SUCCESS;
-
         case XESS_RESULT_ERROR_UNSUPPORTED:
         case XESS_RESULT_ERROR_UNSUPPORTED_DEVICE:
         case XESS_RESULT_ERROR_UNSUPPORTED_DRIVER:
+        case XESS_RESULT_ERROR_NOT_IMPLEMENTED:
             return Result::UNSUPPORTED;
-
+        case XESS_RESULT_ERROR_DEVICE_OUT_OF_MEMORY:
+            return Result::OUT_OF_MEMORY;
         default:
-            return Result::FAILURE;
+            return Result::EXT_ERROR;
     }
+}
+
+static inline Result XessReportResult(DeviceBase& device, xess_result_t code, const char* function) {
+    if (code > XESS_RESULT_SUCCESS)
+        NRI_REPORT_WARNING(&device, "%s() returned a warning, result = %d", function, (int32_t)code);
+    else if (code < XESS_RESULT_SUCCESS)
+        NRI_REPORT_EXT_ERROR(&device, "%s() failed, result = %d", function, (int32_t)code);
+
+    return XessConvertError(code);
 }
 
 #endif
@@ -436,6 +448,28 @@ struct NgxGlobals {
     uint32_t refCounterNum = 0;
     Lock lock = {}; // methods in NGX library are NOT thread safe (see the comment in "nvsdk_ngx.h")
 } g_ngx;
+
+static inline Result NgxConvertError(NVSDK_NGX_Result code) {
+    switch (code) {
+        case NVSDK_NGX_Result_Success:
+            return Result::SUCCESS;
+        case NVSDK_NGX_Result_FAIL_InvalidParameter:
+        case NVSDK_NGX_Result_FAIL_ScratchBufferTooSmall:
+        case NVSDK_NGX_Result_FAIL_RWFlagMissing:
+        case NVSDK_NGX_Result_FAIL_MissingInput:
+            return Result::INVALID_ARGUMENT;
+        case NVSDK_NGX_Result_FAIL_FeatureNotSupported:
+        case NVSDK_NGX_Result_FAIL_UnsupportedInputFormat:
+        case NVSDK_NGX_Result_FAIL_UnsupportedFormat:
+        case NVSDK_NGX_Result_FAIL_UnsupportedParameter:
+        case NVSDK_NGX_Result_FAIL_NotImplemented:
+            return Result::UNSUPPORTED;
+        case NVSDK_NGX_Result_FAIL_OutOfGPUMemory:
+            return Result::OUT_OF_MEMORY;
+        default:
+            return Result::EXT_ERROR;
+    }
+}
 
 static inline int32_t NgxIncrRef(void* deviceNative) {
     uint32_t i = 0;
@@ -718,9 +752,10 @@ UpscalerImpl::~UpscalerImpl() {
     if (m_Desc.type == UpscalerType::XESS && m.xess) {
         ExclusiveScope lock(g_xess.lock);
 
-        xess_result_t result = xessDestroyContext(m.xess->context);
-        MaybeUnused(result);
-        NRI_CHECK(result == XESS_RESULT_SUCCESS, "xessDestroyContext() failed!");
+        if (m.xess->context) {
+            xess_result_t result = xessDestroyContext(m.xess->context);
+            XessReportResult((DeviceBase&)m_Device, result, "xessDestroyContext");
+        }
 
         const auto& allocationCallbacks = ((DeviceBase&)m_Device).GetAllocationCallbacks();
         Destroy<Xess>(allocationCallbacks, m.xess);
@@ -1081,8 +1116,12 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
         // Load library
         const char* libraryName = deviceDesc.graphicsAPI == GraphicsAPI::D3D12 ? "amd_fidelityfx_loader_dx12.dll" : "amd_fidelityfx_loader_vk.dll";
         Library* ffxLibrary = LoadSharedLibrary(libraryName);
-        if (!ffxLibrary)
-            return Result::FAILURE;
+
+        if (!ffxLibrary) {
+            NRI_REPORT_EXT_ERROR(&(DeviceBase&)m_Device, "'%s' can't be loaded", libraryName);
+
+            return Result::EXT_ERROR;
+        }
 
         // Get functions
         m.ffx->library = ffxLibrary;
@@ -1091,8 +1130,11 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
         m.ffx->Dispatch = (PfnFfxDispatch)GetSharedLibraryFunction(*ffxLibrary, "ffxDispatch");
         m.ffx->Query = (PfnFfxQuery)GetSharedLibraryFunction(*ffxLibrary, "ffxQuery");
 
-        if (!m.ffx->CreateContext || !m.ffx->DestroyContext || !m.ffx->Dispatch || !m.ffx->Query)
-            return Result::FAILURE;
+        if (!m.ffx->CreateContext || !m.ffx->DestroyContext || !m.ffx->Dispatch || !m.ffx->Query) {
+            NRI_REPORT_EXT_ERROR(&(DeviceBase&)m_Device, "'%s' lacks an FFX API entry point", libraryName);
+
+            return Result::EXT_ERROR;
+        }
 
         // Allocation callbacks
         m.ffx->allocationCallbacks.alloc = FfxAlloc;
@@ -1170,8 +1212,12 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
 #    endif
 
         ffxReturnCode_t result = m.ffx->CreateContext(&m.ffx->context, &contextDesc.header, m.ffx->allocationCallbacksPtr);
-        if (result != FFX_API_RETURN_OK)
+
+        if (result != FFX_API_RETURN_OK) {
+            NRI_REPORT_EXT_ERROR(&(DeviceBase&)m_Device, "ffxCreateContext() failed, result = %d", (int32_t)result);
+
             return FfxConvertError(result);
+        }
 
         ffxQueryGetProviderVersion providerVersion = {};
         providerVersion.header.type = FFX_API_QUERY_DESC_TYPE_GET_PROVIDER_VERSION;
@@ -1196,12 +1242,25 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
             ID3D12Device* deviceNative = (ID3D12Device*)m_iCore.GetDeviceNativeObject(&m_Device);
 
             xess_result_t result = xessD3D12CreateContext(deviceNative, &m.xess->context);
-            if (result != XESS_RESULT_SUCCESS)
-                return XessConvertError(result);
+
+            Result nriResult = XessReportResult((DeviceBase&)m_Device, result, "xessD3D12CreateContext");
+            if (nriResult != Result::SUCCESS)
+                return nriResult;
 
             result = xessForceLegacyScaleFactors(m.xess->context, true);
-            if (result != XESS_RESULT_SUCCESS)
-                return XessConvertError(result);
+
+            nriResult = XessReportResult((DeviceBase&)m_Device, result, "xessForceLegacyScaleFactors");
+            if (nriResult != Result::SUCCESS)
+                return nriResult;
+
+            if (upscalerDesc.preset != 0) {
+                xess_network_model_t preset = (xess_network_model_t)(upscalerDesc.preset - 1);
+                result = xessSelectNetworkModel(m.xess->context, preset);
+
+                nriResult = XessReportResult((DeviceBase&)m_Device, result, "xessSelectNetworkModel");
+                if (nriResult != Result::SUCCESS)
+                    return nriResult;
+            }
 
             xess_quality_settings_t qualitySetting = XESS_QUALITY_SETTING_ULTRA_PERFORMANCE;
             if (upscalerDesc.mode == UpscalerMode::NATIVE)
@@ -1242,19 +1301,16 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
             initParams.visibleNodeMask = NODE_MASK;
 
             result = xessD3D12BuildPipelines(m.xess->context, NULL, true, initParams.initFlags);
-            if (result != XESS_RESULT_SUCCESS)
-                return XessConvertError(result);
+
+            nriResult = XessReportResult((DeviceBase&)m_Device, result, "xessD3D12BuildPipelines");
+            if (nriResult != Result::SUCCESS)
+                return nriResult;
 
             result = xessD3D12Init(m.xess->context, &initParams);
-            if (result != XESS_RESULT_SUCCESS)
-                return XessConvertError(result);
 
-            if (upscalerDesc.preset != 0) {
-                xess_network_model_t preset = (xess_network_model_t)(upscalerDesc.preset - 1);
-                result = xessSelectNetworkModel(m.xess->context, preset);
-                if (result != XESS_RESULT_SUCCESS)
-                    return XessConvertError(result);
-            }
+            nriResult = XessReportResult((DeviceBase&)m_Device, result, "xessD3D12Init");
+            if (nriResult != Result::SUCCESS)
+                return nriResult;
         }
 #    endif
     }
@@ -1322,8 +1378,11 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
 #    endif
         }
 
-        if (ngxResult != NVSDK_NGX_Result_Success)
-            return Result::FAILURE;
+        if (ngxResult != NVSDK_NGX_Result_Success) {
+            NRI_REPORT_EXT_ERROR(&(DeviceBase&)m_Device, "NGX initialization failed, result = 0x%08X", (uint32_t)ngxResult);
+
+            return NgxConvertError(ngxResult);
+        }
 
         // Create command buffer if not provided
         Queue* graphicsQueue = nullptr;
@@ -1470,8 +1529,11 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
         if (result != Result::SUCCESS)
             return result;
 
-        if (ngxResult != NVSDK_NGX_Result_Success)
-            return Result::FAILURE;
+        if (ngxResult != NVSDK_NGX_Result_Success) {
+            NRI_REPORT_EXT_ERROR(&(DeviceBase&)m_Device, "NGX feature creation failed, result = 0x%08X", (uint32_t)ngxResult);
+
+            return NgxConvertError(ngxResult);
+        }
     }
 #endif
 
@@ -1513,12 +1575,20 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
             return Result::OUT_OF_MEMORY;
 
         // Scalers are created on the first dispatch, because resource formats are unknown here
+        NS::AutoreleasePool* autoreleasePool = NS::AutoreleasePool::alloc()->init();
+        NS::Error* error = nullptr;
         MTL4::CompilerDescriptor* compilerDesc = MTL4::CompilerDescriptor::alloc()->init();
-        m.metalfx->compiler = deviceNative->newCompiler(compilerDesc, nullptr);
+        m.metalfx->compiler = deviceNative->newCompiler(compilerDesc, &error);
         compilerDesc->release();
 
-        if (!m.metalfx->compiler)
-            return Result::FAILURE;
+        if (!m.metalfx->compiler) {
+            NRI_REPORT_EXT_ERROR(&(DeviceBase&)m_Device, "MetalFX compiler creation failed: %s", error ? error->localizedDescription()->utf8String() : "unknown error");
+            autoreleasePool->release();
+
+            return Result::EXT_ERROR;
+        }
+
+        autoreleasePool->release();
     }
 #endif
 
@@ -1653,8 +1723,9 @@ void UpscalerImpl::CmdDispatchUpscale(CommandBuffer& commandBuffer, const Dispat
         dispatchDesc.flags = (m_Desc.flags & UpscalerBits::SRGB) ? FFX_UPSCALE_FLAG_NON_LINEAR_COLOR_SRGB : 0;
 
         ffxReturnCode_t result = m.ffx->Dispatch(&m.ffx->context, &dispatchDesc.header);
-        MaybeUnused(result);
-        NRI_CHECK(result == FFX_API_RETURN_OK, "ffxDispatch() failed!");
+
+        if (result != FFX_API_RETURN_OK)
+            NRI_REPORT_EXT_ERROR(&(DeviceBase&)m_Device, "ffxDispatch() failed, result = %d", (int32_t)result);
     }
 #endif
 
@@ -1679,11 +1750,13 @@ void UpscalerImpl::CmdDispatchUpscale(CommandBuffer& commandBuffer, const Dispat
         ID3D12GraphicsCommandList* commandList = (ID3D12GraphicsCommandList*)m_iCore.GetCommandBufferNativeObject(&commandBuffer);
 
         xess_result_t result = xessSetExposureMultiplier(m.xess->context, 1.0f / preExposure);
-        NRI_CHECK(result == XESS_RESULT_SUCCESS, "xessSetExposureMultiplier() failed!");
+
+        if (XessReportResult((DeviceBase&)m_Device, result, "xessSetExposureMultiplier") != Result::SUCCESS)
+            return;
 
         result = xessD3D12Execute(m.xess->context, commandList, &executeParams);
-        MaybeUnused(result);
-        NRI_CHECK(result == XESS_RESULT_SUCCESS, "xessD3D12Execute() failed!");
+
+        XessReportResult((DeviceBase&)m_Device, result, "xessD3D12Execute");
     }
 #endif
 
@@ -1754,7 +1827,8 @@ void UpscalerImpl::CmdDispatchUpscale(CommandBuffer& commandBuffer, const Dispat
         }
 #    endif
 
-        NRI_CHECK(result == NVSDK_NGX_Result_Success, "DLSR evaluation failed!");
+        if (result != NVSDK_NGX_Result_Success)
+            NRI_REPORT_EXT_ERROR(&(DeviceBase&)m_Device, "DLSR evaluation failed, result = 0x%08X", (uint32_t)result);
     }
 
     if (m_Desc.type == UpscalerType::DLRR) {
@@ -1859,7 +1933,8 @@ void UpscalerImpl::CmdDispatchUpscale(CommandBuffer& commandBuffer, const Dispat
         }
 #    endif
 
-        NRI_CHECK(result == NVSDK_NGX_Result_Success, "DLRR evaluation failed!");
+        if (result != NVSDK_NGX_Result_Success)
+            NRI_REPORT_EXT_ERROR(&(DeviceBase&)m_Device, "DLRR evaluation failed, result = 0x%08X", (uint32_t)result);
     }
 #endif
 
@@ -1880,7 +1955,7 @@ void UpscalerImpl::CmdDispatchUpscale(CommandBuffer& commandBuffer, const Dispat
             isCreated = MetalFxCreateScaler(metalFx, deviceNative, m_iCore, m_Desc, dispatchUpscaleDesc);
 
             if (!isCreated)
-                NRI_REPORT_ERROR(&(DeviceBase&)m_Device, "MetalFX scaler creation failed");
+                NRI_REPORT_EXT_ERROR(&(DeviceBase&)m_Device, "MetalFX scaler creation failed");
         }
 
         // The scaler is created for the "input" size of the first dispatch

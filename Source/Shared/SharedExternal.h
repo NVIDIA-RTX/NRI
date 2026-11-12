@@ -323,9 +323,16 @@ protected:
         return returnCode; \
     }
 
+#define NRI_RETURN_ON_EXT_FAILURE(deviceBase, condition, returnCode, format, ...) \
+    if (!(condition)) { \
+        (deviceBase)->ReportMessage(Message::ERROR, Result::EXT_ERROR, __FILE__, __LINE__, "%s: " format, __FUNCTION__, ##__VA_ARGS__); \
+        return returnCode; \
+    }
+
 #define NRI_REPORT_INFO(deviceBase, format, ...)             (deviceBase)->ReportMessage(Message::INFO, Result::SUCCESS, __FILE__, __LINE__, format, ##__VA_ARGS__)
 #define NRI_REPORT_WARNING(deviceBase, format, ...)          (deviceBase)->ReportMessage(Message::WARNING, Result::SUCCESS, __FILE__, __LINE__, "%s(): " format, __FUNCTION__, ##__VA_ARGS__)
 #define NRI_REPORT_ERROR(deviceBase, format, ...)            (deviceBase)->ReportMessage(Message::ERROR, Result::FAILURE, __FILE__, __LINE__, "%s(): " format, __FUNCTION__, ##__VA_ARGS__)
+#define NRI_REPORT_EXT_ERROR(deviceBase, format, ...)        (deviceBase)->ReportMessage(Message::ERROR, Result::EXT_ERROR, __FILE__, __LINE__, "%s(): " format, __FUNCTION__, ##__VA_ARGS__)
 #define NRI_REPORT_DEVICE_LOST_INFO(deviceBase, format, ...) (deviceBase)->ReportMessage(Message::INFO, Result::DEVICE_LOST, __FILE__, __LINE__, format, ##__VA_ARGS__)
 
 // Array validation

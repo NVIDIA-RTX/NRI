@@ -110,6 +110,7 @@ NriBits(GraphicsAPI, uint8_t,
 
 NriEnum(Result, int8_t,
     // All bad, but optionally require an action ("callbackInterface.AbortExecution" is not triggered)
+    EXT_ERROR               = -5,   // a potentially recoverable 3rd party SDK failure; details are reported
     NOT_READY               = -4,   // VK: zero surface extent during swap chain creation; WGPU: no swap chain texture available yet. Process window events and retry
     DEVICE_LOST             = -3,   // may be returned by "QueueSubmit*", "*WaitIdle", "AcquireNextTexture", "QueuePresent", "WaitForPresent"
     OUT_OF_DATE             = -2,   // VK/WGPU: swap chain is out of date, can be triggered if "features.resizableSwapChain" is not supported; D3D12: shader cache is stale
