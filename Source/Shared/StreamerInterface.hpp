@@ -171,7 +171,7 @@ BufferOffset StreamerImpl::StreamBufferData(const StreamBufferDataDesc& streamBu
     uint32_t alignment = std::max(streamBufferDataDesc.placementAlignment, 1u);
     m_DynamicBufferOffset = Align(m_DynamicBufferOffset, alignment);
 
-    uint64_t offset = m_FrameIndex * m_DynamicBufferSizePerFrame + m_DynamicBufferOffset;
+    uint64_t offset = m_DynamicBufferOffset;
 
     // Increment head
     m_DynamicBufferOffset += dataSize;
@@ -179,6 +179,9 @@ BufferOffset StreamerImpl::StreamBufferData(const StreamBufferDataDesc& streamBu
     // Grow
     if (!Grow())
         return {};
+
+    // "Grow" may change the per-frame size
+    offset += m_FrameIndex * m_DynamicBufferSizePerFrame;
 
     // Copy
     if (dataSize) {
@@ -246,7 +249,7 @@ BufferOffset StreamerImpl::StreamTextureData(const StreamTextureDataDesc& stream
 
     m_DynamicBufferOffset = Align(m_DynamicBufferOffset, deviceDesc.memoryAlignment.uploadBufferTextureSlice);
 
-    uint64_t offset = m_FrameIndex * m_DynamicBufferSizePerFrame + m_DynamicBufferOffset;
+    uint64_t offset = m_DynamicBufferOffset;
 
     // Increment head
     m_DynamicBufferOffset += dataSize;
@@ -254,6 +257,9 @@ BufferOffset StreamerImpl::StreamTextureData(const StreamTextureDataDesc& stream
     // Grow
     if (!Grow())
         return {};
+
+    // "Grow" may change the per-frame size
+    offset += m_FrameIndex * m_DynamicBufferSizePerFrame;
 
     // Copy
     if (dataSize) {
