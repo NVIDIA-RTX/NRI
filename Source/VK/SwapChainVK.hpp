@@ -415,6 +415,24 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
         NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateSwapchainKHR");
     }
 
+    // HDR metadata
+    const bool isHdr = swapChainDesc.format == SwapChainFormat::BT709_G10_16BIT || swapChainDesc.format == SwapChainFormat::BT2020_G2084_10BIT;
+    if (isHdr && swapChainDesc.hdrMetadata && vk.SetHdrMetadataEXT) {
+        const HdrMetadata& hdrMetadata = *swapChainDesc.hdrMetadata;
+
+        VkHdrMetadataEXT metadata = {VK_STRUCTURE_TYPE_HDR_METADATA_EXT};
+        metadata.displayPrimaryRed = {hdrMetadata.redPrimary.x, hdrMetadata.redPrimary.y};
+        metadata.displayPrimaryGreen = {hdrMetadata.greenPrimary.x, hdrMetadata.greenPrimary.y};
+        metadata.displayPrimaryBlue = {hdrMetadata.bluePrimary.x, hdrMetadata.bluePrimary.y};
+        metadata.whitePoint = {hdrMetadata.whitePoint.x, hdrMetadata.whitePoint.y};
+        metadata.maxLuminance = hdrMetadata.maxLuminance;
+        metadata.minLuminance = hdrMetadata.minLuminance;
+        metadata.maxContentLightLevel = hdrMetadata.maxContentLightLevel;
+        metadata.maxFrameAverageLightLevel = hdrMetadata.maxFrameAverageLightLevel;
+
+        vk.SetHdrMetadataEXT(m_Device, 1, &m_Handle, &metadata);
+    }
+
     { // Textures
         uint32_t imageNum = 0;
         vk.GetSwapchainImagesKHR(m_Device, m_Handle, &imageNum, nullptr);

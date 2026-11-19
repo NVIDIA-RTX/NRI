@@ -451,6 +451,33 @@ Result nri::QueryVideoMemoryInfoDXGI(uint64_t luid, MemoryLocation memoryLocatio
     return Result::SUCCESS;
 }
 
+HRESULT nri::SetHdrMetadataDXGI(IDXGISwapChain4* swapChain, const HdrMetadata& hdrMetadata) {
+    // Chromaticity coordinates in 0.00002 units, luminance in nits, but the minimum in 0.0001 nits
+    auto toCoord = [](float x) -> UINT16 {
+        return (UINT16)std::clamp(x * 50000.0f + 0.5f, 0.0f, 50000.0f);
+    };
+
+    auto toNits = [](float nits) -> UINT16 {
+        return (UINT16)std::clamp(nits + 0.5f, 0.0f, 65535.0f);
+    };
+
+    DXGI_HDR_METADATA_HDR10 hdr10 = {};
+    hdr10.RedPrimary[0] = toCoord(hdrMetadata.redPrimary.x);
+    hdr10.RedPrimary[1] = toCoord(hdrMetadata.redPrimary.y);
+    hdr10.GreenPrimary[0] = toCoord(hdrMetadata.greenPrimary.x);
+    hdr10.GreenPrimary[1] = toCoord(hdrMetadata.greenPrimary.y);
+    hdr10.BluePrimary[0] = toCoord(hdrMetadata.bluePrimary.x);
+    hdr10.BluePrimary[1] = toCoord(hdrMetadata.bluePrimary.y);
+    hdr10.WhitePoint[0] = toCoord(hdrMetadata.whitePoint.x);
+    hdr10.WhitePoint[1] = toCoord(hdrMetadata.whitePoint.y);
+    hdr10.MaxMasteringLuminance = (UINT)std::max(hdrMetadata.maxLuminance + 0.5f, 0.0f);
+    hdr10.MinMasteringLuminance = (UINT)std::max(hdrMetadata.minLuminance * 10000.0f + 0.5f, 0.0f);
+    hdr10.MaxContentLightLevel = toNits(hdrMetadata.maxContentLightLevel);
+    hdr10.MaxFrameAverageLightLevel = toNits(hdrMetadata.maxFrameAverageLightLevel);
+
+    return swapChain->SetHDRMetaData(DXGI_HDR_METADATA_TYPE_HDR10, sizeof(hdr10), &hdr10);
+}
+
 #else
 
 uint32_t NRIFormatToDXGIFormat(Format) {

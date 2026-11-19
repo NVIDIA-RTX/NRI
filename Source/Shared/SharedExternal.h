@@ -753,6 +753,7 @@ void ConvertWcharToChar(const wchar_t* in, char* out, size_t outLen);
 
 bool HasOutput();
 Result QueryVideoMemoryInfoDXGI(uint64_t luid, MemoryLocation memoryLocation, VideoMemoryInfo& videoMemoryInfo);
+HRESULT SetHdrMetadataDXGI(IDXGISwapChain4* swapChain, const HdrMetadata& hdrMetadata);
 
 struct DisplayDescHelper {
     Result GetDisplayDesc(void* hwnd, DisplayDesc& displayDesc);

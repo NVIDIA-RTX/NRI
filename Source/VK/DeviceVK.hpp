@@ -655,6 +655,7 @@ void DeviceVK::ProcessDeviceExtensions(Vector<const char*>& desiredDeviceExts, b
     APPEND_EXT(true, VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME);
     APPEND_EXT(true, VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME);
     APPEND_EXT(true, VK_EXT_FRAGMENT_SHADER_INTERLOCK_EXTENSION_NAME);
+    APPEND_EXT(true, VK_EXT_HDR_METADATA_EXTENSION_NAME);
     APPEND_EXT(true, VK_EXT_IMAGE_SLICED_VIEW_OF_3D_EXTENSION_NAME);
     APPEND_EXT(true, VK_EXT_MEMORY_BUDGET_EXTENSION_NAME);
     APPEND_EXT(true, VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME);
@@ -2498,6 +2499,9 @@ Result DeviceVK::ResolveDispatchTable(const Vector<const char*>& desiredDeviceEx
 
     if (IsExtensionSupported(VK_KHR_PRESENT_WAIT_EXTENSION_NAME, desiredDeviceExts))
         GET_DEVICE_FUNC(WaitForPresentKHR);
+
+    if (IsExtensionSupported(VK_EXT_HDR_METADATA_EXTENSION_NAME, desiredDeviceExts))
+        GET_DEVICE_FUNC(SetHdrMetadataEXT);
 
 #ifdef VK_USE_PLATFORM_WIN32_KHR
     if (IsExtensionSupported(VK_KHR_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME, desiredDeviceExts))

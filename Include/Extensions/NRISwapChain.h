@@ -86,6 +86,25 @@ NriStruct(Window) {
     Nri(AndroidWindow) android;
 };
 
+NriStruct(ChromaticityCoords) {
+    float x, y; // [0; 1]
+};
+
+// HDR10 static metadata (SMPTE ST.2086 and CTA-861.3), luminance in nits (cd/m2)
+NriStruct(HdrMetadata) {
+    // Mastering display
+    Nri(ChromaticityCoords) redPrimary;
+    Nri(ChromaticityCoords) greenPrimary;
+    Nri(ChromaticityCoords) bluePrimary;
+    Nri(ChromaticityCoords) whitePoint;
+    float minLuminance;
+    float maxLuminance;
+
+    // Content
+    float maxContentLightLevel;      // aka "MaxCLL", the brightest pixel
+    float maxFrameAverageLightLevel; // aka "MaxFALL", the brightest frame average
+};
+
 // SwapChain textures will be created as "color attachment" resources
 // queuedFrameNum = 0 - auto-selection between 1 (for waitable) or 2 (otherwise)
 // queuedFrameNum = 2 - recommended if the GPU frame time is less than the desired frame time, but the sum of 2 frames is greater
@@ -103,10 +122,9 @@ NriStruct(SwapChainDesc) {
     NriOptional Nri(Scaling) scaling;           // VK: if scaling is not supported, "OUT_OF_DATE" error is triggered on resizing
     NriOptional Nri(Gravity) gravityX;
     NriOptional Nri(Gravity) gravityY;
-};
 
-NriStruct(ChromaticityCoords) {
-    float x, y; // [0; 1]
+    // HDR metadata of the content, silently ignored for SDR formats or if not supported (VK: requires "VK_EXT_hdr_metadata", D3D: requires "IDXGISwapChain4", METAL and WGPU: unsupported)
+    NriOptional const NriPtr(HdrMetadata) hdrMetadata;
 };
 
 // Describes color settings and capabilities of the closest display:
