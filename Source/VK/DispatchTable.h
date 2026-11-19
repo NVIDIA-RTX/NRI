@@ -210,8 +210,10 @@ struct DispatchTable {
     VK_FUNC(GetSwapchainImagesKHR);                       // + | +
                                                           // VK_KHR_present_wait
     VK_FUNC(WaitForPresentKHR);                           // - | ? may return "VK_ERROR_DEVICE_LOST"
+#ifndef _WIN32
                                                           // VK_EXT_hdr_metadata
     VK_FUNC(SetHdrMetadataEXT);                           // + | +
+#endif
 #ifdef VK_USE_PLATFORM_WIN32_KHR
                                                           // VK_KHR_external_memory_win32
     VK_FUNC(GetMemoryWin32HandlePropertiesKHR);           // + | +

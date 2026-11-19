@@ -111,14 +111,6 @@ Result SwapChainD3D11::Create(const SwapChainDesc& swapChainDesc) {
     } else
         NRI_REPORT_ERROR(&m_Device, "IDXGISwapChain3::SetColorSpace1() is not supported by the OS!");
 
-    // HDR metadata
-    const bool isHdr = swapChainDesc.format == SwapChainFormat::BT709_G10_16BIT || swapChainDesc.format == SwapChainFormat::BT2020_G2084_10BIT;
-    if (isHdr && swapChainDesc.hdrMetadata) {
-        hr = m_Version >= 4 ? SetHdrMetadataDXGI(m_SwapChain, *swapChainDesc.hdrMetadata) : E_NOINTERFACE;
-        if (FAILED(hr))
-            NRI_REPORT_WARNING(&m_Device, "IDXGISwapChain4::SetHDRMetaData() failed!");
-    }
-
     // Background color
     if (m_Version >= 1) {
         DXGI_RGBA color = {0.0f, 0.0f, 0.0f, 1.0f};

@@ -23,6 +23,7 @@ NriStruct(QueueFamilyVKDesc) {
     uint32_t familyIndex;
 };
 
+// All supported Vulkan 1.0 features must be enabled on "vkDevice"
 NriStruct(DeviceCreationVKDesc) {
     NriOptional Nri(CallbackInterface) callbackInterface;
     NriOptional Nri(AllocationCallbacks) allocationCallbacks;
@@ -40,9 +41,8 @@ NriStruct(DeviceCreationVKDesc) {
     bool enableNRIValidation;
     bool enableMemoryZeroInitialization;                // page-clears are fast, but memory is not cleared by default in VK
 
-    // The features enabled on "vkDevice" are not known (for example, a device created by a host application): NRI uses none of them and Vulkan 1.3
-    // functionality only through "vkExtensions", so barriers, timestamps and submissions use Vulkan 1.0 commands. Fences and "ResetQueries" still need
-    // the Vulkan 1.2 features "timelineSemaphore" and "hostQueryReset"
+    // Treat optional Vulkan 1.1+ features as disabled; Vulkan 1.3 commands require entries in "vkExtensions"
+    // Fences and "ResetQueries" still require "timelineSemaphore" and "hostQueryReset" enabled on "vkDevice"
     bool unknownFeatures;
 };
 

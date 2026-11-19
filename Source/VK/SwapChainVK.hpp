@@ -422,6 +422,7 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
         NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateSwapchainKHR");
     }
 
+#ifndef _WIN32
     // HDR metadata
     const bool isHdr = swapChainDesc.format == SwapChainFormat::BT709_G10_16BIT || swapChainDesc.format == SwapChainFormat::BT2020_G2084_10BIT;
     if (isHdr && swapChainDesc.hdrMetadata && vk.SetHdrMetadataEXT) {
@@ -439,6 +440,7 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
 
         vk.SetHdrMetadataEXT(m_Device, 1, &m_Handle, &metadata);
     }
+#endif
 
     { // Textures
         uint32_t imageNum = 0;

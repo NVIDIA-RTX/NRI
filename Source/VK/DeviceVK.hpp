@@ -655,7 +655,9 @@ void DeviceVK::ProcessDeviceExtensions(Vector<const char*>& desiredDeviceExts, b
     APPEND_EXT(true, VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME);
     APPEND_EXT(true, VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME);
     APPEND_EXT(true, VK_EXT_FRAGMENT_SHADER_INTERLOCK_EXTENSION_NAME);
+#ifndef _WIN32
     APPEND_EXT(true, VK_EXT_HDR_METADATA_EXTENSION_NAME);
+#endif
     APPEND_EXT(true, VK_EXT_IMAGE_SLICED_VIEW_OF_3D_EXTENSION_NAME);
     APPEND_EXT(true, VK_EXT_MEMORY_BUDGET_EXTENSION_NAME);
     APPEND_EXT(true, VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME);
@@ -1006,9 +1008,12 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
     if (desc.deviceLostInfoLevel != DeviceLostInfoLevel::NONE && IsExtensionSupported(VK_EXT_DEVICE_FAULT_EXTENSION_NAME, desiredDeviceExts))
         PNEXTCHAIN_APPEND_STRUCT(DeviceFaultFeatures);
 
-    // A wrapped device with unknown features: all feature structures stay zero, and Vulkan 1.3 functionality is used only through "vkExtensions"
     const bool unknownFeatures = isWrapper && descVK.unknownFeatures;
-    if (!unknownFeatures)
+    if (unknownFeatures) {
+        VkPhysicalDeviceFeatures2 coreFeatures = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
+        m_VK.GetPhysicalDeviceFeatures2(m_PhysicalDevice, &coreFeatures);
+        features.features = coreFeatures.features;
+    } else
         m_VK.GetPhysicalDeviceFeatures2(m_PhysicalDevice, &features);
 
     if (m_MinorVersion < 3) {
@@ -2507,8 +2512,10 @@ Result DeviceVK::ResolveDispatchTable(const Vector<const char*>& desiredDeviceEx
     if (IsExtensionSupported(VK_KHR_PRESENT_WAIT_EXTENSION_NAME, desiredDeviceExts))
         GET_DEVICE_FUNC(WaitForPresentKHR);
 
+#ifndef _WIN32
     if (IsExtensionSupported(VK_EXT_HDR_METADATA_EXTENSION_NAME, desiredDeviceExts))
         GET_DEVICE_FUNC(SetHdrMetadataEXT);
+#endif
 
 #ifdef VK_USE_PLATFORM_WIN32_KHR
     if (IsExtensionSupported(VK_KHR_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME, desiredDeviceExts))

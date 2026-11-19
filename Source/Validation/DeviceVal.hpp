@@ -51,6 +51,14 @@ static inline bool IsTextureViewLayoutValid(const TextureViewDesc& desc, const T
     }
 }
 
+static inline bool IsChromaticityValid(const ChromaticityCoords& coords) {
+    return coords.x >= 0.0f && coords.x <= 1.0f && coords.y >= 0.0f && coords.y <= 1.0f;
+}
+
+static inline bool IsLuminanceValid(float luminance) {
+    return std::isfinite(luminance) && luminance >= 0.0f;
+}
+
 static inline bool IsShaderStageMaskValid(StageBits shaderStages) {
     return (shaderStages & StageBits::ALL_SHADERS) == (uint32_t)shaderStages;
 }
@@ -281,6 +289,20 @@ NRI_INLINE Result DeviceVal::CreateSwapChain(const SwapChainDesc& swapChainDesc,
     NRI_RETURN_ON_FAILURE(this, swapChainDesc.scaling < Scaling::MAX_NUM, Result::INVALID_ARGUMENT, "'scaling' is invalid");
     NRI_RETURN_ON_FAILURE(this, swapChainDesc.gravityX < Gravity::MAX_NUM, Result::INVALID_ARGUMENT, "'gravityX' is invalid");
     NRI_RETURN_ON_FAILURE(this, swapChainDesc.gravityY < Gravity::MAX_NUM, Result::INVALID_ARGUMENT, "'gravityY' is invalid");
+
+    if (swapChainDesc.hdrMetadata) {
+        const HdrMetadata& metadata = *swapChainDesc.hdrMetadata;
+        NRI_RETURN_ON_FAILURE(this, IsChromaticityValid(metadata.redPrimary), Result::INVALID_ARGUMENT, "'hdrMetadata.redPrimary' must be in [0; 1]");
+        NRI_RETURN_ON_FAILURE(this, IsChromaticityValid(metadata.greenPrimary), Result::INVALID_ARGUMENT, "'hdrMetadata.greenPrimary' must be in [0; 1]");
+        NRI_RETURN_ON_FAILURE(this, IsChromaticityValid(metadata.bluePrimary), Result::INVALID_ARGUMENT, "'hdrMetadata.bluePrimary' must be in [0; 1]");
+        NRI_RETURN_ON_FAILURE(this, IsChromaticityValid(metadata.whitePoint), Result::INVALID_ARGUMENT, "'hdrMetadata.whitePoint' must be in [0; 1]");
+        NRI_RETURN_ON_FAILURE(this, IsLuminanceValid(metadata.minLuminance), Result::INVALID_ARGUMENT, "'hdrMetadata.minLuminance' must be finite and non-negative");
+        NRI_RETURN_ON_FAILURE(this, IsLuminanceValid(metadata.maxLuminance), Result::INVALID_ARGUMENT, "'hdrMetadata.maxLuminance' must be finite and non-negative");
+        NRI_RETURN_ON_FAILURE(this, IsLuminanceValid(metadata.maxContentLightLevel), Result::INVALID_ARGUMENT, "'hdrMetadata.maxContentLightLevel' must be finite and non-negative");
+        NRI_RETURN_ON_FAILURE(this, IsLuminanceValid(metadata.maxFrameAverageLightLevel), Result::INVALID_ARGUMENT, "'hdrMetadata.maxFrameAverageLightLevel' must be finite and non-negative");
+        NRI_RETURN_ON_FAILURE(this, metadata.maxLuminance == 0.0f || metadata.minLuminance <= metadata.maxLuminance, Result::INVALID_ARGUMENT, "'hdrMetadata.minLuminance' exceeds 'maxLuminance'");
+        NRI_RETURN_ON_FAILURE(this, metadata.maxContentLightLevel == 0.0f || metadata.maxFrameAverageLightLevel <= metadata.maxContentLightLevel, Result::INVALID_ARGUMENT, "'hdrMetadata.maxFrameAverageLightLevel' exceeds 'maxContentLightLevel'");
+    }
 
     auto swapChainDescImpl = swapChainDesc;
     swapChainDescImpl.queue = NRI_GET_IMPL(Queue, swapChainDesc.queue);

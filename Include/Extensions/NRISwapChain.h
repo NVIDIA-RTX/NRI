@@ -91,6 +91,8 @@ NriStruct(ChromaticityCoords) {
 };
 
 // HDR10 static metadata (SMPTE ST.2086 and CTA-861.3), luminance in nits (cd/m2)
+// Luminance must be finite and non-negative; 0 means unknown
+// Known values must satisfy minLuminance <= maxLuminance and MaxFALL <= MaxCLL
 NriStruct(HdrMetadata) {
     // Mastering display
     Nri(ChromaticityCoords) redPrimary;
@@ -123,7 +125,8 @@ NriStruct(SwapChainDesc) {
     NriOptional Nri(Gravity) gravityX;
     NriOptional Nri(Gravity) gravityY;
 
-    // HDR metadata of the content, silently ignored for SDR formats or if not supported (VK: requires "VK_EXT_hdr_metadata", D3D: requires "IDXGISwapChain4", METAL and WGPU: unsupported)
+    // Content metadata, read during creation and ignored for SDR formats
+    // VK only: requires "VK_EXT_hdr_metadata"; ignored on Windows and by other backends
     NriOptional const NriPtr(HdrMetadata) hdrMetadata;
 };
 
