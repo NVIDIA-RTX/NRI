@@ -134,9 +134,8 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
             if (s.surfaceFormat.format != VK_FORMAT_R16G16B16A16_SFLOAT)
                 return 0;
 
-            uint32_t priority = s.surfaceFormat.colorSpace == VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT ? 20 : 10;
-
-            return priority;
+            // Only scRGB (extended range, linear)
+            return s.surfaceFormat.colorSpace == VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT ? 1 : 0;
         };
 
         auto priority_BT709_G22_8BIT = [](const VkSurfaceFormat2KHR& s) -> uint32_t {
@@ -172,15 +171,11 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
         };
 
         auto priority_BT2020_G2084_10BIT = [](const VkSurfaceFormat2KHR& s) -> uint32_t {
-            uint32_t priority = 0;
-            if (s.surfaceFormat.format == VK_FORMAT_A2B10G10R10_UNORM_PACK32)
-                priority = 1;
-            else
+            if (s.surfaceFormat.format != VK_FORMAT_A2B10G10R10_UNORM_PACK32)
                 return 0;
 
-            priority += s.surfaceFormat.colorSpace == VK_COLOR_SPACE_HDR10_ST2084_EXT ? 10 : 0;
-
-            return priority;
+            // Only HDR10 (BT.2020 primaries, PQ)
+            return s.surfaceFormat.colorSpace == VK_COLOR_SPACE_HDR10_ST2084_EXT ? 1 : 0;
         };
 
         switch (swapChainDesc.format) {
@@ -207,6 +202,18 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
             default:
                 NRI_CHECK(false, "Unexpected 'swapChainDesc.format'");
                 break;
+        }
+
+        // HDR formats don't fall back to another color space: the content would be shown wrong, and the texture format wouldn't tell
+        uint32_t priority = 1;
+        if (swapChainDesc.format == SwapChainFormat::BT709_G10_16BIT)
+            priority = formatNum ? priority_BT709_G22_16BIT(surfaceFormats[0]) : 0;
+        else if (swapChainDesc.format == SwapChainFormat::BT2020_G2084_10BIT)
+            priority = formatNum ? priority_BT2020_G2084_10BIT(surfaceFormats[0]) : 0;
+
+        if (priority == 0) {
+            NRI_REPORT_WARNING(&m_Device, "The surface has no format in the color space of 'swapChainDesc.format=%u'", (uint32_t)swapChainDesc.format);
+            return Result::UNSUPPORTED;
         }
 
         surfaceFormat = surfaceFormats[0];

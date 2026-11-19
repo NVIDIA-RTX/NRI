@@ -114,7 +114,7 @@ NriStruct(SwapChainDesc) {
     Nri(Dim_t) width;
     Nri(Dim_t) height;
     uint8_t textureNum;                         // desired value, real value must be queried using "GetSwapChainTextures"
-    Nri(SwapChainFormat) format;                // desired format, real value must be queried using "GetTextureDesc" for one of the swap chain textures
+    Nri(SwapChainFormat) format;                // desired format, real value must be queried using "GetTextureDesc" for one of the swap chain textures (VK: "UNSUPPORTED" if the surface has no format in the color space of an HDR format)
     Nri(SwapChainBits) flags;
     NriOptional uint8_t queuedFrameNum;         // aka "max frame latency", aka "number of frames in flight" (mostly for D3D11)
 
