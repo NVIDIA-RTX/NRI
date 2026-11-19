@@ -106,6 +106,7 @@ struct DispatchTable {
     VK_FUNC(MapMemory);                                   // - | +
     VK_FUNC(FlushMappedMemoryRanges);                     // + | +
     VK_FUNC(InvalidateMappedMemoryRanges);                // + | +
+    VK_FUNC(QueueSubmit);                                 // - | + may return "VK_ERROR_DEVICE_LOST"
     VK_FUNC(QueueWaitIdle);                               // - | + may return "VK_ERROR_DEVICE_LOST"
     VK_FUNC(ResetCommandPool);                            // - | +
     VK_FUNC(ResetDescriptorPool);                         // - | +
@@ -143,6 +144,8 @@ struct DispatchTable {
     VK_FUNC(CmdCopyImageToBuffer);                        // - | +
     VK_FUNC(CmdResetQueryPool);                           // - | +
     VK_FUNC(CmdFillBuffer);                               // - | +
+    VK_FUNC(CmdPipelineBarrier);                          // - | +
+    VK_FUNC(CmdWriteTimestamp);                           // - | +
     VK_FUNC(CmdBeginRenderPass);                          // - | +
     VK_FUNC(CmdEndRenderPass);                            // - | +
     VK_FUNC(EndCommandBuffer);                            // - | +
@@ -207,6 +210,10 @@ struct DispatchTable {
     VK_FUNC(GetSwapchainImagesKHR);                       // + | +
                                                           // VK_KHR_present_wait
     VK_FUNC(WaitForPresentKHR);                           // - | ? may return "VK_ERROR_DEVICE_LOST"
+#ifndef _WIN32
+                                                          // VK_EXT_hdr_metadata
+    VK_FUNC(SetHdrMetadataEXT);                           // + | +
+#endif
 #ifdef VK_USE_PLATFORM_WIN32_KHR
                                                           // VK_KHR_external_memory_win32
     VK_FUNC(GetMemoryWin32HandlePropertiesKHR);           // + | +

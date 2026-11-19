@@ -23,6 +23,7 @@ NriStruct(QueueFamilyVKDesc) {
     uint32_t familyIndex;
 };
 
+// All supported Vulkan 1.0 features must be enabled on "vkDevice"
 NriStruct(DeviceCreationVKDesc) {
     NriOptional Nri(CallbackInterface) callbackInterface;
     NriOptional Nri(AllocationCallbacks) allocationCallbacks;
@@ -39,6 +40,10 @@ NriStruct(DeviceCreationVKDesc) {
     // Switches (disabled by default)
     bool enableNRIValidation;
     bool enableMemoryZeroInitialization;                // page-clears are fast, but memory is not cleared by default in VK
+
+    // Treat optional Vulkan 1.1+ features as disabled; Vulkan 1.3 commands require entries in "vkExtensions"
+    // Fences and "ResetQueries" still require "timelineSemaphore" and "hostQueryReset" enabled on "vkDevice"
+    bool unknownFeatures;
 };
 
 NriStruct(CommandAllocatorVKDesc) {

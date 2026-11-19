@@ -490,6 +490,13 @@ Result PipelineVK::Create(const ComputePipelineDesc& computePipelineDesc) {
     if (isDescriptorHeap)
         SetupDescriptorHeapShaderStages(pipelineLayoutVK, &stage, 1, mappings, &mappingInfo, mappingSamplers);
 
+    VkPipelineShaderStageRequiredSubgroupSizeCreateInfo requiredSubgroupSize = {VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_REQUIRED_SUBGROUP_SIZE_CREATE_INFO};
+    if (computePipelineDesc.waveLaneNum && m_Device.GetDesc().features.waveLaneNumControl) {
+        requiredSubgroupSize.pNext = (void*)stage.pNext;
+        requiredSubgroupSize.requiredSubgroupSize = computePipelineDesc.waveLaneNum;
+        stage.pNext = &requiredSubgroupSize;
+    }
+
     VkPipelineCreateFlags computeFlags = 0;
     if ((computePipelineDesc.flags & ComputePipelineBits::FAIL_ON_CACHE_MISS) && m_Device.GetDesc().features.pipelineCacheControl)
         computeFlags |= VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT;

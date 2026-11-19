@@ -831,10 +831,10 @@ void ImguiImpl::CmdDrawInternal(CommandBuffer& commandBuffer, const ImguiRenderD
         colorAttachment.colorBlend.srcFactor = BlendFactor::SRC_ALPHA,
         colorAttachment.colorBlend.dstFactor = BlendFactor::ONE_MINUS_SRC_ALPHA,
         colorAttachment.colorBlend.op = BlendOp::ADD,
-        colorAttachment.alphaBlend.srcFactor = BlendFactor::ONE_MINUS_SRC_ALPHA,
-        colorAttachment.alphaBlend.dstFactor = BlendFactor::ZERO,
+        colorAttachment.alphaBlend.srcFactor = BlendFactor::ONE,
+        colorAttachment.alphaBlend.dstFactor = BlendFactor::ONE_MINUS_SRC_ALPHA,
         colorAttachment.alphaBlend.op = BlendOp::ADD,
-        colorAttachment.colorWriteMask = ColorWriteBits::RGB;
+        colorAttachment.colorWriteMask = ColorWriteBits::RGBA;
         colorAttachment.blendEnabled = true;
 
         GraphicsPipelineDesc graphicsPipelineDesc = {};

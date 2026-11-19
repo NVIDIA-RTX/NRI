@@ -86,6 +86,27 @@ NriStruct(Window) {
     Nri(AndroidWindow) android;
 };
 
+NriStruct(ChromaticityCoords) {
+    float x, y; // [0; 1]
+};
+
+// HDR10 static metadata (SMPTE ST.2086 and CTA-861.3), luminance in nits (cd/m2)
+// Luminance must be finite and non-negative; 0 means unknown
+// Known values must satisfy minLuminance <= maxLuminance and MaxFALL <= MaxCLL
+NriStruct(HdrMetadata) {
+    // Mastering display
+    Nri(ChromaticityCoords) redPrimary;
+    Nri(ChromaticityCoords) greenPrimary;
+    Nri(ChromaticityCoords) bluePrimary;
+    Nri(ChromaticityCoords) whitePoint;
+    float minLuminance;
+    float maxLuminance;
+
+    // Content
+    float maxContentLightLevel;      // aka "MaxCLL", the brightest pixel
+    float maxFrameAverageLightLevel; // aka "MaxFALL", the brightest frame average
+};
+
 // SwapChain textures will be created as "color attachment" resources
 // queuedFrameNum = 0 - auto-selection between 1 (for waitable) or 2 (otherwise)
 // queuedFrameNum = 2 - recommended if the GPU frame time is less than the desired frame time, but the sum of 2 frames is greater
@@ -95,7 +116,7 @@ NriStruct(SwapChainDesc) {
     Nri(Dim_t) width;
     Nri(Dim_t) height;
     uint8_t textureNum;                         // desired value, real value must be queried using "GetSwapChainTextures"
-    Nri(SwapChainFormat) format;                // desired format, real value must be queried using "GetTextureDesc" for one of the swap chain textures
+    Nri(SwapChainFormat) format;                // desired format, real value must be queried using "GetTextureDesc" for one of the swap chain textures (VK: "UNSUPPORTED" if the surface has no format in the color space of an HDR format)
     Nri(SwapChainBits) flags;
     NriOptional uint8_t queuedFrameNum;         // aka "max frame latency", aka "number of frames in flight" (mostly for D3D11)
 
@@ -103,10 +124,8 @@ NriStruct(SwapChainDesc) {
     NriOptional Nri(Scaling) scaling;           // VK: if scaling is not supported, "OUT_OF_DATE" error is triggered on resizing
     NriOptional Nri(Gravity) gravityX;
     NriOptional Nri(Gravity) gravityY;
-};
 
-NriStruct(ChromaticityCoords) {
-    float x, y; // [0; 1]
+    NriOptional const NriPtr(HdrMetadata) hdrMetadata; // VK only: requires "VK_EXT_hdr_metadata"; ignored on Windows and by other backends
 };
 
 // Describes color settings and capabilities of the closest display:

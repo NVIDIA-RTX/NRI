@@ -1,6 +1,7 @@
 // © 2021 NVIDIA Corporation
 
 #include <algorithm>
+#include <cmath>
 
 #include "SharedVal.h"
 

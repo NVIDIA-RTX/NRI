@@ -655,6 +655,9 @@ void DeviceVK::ProcessDeviceExtensions(Vector<const char*>& desiredDeviceExts, b
     APPEND_EXT(true, VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME);
     APPEND_EXT(true, VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME);
     APPEND_EXT(true, VK_EXT_FRAGMENT_SHADER_INTERLOCK_EXTENSION_NAME);
+#ifndef _WIN32
+    APPEND_EXT(true, VK_EXT_HDR_METADATA_EXTENSION_NAME);
+#endif
     APPEND_EXT(true, VK_EXT_IMAGE_SLICED_VIEW_OF_3D_EXTENSION_NAME);
     APPEND_EXT(true, VK_EXT_MEMORY_BUDGET_EXTENSION_NAME);
     APPEND_EXT(true, VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME);
@@ -1005,7 +1008,13 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
     if (desc.deviceLostInfoLevel != DeviceLostInfoLevel::NONE && IsExtensionSupported(VK_EXT_DEVICE_FAULT_EXTENSION_NAME, desiredDeviceExts))
         PNEXTCHAIN_APPEND_STRUCT(DeviceFaultFeatures);
 
-    m_VK.GetPhysicalDeviceFeatures2(m_PhysicalDevice, &features);
+    const bool unknownFeatures = isWrapper && descVK.unknownFeatures;
+    if (unknownFeatures) {
+        VkPhysicalDeviceFeatures2 coreFeatures = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
+        m_VK.GetPhysicalDeviceFeatures2(m_PhysicalDevice, &coreFeatures);
+        features.features = coreFeatures.features;
+    } else
+        m_VK.GetPhysicalDeviceFeatures2(m_PhysicalDevice, &features);
 
     if (m_MinorVersion < 3) {
         features13.dynamicRendering = DynamicRenderingFeatures.dynamicRendering;
@@ -1014,6 +1023,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         features13.robustImageAccess = ImageRobustnessFeatures.robustImageAccess;
         features13.shaderIntegerDotProduct = ShaderIntegerDotProductFeatures.shaderIntegerDotProduct;
         features13.pipelineCreationCacheControl = PipelineCreationCacheControlFeatures.pipelineCreationCacheControl;
+        features13.subgroupSizeControl = SubgroupSizeControlFeatures.subgroupSizeControl;
     }
 
     if (m_MinorVersion < 4) {
@@ -1030,7 +1040,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         features14.hostImageCopy = HostImageCopyFeatures.hostImageCopy;
     }
 
-    if (m_MinorVersion > 2)
+    if (m_MinorVersion > 2 && !unknownFeatures)
         ExtendedDynamicStateFeatures.extendedDynamicState = true;
 
     m_IsSupported.maintenance4 = features13.maintenance4;
@@ -1042,11 +1052,12 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
     m_IsSupported.maintenance10 = Maintenance10Features.maintenance10;
     m_IsSupported.deviceAddress = features12.bufferDeviceAddress;
     m_IsSupported.dynamicRendering = features13.dynamicRendering;
-    m_IsSupported.storeOpNone = m_MinorVersion >= 3 ||
+    m_IsSupported.storeOpNone = (m_MinorVersion >= 3 && !unknownFeatures) ||
         IsExtensionSupported(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME, desiredDeviceExts) ||
         IsExtensionSupported(VK_KHR_LOAD_STORE_OP_NONE_EXTENSION_NAME, desiredDeviceExts) ||
         IsExtensionSupported(VK_EXT_LOAD_STORE_OP_NONE_EXTENSION_NAME, desiredDeviceExts);
-    m_IsSupported.copyCommands2 = m_MinorVersion > 2 || IsExtensionSupported(VK_KHR_COPY_COMMANDS_2_EXTENSION_NAME, desiredDeviceExts);
+    m_IsSupported.copyCommands2 = (m_MinorVersion > 2 && !unknownFeatures) || IsExtensionSupported(VK_KHR_COPY_COMMANDS_2_EXTENSION_NAME, desiredDeviceExts);
+    m_IsSupported.synchronization2 = features13.synchronization2;
     m_IsSupported.swapChainMutableFormat = IsExtensionSupported(VK_KHR_SWAPCHAIN_MUTABLE_FORMAT_EXTENSION_NAME, desiredDeviceExts);
     m_IsSupported.presentId = PresentIdFeatures.presentId;
     m_IsSupported.memoryPriority = MemoryPriorityFeatures.memoryPriority;
@@ -1075,7 +1086,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
     m_IsMemoryZeroInitializationEnabled = desc.enableMemoryZeroInitialization && ZeroInitializeDeviceMemoryFeatures.zeroInitializeDeviceMemory;
 
     // Check hard requirements
-    NRI_RETURN_ON_FAILURE(this, features13.synchronization2, Result::UNSUPPORTED, "'synchronization2' is not supported");
+    NRI_RETURN_ON_FAILURE(this, features13.synchronization2 || unknownFeatures, Result::UNSUPPORTED, "'synchronization2' is not supported");
 
     // Check soft requirement
     if (!ExtendedDynamicStateFeatures.extendedDynamicState)
@@ -1257,7 +1268,8 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         if (m_MinorVersion < 3) {
             props13.maxBufferSize = Maintenance4Props.maxBufferSize;
             props13.minSubgroupSize = SubgroupSizeControlProps.minSubgroupSize;
-            props13.maxSubgroupSize = SubgroupSizeControlProps.minSubgroupSize;
+            props13.maxSubgroupSize = SubgroupSizeControlProps.maxSubgroupSize;
+            props13.requiredSubgroupSizeStages = SubgroupSizeControlProps.requiredSubgroupSizeStages;
         }
 
         if (m_MinorVersion < 4) {
@@ -1709,6 +1721,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         m_Desc.features.extendedDynamicState = ExtendedDynamicStateFeatures.extendedDynamicState;
         m_Desc.features.unifiedTextureLayouts = UnifiedImageLayoutsFeatures.unifiedImageLayouts;
         m_Desc.features.resourceAliasing = true;
+        m_Desc.features.waveLaneNumControl = features13.subgroupSizeControl && (props13.requiredSubgroupSizeStages & VK_SHADER_STAGE_COMPUTE_BIT);
 
         const VkVideoCodecOperationFlagsKHR decodeCodecOperations = m_IsSupported.videoMaintenance1 ? GetVideoCodecOperations(true, false) : 0;
         m_Desc.videoFeatures.decode.H264 = (decodeCodecOperations & VK_VIDEO_CODEC_OPERATION_DECODE_H264_BIT_KHR) != 0;
@@ -2387,6 +2400,7 @@ Result DeviceVK::ResolveDispatchTable(const Vector<const char*>& desiredDeviceEx
     GET_DEVICE_CORE_FUNC(MapMemory);
     GET_DEVICE_CORE_FUNC(FlushMappedMemoryRanges);
     GET_DEVICE_CORE_FUNC(InvalidateMappedMemoryRanges);
+    GET_DEVICE_CORE_FUNC(QueueSubmit);
     GET_DEVICE_CORE_FUNC(QueueWaitIdle);
     GET_DEVICE_CORE_FUNC(ResetCommandPool);
     GET_DEVICE_CORE_FUNC(ResetDescriptorPool);
@@ -2424,6 +2438,8 @@ Result DeviceVK::ResolveDispatchTable(const Vector<const char*>& desiredDeviceEx
     GET_DEVICE_CORE_FUNC(CmdCopyImageToBuffer);
     GET_DEVICE_CORE_FUNC(CmdResetQueryPool);
     GET_DEVICE_CORE_FUNC(CmdFillBuffer);
+    GET_DEVICE_CORE_FUNC(CmdPipelineBarrier);
+    GET_DEVICE_CORE_FUNC(CmdWriteTimestamp);
     GET_DEVICE_CORE_FUNC(CmdBeginRenderPass);
     GET_DEVICE_CORE_FUNC(CmdEndRenderPass);
     GET_DEVICE_CORE_FUNC(EndCommandBuffer);
@@ -2495,6 +2511,11 @@ Result DeviceVK::ResolveDispatchTable(const Vector<const char*>& desiredDeviceEx
 
     if (IsExtensionSupported(VK_KHR_PRESENT_WAIT_EXTENSION_NAME, desiredDeviceExts))
         GET_DEVICE_FUNC(WaitForPresentKHR);
+
+#ifndef _WIN32
+    if (IsExtensionSupported(VK_EXT_HDR_METADATA_EXTENSION_NAME, desiredDeviceExts))
+        GET_DEVICE_FUNC(SetHdrMetadataEXT);
+#endif
 
 #ifdef VK_USE_PLATFORM_WIN32_KHR
     if (IsExtensionSupported(VK_KHR_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME, desiredDeviceExts))

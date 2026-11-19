@@ -105,6 +105,56 @@ NRI_INLINE Result QueueVK::Submit(const QueueSubmitDesc& queueSubmitDesc) {
         signalSemaphores[i].stageMask = GetPipelineStageFlags(queueSubmitDesc.signalFences[i].stages) & ~unsupportedStages;
     }
 
+    const auto& vk = m_Device.GetDispatchTable();
+
+    // Without "synchronization2" (a wrapped device with unknown features): a Vulkan 1.0 submission with timeline semaphore values
+    if (!m_Device.m_IsSupported.synchronization2) {
+        Scratch<VkSemaphore> waitSemaphores1 = NRI_ALLOCATE_SCRATCH(m_Device, VkSemaphore, queueSubmitDesc.waitFenceNum);
+        Scratch<uint64_t> waitValues = NRI_ALLOCATE_SCRATCH(m_Device, uint64_t, queueSubmitDesc.waitFenceNum);
+        Scratch<VkPipelineStageFlags> waitStages = NRI_ALLOCATE_SCRATCH(m_Device, VkPipelineStageFlags, queueSubmitDesc.waitFenceNum);
+        for (uint32_t i = 0; i < queueSubmitDesc.waitFenceNum; i++) {
+            VkPipelineStageFlags stages = GetPipelineStageFlags1(waitSemaphores[i].stageMask);
+            if (!stages)
+                stages = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT; // "BOTTOM_OF_PIPE" in the second scope means none
+
+            waitSemaphores1[i] = waitSemaphores[i].semaphore;
+            waitValues[i] = waitSemaphores[i].value;
+            waitStages[i] = stages;
+        }
+
+        Scratch<VkCommandBuffer> commandBuffers1 = NRI_ALLOCATE_SCRATCH(m_Device, VkCommandBuffer, queueSubmitDesc.commandBufferNum);
+        for (uint32_t i = 0; i < queueSubmitDesc.commandBufferNum; i++)
+            commandBuffers1[i] = commandBuffers[i].commandBuffer;
+
+        Scratch<VkSemaphore> signalSemaphores1 = NRI_ALLOCATE_SCRATCH(m_Device, VkSemaphore, queueSubmitDesc.signalFenceNum);
+        Scratch<uint64_t> signalValues = NRI_ALLOCATE_SCRATCH(m_Device, uint64_t, queueSubmitDesc.signalFenceNum);
+        for (uint32_t i = 0; i < queueSubmitDesc.signalFenceNum; i++) {
+            signalSemaphores1[i] = signalSemaphores[i].semaphore;
+            signalValues[i] = signalSemaphores[i].value;
+        }
+
+        VkTimelineSemaphoreSubmitInfo timelineInfo = {VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO};
+        timelineInfo.waitSemaphoreValueCount = queueSubmitDesc.waitFenceNum;
+        timelineInfo.pWaitSemaphoreValues = waitValues;
+        timelineInfo.signalSemaphoreValueCount = queueSubmitDesc.signalFenceNum;
+        timelineInfo.pSignalSemaphoreValues = signalValues;
+
+        VkSubmitInfo submitInfo1 = {VK_STRUCTURE_TYPE_SUBMIT_INFO};
+        submitInfo1.pNext = &timelineInfo;
+        submitInfo1.waitSemaphoreCount = queueSubmitDesc.waitFenceNum;
+        submitInfo1.pWaitSemaphores = waitSemaphores1;
+        submitInfo1.pWaitDstStageMask = waitStages;
+        submitInfo1.commandBufferCount = queueSubmitDesc.commandBufferNum;
+        submitInfo1.pCommandBuffers = commandBuffers1;
+        submitInfo1.signalSemaphoreCount = queueSubmitDesc.signalFenceNum;
+        submitInfo1.pSignalSemaphores = signalSemaphores1;
+
+        VkResult vkResult = vk.QueueSubmit(m_Handle, 1, &submitInfo1, VK_NULL_HANDLE);
+        NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "QueueSubmit");
+
+        return Result::SUCCESS;
+    }
+
     VkSubmitInfo2 submitInfo = {VK_STRUCTURE_TYPE_SUBMIT_INFO_2};
     submitInfo.waitSemaphoreInfoCount = queueSubmitDesc.waitFenceNum;
     submitInfo.pWaitSemaphoreInfos = waitSemaphores;
@@ -119,7 +169,6 @@ NRI_INLINE Result QueueVK::Submit(const QueueSubmitDesc& queueSubmitDesc) {
         submitInfo.pNext = &presentId;
     }
 
-    const auto& vk = m_Device.GetDispatchTable();
     VkResult vkResult = vk.QueueSubmit2(m_Handle, 1, &submitInfo, VK_NULL_HANDLE);
     NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "QueueSubmit2");
 
