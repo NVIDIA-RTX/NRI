@@ -125,9 +125,7 @@ NriStruct(SwapChainDesc) {
     NriOptional Nri(Gravity) gravityX;
     NriOptional Nri(Gravity) gravityY;
 
-    // Content metadata, read during creation and ignored for SDR formats
-    // VK only: requires "VK_EXT_hdr_metadata"; ignored on Windows and by other backends
-    NriOptional const NriPtr(HdrMetadata) hdrMetadata;
+    NriOptional const NriPtr(HdrMetadata) hdrMetadata; // VK only: requires "VK_EXT_hdr_metadata"; ignored on Windows and by other backends
 };
 
 // Describes color settings and capabilities of the closest display:
