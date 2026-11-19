@@ -1257,7 +1257,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         if (m_MinorVersion < 3) {
             props13.maxBufferSize = Maintenance4Props.maxBufferSize;
             props13.minSubgroupSize = SubgroupSizeControlProps.minSubgroupSize;
-            props13.maxSubgroupSize = SubgroupSizeControlProps.minSubgroupSize;
+            props13.maxSubgroupSize = SubgroupSizeControlProps.maxSubgroupSize;
         }
 
         if (m_MinorVersion < 4) {
