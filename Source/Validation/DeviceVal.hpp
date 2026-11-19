@@ -895,15 +895,6 @@ NRI_INLINE Result DeviceVal::CreatePipeline(const ComputePipelineDesc& computePi
     NRI_RETURN_ON_FAILURE(this, IsShaderBytecodeSupported(GetDesc(), computePipelineDesc.shader), Result::UNSUPPORTED, "'shader' is DXIL, but 'features.shaderBytecodeDXIL' is false");
     NRI_RETURN_ON_FAILURE(this, computePipelineDesc.robustness < Robustness::MAX_NUM, Result::INVALID_ARGUMENT, "'robustness' is invalid");
 
-    if (computePipelineDesc.waveLaneNum) {
-        const DeviceDesc& deviceDesc = GetDesc();
-        const uint32_t waveLaneNum = computePipelineDesc.waveLaneNum;
-
-        NRI_RETURN_ON_FAILURE(this, deviceDesc.features.waveLaneNumControl, Result::INVALID_ARGUMENT, "'features.waveLaneNumControl' is false");
-        NRI_RETURN_ON_FAILURE(this, (waveLaneNum & (waveLaneNum - 1)) == 0 && waveLaneNum >= deviceDesc.wave.laneMinNum && waveLaneNum <= deviceDesc.wave.laneMaxNum, Result::INVALID_ARGUMENT,
-            "'waveLaneNum' must be a power of 2 in [%u; %u]", deviceDesc.wave.laneMinNum, deviceDesc.wave.laneMaxNum);
-    }
-
     const char* bundleError = GetMetalBundleError(GetDesc().graphicsAPI, computePipelineDesc.shader);
     NRI_RETURN_ON_FAILURE(this, !bundleError, Result::INVALID_ARGUMENT, "'shader' is an invalid Metal converter bundle: %s", bundleError);
 

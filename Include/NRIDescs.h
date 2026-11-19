@@ -1671,7 +1671,7 @@ NriStruct(ComputePipelineDesc) {
     Nri(ComputePipelineBits) flags;
     Nri(Robustness) robustness;
     NriOptional const NriPtr(PipelineCache) cache; // uses a cached blob on a hit and stores the result on a miss
-    NriOptional uint32_t waveLaneNum;              // if not 0, the wave size the shader must run with: a power of 2 in ["wave.laneMinNum"; "wave.laneMaxNum"] (requires "features.waveLaneNumControl")
+    NriOptional uint32_t waveLaneNum;              // VK: requested wave size, a power of 2 in ["wave.laneMinNum"; "wave.laneMaxNum"]; 0 = driver choice, ignored if unsupported
 };
 
 #pragma endregion
@@ -2361,7 +2361,7 @@ NriStruct(DeviceDesc) {
         bool extendedDynamicState;                                // VK: allows to use "VertexBufferDesc::stride" (dynamic) instead of "VertexStreamDesc::stride" (static). Widely supported
         bool unifiedTextureLayouts;                               // VK: allows to use "GENERAL" everywhere: https://docs.vulkan.org/refpages/latest/refpages/source/VK_KHR_unified_image_layouts.html
         bool resourceAliasing;                                    // binding multiple distinct texture or buffer objects to overlap the same underlying memory allocation (unsupported only in D3D11)
-        bool waveLaneNumControl;                                  // see "ComputePipelineDesc::waveLaneNum" (VK: "subgroupSizeControl", D3D12: use "[WaveSize]" in the shader instead)
+        bool waveLaneNumControl;                                  // informational: VK supports "ComputePipelineDesc::waveLaneNum" (D3D12: use "[WaveSize]" in the shader)
     } features;
 
     // Shader features

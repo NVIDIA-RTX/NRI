@@ -491,7 +491,7 @@ Result PipelineVK::Create(const ComputePipelineDesc& computePipelineDesc) {
         SetupDescriptorHeapShaderStages(pipelineLayoutVK, &stage, 1, mappings, &mappingInfo, mappingSamplers);
 
     VkPipelineShaderStageRequiredSubgroupSizeCreateInfo requiredSubgroupSize = {VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_REQUIRED_SUBGROUP_SIZE_CREATE_INFO};
-    if (computePipelineDesc.waveLaneNum) {
+    if (computePipelineDesc.waveLaneNum && m_Device.GetDesc().features.waveLaneNumControl) {
         requiredSubgroupSize.pNext = (void*)stage.pNext;
         requiredSubgroupSize.requiredSubgroupSize = computePipelineDesc.waveLaneNum;
         stage.pNext = &requiredSubgroupSize;
