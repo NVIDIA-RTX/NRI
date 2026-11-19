@@ -1014,6 +1014,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         features13.robustImageAccess = ImageRobustnessFeatures.robustImageAccess;
         features13.shaderIntegerDotProduct = ShaderIntegerDotProductFeatures.shaderIntegerDotProduct;
         features13.pipelineCreationCacheControl = PipelineCreationCacheControlFeatures.pipelineCreationCacheControl;
+        features13.subgroupSizeControl = SubgroupSizeControlFeatures.subgroupSizeControl;
     }
 
     if (m_MinorVersion < 4) {
@@ -1258,6 +1259,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
             props13.maxBufferSize = Maintenance4Props.maxBufferSize;
             props13.minSubgroupSize = SubgroupSizeControlProps.minSubgroupSize;
             props13.maxSubgroupSize = SubgroupSizeControlProps.maxSubgroupSize;
+            props13.requiredSubgroupSizeStages = SubgroupSizeControlProps.requiredSubgroupSizeStages;
         }
 
         if (m_MinorVersion < 4) {
@@ -1709,6 +1711,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         m_Desc.features.extendedDynamicState = ExtendedDynamicStateFeatures.extendedDynamicState;
         m_Desc.features.unifiedTextureLayouts = UnifiedImageLayoutsFeatures.unifiedImageLayouts;
         m_Desc.features.resourceAliasing = true;
+        m_Desc.features.waveLaneNumControl = features13.subgroupSizeControl && (props13.requiredSubgroupSizeStages & VK_SHADER_STAGE_COMPUTE_BIT);
 
         const VkVideoCodecOperationFlagsKHR decodeCodecOperations = m_IsSupported.videoMaintenance1 ? GetVideoCodecOperations(true, false) : 0;
         m_Desc.videoFeatures.decode.H264 = (decodeCodecOperations & VK_VIDEO_CODEC_OPERATION_DECODE_H264_BIT_KHR) != 0;
