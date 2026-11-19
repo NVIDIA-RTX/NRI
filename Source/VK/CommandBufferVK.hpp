@@ -2715,6 +2715,51 @@ NRI_INLINE void CommandBufferVK::Barrier(const BarrierDesc& barrierDesc) {
             isRegionLocal = true;
     }
 
+    // Without "synchronization2" (a wrapped device with unknown features): a Vulkan 1.0 barrier with the union of the stages
+    if (!m_Device.m_IsSupported.synchronization2) {
+        VkPipelineStageFlags srcStages = 0;
+        VkPipelineStageFlags dstStages = 0;
+
+        Scratch<VkMemoryBarrier> memoryBarriers1 = NRI_ALLOCATE_SCRATCH(m_Device, VkMemoryBarrier, barrierDesc.globalNum);
+        for (uint32_t i = 0; i < barrierDesc.globalNum; i++) {
+            const VkMemoryBarrier2& in = memoryBarriers[i];
+            memoryBarriers1[i] = {VK_STRUCTURE_TYPE_MEMORY_BARRIER, nullptr, GetAccessFlags1(in.srcAccessMask), GetAccessFlags1(in.dstAccessMask)};
+            srcStages |= GetPipelineStageFlags1(in.srcStageMask);
+            dstStages |= GetPipelineStageFlags1(in.dstStageMask);
+        }
+
+        Scratch<VkBufferMemoryBarrier> bufferBarriers1 = NRI_ALLOCATE_SCRATCH(m_Device, VkBufferMemoryBarrier, barrierDesc.bufferNum);
+        for (uint32_t i = 0; i < barrierDesc.bufferNum; i++) {
+            const VkBufferMemoryBarrier2& in = bufferBarriers[i];
+            bufferBarriers1[i] = {VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER, nullptr, GetAccessFlags1(in.srcAccessMask), GetAccessFlags1(in.dstAccessMask),
+                in.srcQueueFamilyIndex, in.dstQueueFamilyIndex, in.buffer, in.offset, in.size};
+            srcStages |= GetPipelineStageFlags1(in.srcStageMask);
+            dstStages |= GetPipelineStageFlags1(in.dstStageMask);
+        }
+
+        Scratch<VkImageMemoryBarrier> textureBarriers1 = NRI_ALLOCATE_SCRATCH(m_Device, VkImageMemoryBarrier, barrierDesc.textureNum);
+        for (uint32_t i = 0; i < barrierDesc.textureNum; i++) {
+            const VkImageMemoryBarrier2& in = textureBarriers[i];
+            textureBarriers1[i] = {VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, nullptr, GetAccessFlags1(in.srcAccessMask), GetAccessFlags1(in.dstAccessMask),
+                in.oldLayout, in.newLayout, in.srcQueueFamilyIndex, in.dstQueueFamilyIndex, in.image, in.subresourceRange};
+            srcStages |= GetPipelineStageFlags1(in.srcStageMask);
+            dstStages |= GetPipelineStageFlags1(in.dstStageMask);
+        }
+
+        // No stages: "TOP_OF_PIPE" in the first scope and "BOTTOM_OF_PIPE" in the second scope mean none
+        if (!srcStages)
+            srcStages = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+        if (!dstStages)
+            dstStages = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+
+        const VkDependencyFlags dependencyFlags = isRegionLocal ? VK_DEPENDENCY_BY_REGION_BIT : 0;
+
+        const auto& vk = m_Device.GetDispatchTable();
+        vk.CmdPipelineBarrier(m_Handle, srcStages, dstStages, dependencyFlags, barrierDesc.globalNum, memoryBarriers1, barrierDesc.bufferNum, bufferBarriers1, barrierDesc.textureNum, textureBarriers1);
+
+        return;
+    }
+
     // Submit
     VkDependencyInfo dependencyInfo = {VK_STRUCTURE_TYPE_DEPENDENCY_INFO};
     dependencyInfo.memoryBarrierCount = barrierDesc.globalNum;
@@ -2744,7 +2789,10 @@ NRI_INLINE void CommandBufferVK::EndQuery(QueryPool& queryPool, uint32_t offset)
     if (queryPoolVK.GetType() == VK_QUERY_TYPE_TIMESTAMP) {
         // TODO: https://registry.khronos.org/vulkan/specs/latest/man/html/vkCmdWriteTimestamp.html
         // https://docs.vulkan.org/samples/latest/samples/api/timestamp_queries/README.html
-        vk.CmdWriteTimestamp2(m_Handle, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, queryPoolVK.GetHandle(), offset);
+        if (m_Device.m_IsSupported.synchronization2)
+            vk.CmdWriteTimestamp2(m_Handle, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, queryPoolVK.GetHandle(), offset);
+        else
+            vk.CmdWriteTimestamp(m_Handle, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, queryPoolVK.GetHandle(), offset);
     } else
         vk.CmdEndQuery(m_Handle, queryPoolVK.GetHandle(), offset);
 }

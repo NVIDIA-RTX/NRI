@@ -1006,7 +1006,10 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
     if (desc.deviceLostInfoLevel != DeviceLostInfoLevel::NONE && IsExtensionSupported(VK_EXT_DEVICE_FAULT_EXTENSION_NAME, desiredDeviceExts))
         PNEXTCHAIN_APPEND_STRUCT(DeviceFaultFeatures);
 
-    m_VK.GetPhysicalDeviceFeatures2(m_PhysicalDevice, &features);
+    // A wrapped device with unknown features: all feature structures stay zero, and Vulkan 1.3 functionality is used only through "vkExtensions"
+    const bool unknownFeatures = isWrapper && descVK.unknownFeatures;
+    if (!unknownFeatures)
+        m_VK.GetPhysicalDeviceFeatures2(m_PhysicalDevice, &features);
 
     if (m_MinorVersion < 3) {
         features13.dynamicRendering = DynamicRenderingFeatures.dynamicRendering;
@@ -1032,7 +1035,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         features14.hostImageCopy = HostImageCopyFeatures.hostImageCopy;
     }
 
-    if (m_MinorVersion > 2)
+    if (m_MinorVersion > 2 && !unknownFeatures)
         ExtendedDynamicStateFeatures.extendedDynamicState = true;
 
     m_IsSupported.maintenance4 = features13.maintenance4;
@@ -1044,11 +1047,12 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
     m_IsSupported.maintenance10 = Maintenance10Features.maintenance10;
     m_IsSupported.deviceAddress = features12.bufferDeviceAddress;
     m_IsSupported.dynamicRendering = features13.dynamicRendering;
-    m_IsSupported.storeOpNone = m_MinorVersion >= 3 ||
+    m_IsSupported.storeOpNone = (m_MinorVersion >= 3 && !unknownFeatures) ||
         IsExtensionSupported(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME, desiredDeviceExts) ||
         IsExtensionSupported(VK_KHR_LOAD_STORE_OP_NONE_EXTENSION_NAME, desiredDeviceExts) ||
         IsExtensionSupported(VK_EXT_LOAD_STORE_OP_NONE_EXTENSION_NAME, desiredDeviceExts);
-    m_IsSupported.copyCommands2 = m_MinorVersion > 2 || IsExtensionSupported(VK_KHR_COPY_COMMANDS_2_EXTENSION_NAME, desiredDeviceExts);
+    m_IsSupported.copyCommands2 = (m_MinorVersion > 2 && !unknownFeatures) || IsExtensionSupported(VK_KHR_COPY_COMMANDS_2_EXTENSION_NAME, desiredDeviceExts);
+    m_IsSupported.synchronization2 = features13.synchronization2;
     m_IsSupported.swapChainMutableFormat = IsExtensionSupported(VK_KHR_SWAPCHAIN_MUTABLE_FORMAT_EXTENSION_NAME, desiredDeviceExts);
     m_IsSupported.presentId = PresentIdFeatures.presentId;
     m_IsSupported.memoryPriority = MemoryPriorityFeatures.memoryPriority;
@@ -1077,7 +1081,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
     m_IsMemoryZeroInitializationEnabled = desc.enableMemoryZeroInitialization && ZeroInitializeDeviceMemoryFeatures.zeroInitializeDeviceMemory;
 
     // Check hard requirements
-    NRI_RETURN_ON_FAILURE(this, features13.synchronization2, Result::UNSUPPORTED, "'synchronization2' is not supported");
+    NRI_RETURN_ON_FAILURE(this, features13.synchronization2 || unknownFeatures, Result::UNSUPPORTED, "'synchronization2' is not supported");
 
     // Check soft requirement
     if (!ExtendedDynamicStateFeatures.extendedDynamicState)
@@ -2391,6 +2395,7 @@ Result DeviceVK::ResolveDispatchTable(const Vector<const char*>& desiredDeviceEx
     GET_DEVICE_CORE_FUNC(MapMemory);
     GET_DEVICE_CORE_FUNC(FlushMappedMemoryRanges);
     GET_DEVICE_CORE_FUNC(InvalidateMappedMemoryRanges);
+    GET_DEVICE_CORE_FUNC(QueueSubmit);
     GET_DEVICE_CORE_FUNC(QueueWaitIdle);
     GET_DEVICE_CORE_FUNC(ResetCommandPool);
     GET_DEVICE_CORE_FUNC(ResetDescriptorPool);
@@ -2428,6 +2433,8 @@ Result DeviceVK::ResolveDispatchTable(const Vector<const char*>& desiredDeviceEx
     GET_DEVICE_CORE_FUNC(CmdCopyImageToBuffer);
     GET_DEVICE_CORE_FUNC(CmdResetQueryPool);
     GET_DEVICE_CORE_FUNC(CmdFillBuffer);
+    GET_DEVICE_CORE_FUNC(CmdPipelineBarrier);
+    GET_DEVICE_CORE_FUNC(CmdWriteTimestamp);
     GET_DEVICE_CORE_FUNC(CmdBeginRenderPass);
     GET_DEVICE_CORE_FUNC(CmdEndRenderPass);
     GET_DEVICE_CORE_FUNC(EndCommandBuffer);

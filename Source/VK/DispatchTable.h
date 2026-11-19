@@ -106,6 +106,7 @@ struct DispatchTable {
     VK_FUNC(MapMemory);                                   // - | +
     VK_FUNC(FlushMappedMemoryRanges);                     // + | +
     VK_FUNC(InvalidateMappedMemoryRanges);                // + | +
+    VK_FUNC(QueueSubmit);                                 // - | + may return "VK_ERROR_DEVICE_LOST"
     VK_FUNC(QueueWaitIdle);                               // - | + may return "VK_ERROR_DEVICE_LOST"
     VK_FUNC(ResetCommandPool);                            // - | +
     VK_FUNC(ResetDescriptorPool);                         // - | +
@@ -143,6 +144,8 @@ struct DispatchTable {
     VK_FUNC(CmdCopyImageToBuffer);                        // - | +
     VK_FUNC(CmdResetQueryPool);                           // - | +
     VK_FUNC(CmdFillBuffer);                               // - | +
+    VK_FUNC(CmdPipelineBarrier);                          // - | +
+    VK_FUNC(CmdWriteTimestamp);                           // - | +
     VK_FUNC(CmdBeginRenderPass);                          // - | +
     VK_FUNC(CmdEndRenderPass);                            // - | +
     VK_FUNC(EndCommandBuffer);                            // - | +

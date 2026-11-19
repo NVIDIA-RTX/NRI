@@ -39,6 +39,11 @@ NriStruct(DeviceCreationVKDesc) {
     // Switches (disabled by default)
     bool enableNRIValidation;
     bool enableMemoryZeroInitialization;                // page-clears are fast, but memory is not cleared by default in VK
+
+    // The features enabled on "vkDevice" are not known (for example, a device created by a host application): NRI uses none of them and Vulkan 1.3
+    // functionality only through "vkExtensions", so barriers, timestamps and submissions use Vulkan 1.0 commands. Fences and "ResetQueries" still need
+    // the Vulkan 1.2 features "timelineSemaphore" and "hostQueryReset"
+    bool unknownFeatures;
 };
 
 NriStruct(CommandAllocatorVKDesc) {

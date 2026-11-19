@@ -433,6 +433,31 @@ constexpr VkPipelineStageFlags2 GetPipelineStageFlags(StageBits stageBits) {
     return flags;
 }
 
+// Vulkan 1.0 flags for devices without "synchronization2": the bits below 32 are shared, the higher ones map to their 1.0 groups
+constexpr VkPipelineStageFlags GetPipelineStageFlags1(VkPipelineStageFlags2 stages) {
+    VkPipelineStageFlags flags = (VkPipelineStageFlags)(stages & 0xFFFFFFFF);
+
+    if (stages & (VK_PIPELINE_STAGE_2_COPY_BIT | VK_PIPELINE_STAGE_2_RESOLVE_BIT | VK_PIPELINE_STAGE_2_BLIT_BIT | VK_PIPELINE_STAGE_2_CLEAR_BIT))
+        flags |= VK_PIPELINE_STAGE_TRANSFER_BIT;
+
+    if (stages & (VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT | VK_PIPELINE_STAGE_2_VERTEX_ATTRIBUTE_INPUT_BIT))
+        flags |= VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
+
+    return flags;
+}
+
+constexpr VkAccessFlags GetAccessFlags1(VkAccessFlags2 access) {
+    VkAccessFlags flags = (VkAccessFlags)(access & 0xFFFFFFFF);
+
+    if (access & (VK_ACCESS_2_SHADER_SAMPLED_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_READ_BIT))
+        flags |= VK_ACCESS_SHADER_READ_BIT;
+
+    if (access & VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT)
+        flags |= VK_ACCESS_SHADER_WRITE_BIT;
+
+    return flags;
+}
+
 constexpr VkShaderStageFlags GetShaderStageFlags(StageBits stage) {
     if (stage == StageBits::NONE)
         return 0;

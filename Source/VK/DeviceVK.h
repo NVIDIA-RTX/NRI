@@ -134,6 +134,7 @@ struct IsSupported {
     uint32_t videoEncodeAV1               : 1;
     uint32_t descriptorHeap               : 1;
     uint32_t imageView2DOn3D              : 1;
+    uint32_t synchronization2             : 1;
 };
 
 static_assert(sizeof(IsSupported) == sizeof(uint32_t), "4 bytes expected");
