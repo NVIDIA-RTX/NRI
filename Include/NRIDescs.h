@@ -1671,7 +1671,7 @@ NriStruct(ComputePipelineDesc) {
     Nri(ComputePipelineBits) flags;
     Nri(Robustness) robustness;
     NriOptional const NriPtr(PipelineCache) cache; // uses a cached blob on a hit and stores the result on a miss
-    NriOptional uint32_t waveLaneNum;              // VK: requested wave size, a power of 2 in ["wave.laneMinNum"; "wave.laneMaxNum"]; 0 = driver choice, ignored if unsupported
+    NriOptional uint32_t waveLaneNum;              // VK: requested wave size; 0 = driver choice, ignored if unsupported
 };
 
 #pragma endregion
