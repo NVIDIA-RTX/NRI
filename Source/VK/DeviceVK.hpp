@@ -610,6 +610,7 @@ void DeviceVK::ProcessDeviceExtensions(Vector<const char*>& desiredDeviceExts, b
     APPEND_EXT(!disableRayTracing, VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME);
     APPEND_EXT(!disableRayTracing, VK_KHR_RAY_TRACING_POSITION_FETCH_EXTENSION_NAME);
     APPEND_EXT(!disableRayTracing, VK_EXT_OPACITY_MICROMAP_EXTENSION_NAME);
+    APPEND_EXT(!disableRayTracing, VK_EXT_RAY_TRACING_INVOCATION_REORDER_EXTENSION_NAME);
 
     APPEND_EXT(deviceLostInfoLevel != DeviceLostInfoLevel::NONE, VK_EXT_DEVICE_FAULT_EXTENSION_NAME);
 
@@ -992,6 +993,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
     PNEXTCHAIN_APPEND_FEATURES(true, EXT, MemoryPriority, MEMORY_PRIORITY);
     PNEXTCHAIN_APPEND_FEATURES(true, EXT, MeshShader, MESH_SHADER);
     PNEXTCHAIN_APPEND_FEATURES(true, EXT, OpacityMicromap, OPACITY_MICROMAP);
+    PNEXTCHAIN_APPEND_FEATURES(true, EXT, RayTracingInvocationReorder, RAY_TRACING_INVOCATION_REORDER);
     PNEXTCHAIN_APPEND_FEATURES(true, EXT, PresentModeFifoLatestReady, PRESENT_MODE_FIFO_LATEST_READY);
     PNEXTCHAIN_APPEND_FEATURES(true, EXT, Robustness2, ROBUSTNESS_2);
     PNEXTCHAIN_APPEND_FEATURES(true, EXT, ShaderAtomicFloat, SHADER_ATOMIC_FLOAT);
@@ -1258,6 +1260,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         PNEXTCHAIN_APPEND_PROPS(true, EXT, DescriptorHeap, DESCRIPTOR_HEAP);
         PNEXTCHAIN_APPEND_PROPS(true, EXT, MeshShader, MESH_SHADER);
         PNEXTCHAIN_APPEND_PROPS(true, EXT, OpacityMicromap, OPACITY_MICROMAP);
+        PNEXTCHAIN_APPEND_PROPS(true, EXT, RayTracingInvocationReorder, RAY_TRACING_INVOCATION_REORDER);
         PNEXTCHAIN_APPEND_PROPS(true, EXT, SampleLocations, SAMPLE_LOCATIONS);
 
         m_VK.GetPhysicalDeviceProperties2(m_PhysicalDevice, &props);
@@ -1504,8 +1507,11 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         m_Desc.shaderStage.mesh.outputPrimitiveMaxNum = MeshShaderProps.maxMeshOutputPrimitives;
         m_Desc.shaderStage.mesh.outputComponentMaxNum = MeshShaderProps.maxMeshOutputComponents;
 
+        const bool isShaderExecutionReorderingSupported = RayTracingPipelineFeatures.rayTracingPipeline && RayTracingInvocationReorderFeatures.rayTracingInvocationReorder;
         m_Desc.shaderStage.rayTracing.shaderGroupIdentifierSize = RayTracingPipelineProps.shaderGroupHandleSize;
         m_Desc.shaderStage.rayTracing.shaderBindingTableMaxStride = RayTracingPipelineProps.maxShaderGroupStride;
+        m_Desc.shaderStage.rayTracing.shaderBindingTableMaxHitGroupRecordIndex = isShaderExecutionReorderingSupported ? RayTracingInvocationReorderProps.maxShaderBindingTableRecordIndex : 0;
+        m_Desc.shaderStage.rayTracing.shaderBindingTableMaxMissRecordIndex = isShaderExecutionReorderingSupported ? RayTracingInvocationReorderProps.maxShaderBindingTableRecordIndex : 0;
         m_Desc.shaderStage.rayTracing.recursionMaxDepth = RayTracingPipelineProps.maxRayRecursionDepth;
 
         m_Desc.accelerationStructure.primitiveMaxNum = AccelerationStructureProps.maxPrimitiveCount;
@@ -1594,6 +1600,9 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
             m_Desc.tiers.rayTracing = 2;
         if (m_Desc.tiers.rayTracing == 2 && OpacityMicromapFeatures.micromap)
             m_Desc.tiers.rayTracing = 3;
+
+        if (isShaderExecutionReorderingSupported)
+            m_Desc.tiers.shaderExecutionReordering = RayTracingInvocationReorderProps.rayTracingInvocationReorderReorderingHint == VK_RAY_TRACING_INVOCATION_REORDER_MODE_REORDER_EXT ? 2 : 1;
 
         m_Desc.tiers.shadingRate = FragmentShadingRateFeatures.pipelineFragmentShadingRate != 0 ? 1 : 0;
         if (m_Desc.tiers.shadingRate && FragmentShadingRateFeatures.primitiveFragmentShadingRate && FragmentShadingRateFeatures.attachmentFragmentShadingRate)

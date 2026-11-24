@@ -2189,6 +2189,8 @@ NriStruct(DeviceDesc) {
         struct {
             uint32_t shaderGroupIdentifierSize;
             uint32_t shaderBindingTableMaxStride;
+            uint32_t shaderBindingTableMaxHitGroupRecordIndex; // SER hit-object table index limit (requires "tiers.shaderExecutionReordering >= 1")
+            uint32_t shaderBindingTableMaxMissRecordIndex;     // SER hit-object table index limit (requires "tiers.shaderExecutionReordering >= 1")
             uint32_t recursionMaxDepth;
         } rayTracing;
     } shaderStage;
@@ -2256,8 +2258,12 @@ NriStruct(DeviceDesc) {
         // https://microsoft.github.io/DirectX-Specs/d3d/Raytracing.html#checkfeaturesupport-structures
         // 1 - DXR 1.0: full raytracing functionality, except features below
         // 2 - DXR 1.1: adds - ray query, "CmdDispatchRaysIndirect", "GeometryIndex()" intrinsic, additional ray flags & vertex formats
-        // 3 - DXR 1.2: adds - micromap, shader execution reordering
+        // 3 - adds opacity micromaps (DXR 1.2), shader execution reordering (see "shaderExecutionReordering")
         uint8_t rayTracing;
+
+        // 1 - SER shaders and hit objects are supported; reordering may be a no-op
+        // 2 - additionally, the implementation reports that it can reorder shader invocations
+        uint8_t shaderExecutionReordering;
 
         // https://microsoft.github.io/DirectX-Specs/d3d/VariableRateShading.html#feature-tiering
         // 1 - shading rate can be specified only per draw

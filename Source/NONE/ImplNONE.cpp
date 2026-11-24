@@ -152,6 +152,8 @@ struct DeviceNONE final : public DeviceBase {
 
         m_Desc.shaderStage.rayTracing.shaderGroupIdentifierSize = 32;
         m_Desc.shaderStage.rayTracing.shaderBindingTableMaxStride = (uint32_t)(-1);
+        m_Desc.shaderStage.rayTracing.shaderBindingTableMaxHitGroupRecordIndex = (uint32_t)(-1);
+        m_Desc.shaderStage.rayTracing.shaderBindingTableMaxMissRecordIndex = (uint32_t)(-1);
         m_Desc.shaderStage.rayTracing.recursionMaxDepth = 31;
 
         m_Desc.accelerationStructure.primitiveMaxNum = (uint32_t)(-1);

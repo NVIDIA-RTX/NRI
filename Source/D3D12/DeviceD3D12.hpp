@@ -1220,6 +1220,17 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     m_Desc.tiers.shadingRate = (uint8_t)options6.VariableShadingRateTier;
     m_Desc.tiers.memory = options.ResourceHeapTier == D3D12_RESOURCE_HEAP_TIER_2 ? 1 : 0;
 
+    if (m_Desc.tiers.rayTracing && m_Desc.shaderModel >= NriShaderModel(6, 9)) {
+        m_Desc.tiers.shaderExecutionReordering = 1;
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
+        if (options22.ShaderExecutionReorderingActuallyReorders)
+            m_Desc.tiers.shaderExecutionReordering = 2;
+#endif
+        // https://microsoft.github.io/DirectX-Specs/d3d/Raytracing.html#hitobject-setshadertableindex
+        m_Desc.shaderStage.rayTracing.shaderBindingTableMaxHitGroupRecordIndex = 0x0FFFFFFF;
+        m_Desc.shaderStage.rayTracing.shaderBindingTableMaxMissRecordIndex = 0xFFFF;
+    }
+
     if (options.ResourceBindingTier == D3D12_RESOURCE_BINDING_TIER_3 && currentShaderModel >= D3D_SHADER_MODEL_6_6)
         m_Desc.tiers.bindless = 2;
     else if (levels.MaxSupportedFeatureLevel >= D3D_FEATURE_LEVEL_12_0)
