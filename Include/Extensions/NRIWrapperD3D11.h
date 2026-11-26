@@ -7,10 +7,12 @@
 #define NRI_WRAPPER_D3D11_H 1
 
 #include "NRIDeviceCreation.h"
+#include "NRISwapChain.h"
 
 typedef int32_t DXGIFormat;
 
 NonNriForwardStruct(AGSContext);
+NonNriForwardStruct(IDXGISwapChain);
 NonNriForwardStruct(ID3D11Device);
 NonNriForwardStruct(ID3D11Resource);
 NonNriForwardStruct(ID3D11DeviceContext);
@@ -47,11 +49,19 @@ NriStruct(TextureD3D11Desc) {
     NriOptional DXGIFormat format;             // must be provided "as a compatible typed format" if the resource is typeless
 };
 
+// Retains native objects; release NRI views and wrapper before resizing
+// WAITABLE: do not also wait on handles acquired by the application
+NriStruct(SwapChainD3D11Desc) {
+    IDXGISwapChain* dxgiSwapChain;
+    NriOptional Nri(SwapChainBits) flags;       // does not reconfigure the swap chain
+};
+
 // Threadsafe: yes
 NriStruct(WrapperD3D11Interface) {
     Nri(Result) (NRI_CALL *CreateCommandBufferD3D11)    (NriRef(Device) device, const NriRef(CommandBufferD3D11Desc) commandBufferD3D11Desc, NriOut NriRef(CommandBuffer*) commandBuffer);
     Nri(Result) (NRI_CALL *CreateBufferD3D11)           (NriRef(Device) device, const NriRef(BufferD3D11Desc) bufferD3D11Desc, NriOut NriRef(Buffer*) buffer);
     Nri(Result) (NRI_CALL *CreateTextureD3D11)          (NriRef(Device) device, const NriRef(TextureD3D11Desc) textureD3D11Desc, NriOut NriRef(Texture*) texture);
+    Nri(Result) (NRI_CALL *CreateSwapChainD3D11)        (NriRef(Device) device, const NriRef(SwapChainD3D11Desc) swapChainD3D11Desc, NriOut NriRef(SwapChain*) swapChain);
 };
 
 NRI_API Nri(Result) NRI_CALL nriCreateDeviceFromD3D11Device(const NriRef(DeviceCreationD3D11Desc) deviceDesc, NriOut NriRef(Device*) device);

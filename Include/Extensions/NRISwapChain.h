@@ -168,6 +168,9 @@ NriStruct(SwapChainInterface) {
     // Non-zero "presentId" values must strictly increase across frames for each swap chain, i.e. gaps are allowed
     // "releaseSemaphore" must be created with "SWAPCHAIN_SEMAPHORE" initial value (ignored in D3D)
     Nri(Result)             (NRI_CALL *QueuePresent)            (NriRef(SwapChain) swapChain, NriRef(Fence) releaseSemaphore, uint64_t presentId);
+
+    // Native object (IDXGISwapChain for D3D, VkSwapchainKHR for VK, CAMetalLayer* for METAL, WGPUSurface for WGPU)
+    uint64_t                (NRI_CALL *GetSwapChainNativeObject)(const NriPtr(SwapChain) swapChain);
 };
 
 /*

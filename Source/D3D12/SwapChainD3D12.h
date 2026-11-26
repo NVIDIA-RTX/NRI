@@ -17,6 +17,11 @@ struct SwapChainD3D12 final : public DisplayDescHelper, DebugNameBase {
     ~SwapChainD3D12();
 
     Result Create(const SwapChainDesc& swapChainDesc);
+    Result Create(const SwapChainD3D12Desc& swapChainDesc);
+
+    inline IDXGISwapChain* GetNativeObject() const {
+        return m_SwapChain;
+    }
 
     //================================================================================================================
     // DebugNameBase
@@ -45,6 +50,8 @@ struct SwapChainD3D12 final : public DisplayDescHelper, DebugNameBase {
     Result GetLatencyReport(LatencyReport& latencyReport);
 
 private:
+    Result CreateTextures(uint32_t textureNum);
+
     DeviceD3D12& m_Device;
     ComPtr<IDXGISwapChainBest> m_SwapChain;
     Vector<TextureD3D12*> m_Textures;

@@ -16,7 +16,12 @@ struct SwapChainVK final : public DisplayDescHelper, DebugNameBase {
         return m_Device;
     }
 
+    inline VkSwapchainKHR GetNativeObject() const {
+        return m_Handle;
+    }
+
     Result Create(const SwapChainDesc& swapChainDesc);
+    Result Create(const SwapChainVKDesc& swapChainVKDesc);
 
     //================================================================================================================
     // DebugNameBase
@@ -43,6 +48,8 @@ struct SwapChainVK final : public DisplayDescHelper, DebugNameBase {
     Result GetLatencyReport(LatencyReport& latencyReport);
 
 private:
+    Result CreateTextures(VkFormat format, VkImageUsageFlags usage, Dim_t width, Dim_t height, Dim_t layerNum);
+
     DeviceVK& m_Device;
     Vector<TextureVK*> m_Textures;
     FenceVK* m_LatencyFence = nullptr;
@@ -52,6 +59,7 @@ private:
     void* m_Hwnd = nullptr;
     uint32_t m_TextureIndex = 0;
     SwapChainBits m_Flags = SwapChainBits::NONE;
+    bool m_OwnsNativeObjects = true;
 };
 
 } // namespace nri

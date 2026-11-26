@@ -59,6 +59,19 @@ static inline bool IsLuminanceValid(float luminance) {
     return std::isfinite(luminance) && luminance >= 0.0f;
 }
 
+static inline Result WrapSwapChain(DeviceVal& device, SwapChain* swapChainImpl, SwapChainBits flags, SwapChain*& swapChain) {
+    SwapChainDesc desc = {};
+    desc.flags = flags;
+
+    SwapChainVal* wrapper = Allocate<SwapChainVal>(device.GetAllocationCallbacks(), device, swapChainImpl, desc);
+    Result result = CreateImplementation(device.GetAllocationCallbacks(), swapChain, wrapper);
+
+    if (result != Result::SUCCESS)
+        device.GetSwapChainInterfaceImpl().DestroySwapChain(swapChainImpl);
+
+    return result;
+}
+
 static inline bool IsShaderStageMaskValid(StageBits shaderStages) {
     return (shaderStages & StageBits::ALL_SHADERS) == (uint32_t)shaderStages;
 }
@@ -1540,6 +1553,37 @@ NRI_INLINE FormatSupportBits DeviceVal::GetFormatSupport(Format format) const {
 
 #if NRI_ENABLE_VK_SUPPORT
 
+NRI_INLINE Result DeviceVal::CreateSwapChain(const SwapChainVKDesc& swapChainVKDesc, SwapChain*& swapChain) {
+    swapChain = nullptr;
+
+    NRI_RETURN_ON_FAILURE(this, m_IsExtSupported.swapChain, Result::UNSUPPORTED, "Swap chains are not supported");
+
+    NRI_RETURN_ON_FAILURE(this, swapChainVKDesc.vkSwapChain != 0, Result::INVALID_ARGUMENT, "'vkSwapChain' is NULL");
+    NRI_RETURN_ON_FAILURE(this, swapChainVKDesc.queue != nullptr, Result::INVALID_ARGUMENT, "'queue' is NULL");
+    NRI_RETURN_ON_FAILURE(this, nriConvertVKFormatToNRI(swapChainVKDesc.vkFormat) != Format::UNKNOWN, Result::INVALID_ARGUMENT, "'vkFormat' is invalid");
+    NRI_RETURN_ON_FAILURE(this, swapChainVKDesc.vkImageUsageFlags != 0, Result::INVALID_ARGUMENT, "'vkImageUsageFlags' is 0");
+    NRI_RETURN_ON_FAILURE(this, swapChainVKDesc.width != 0 && swapChainVKDesc.width <= m_Desc.dimensions.texture2DMaxDim, Result::INVALID_ARGUMENT, "'width' is invalid");
+    NRI_RETURN_ON_FAILURE(this, swapChainVKDesc.height != 0 && swapChainVKDesc.height <= m_Desc.dimensions.texture2DMaxDim, Result::INVALID_ARGUMENT, "'height' is invalid");
+    NRI_RETURN_ON_FAILURE(this, swapChainVKDesc.layerNum != 0 && swapChainVKDesc.layerNum <= m_Desc.dimensions.textureLayerMaxNum, Result::INVALID_ARGUMENT, "'layerNum' is invalid");
+    NRI_RETURN_ON_FAILURE(this, (swapChainVKDesc.flags & SwapChainBits::WAITABLE) == 0 || m_Desc.features.waitableSwapChain, Result::INVALID_ARGUMENT, "'features.waitableSwapChain' is false");
+    NRI_RETURN_ON_FAILURE(this, (swapChainVKDesc.flags & SwapChainBits::ALLOW_LOW_LATENCY) == 0 || m_Desc.features.lowLatency, Result::INVALID_ARGUMENT, "'features.lowLatency' is false");
+
+    const QueueType queueType = ((const QueueVal*)swapChainVKDesc.queue)->GetType();
+    NRI_RETURN_ON_FAILURE(this, queueType == QueueType::GRAPHICS || queueType == QueueType::COMPUTE, Result::INVALID_ARGUMENT, "'queue' must be GRAPHICS or COMPUTE");
+    NRI_RETURN_ON_FAILURE(this, queueType != QueueType::COMPUTE || m_Desc.features.presentFromCompute, Result::INVALID_ARGUMENT, "'features.presentFromCompute' is false");
+
+    auto swapChainDescImpl = swapChainVKDesc;
+    swapChainDescImpl.queue = NRI_GET_IMPL(Queue, swapChainVKDesc.queue);
+
+    SwapChain* swapChainImpl = nullptr;
+    Result result = m_iWrapperVKImpl.CreateSwapChainVK(m_Impl, swapChainDescImpl, swapChainImpl);
+
+    if (result == Result::SUCCESS)
+        result = WrapSwapChain(*this, swapChainImpl, swapChainVKDesc.flags, swapChain);
+
+    return result;
+}
+
 NRI_INLINE Result DeviceVal::CreateCommandAllocator(const CommandAllocatorVKDesc& commandAllocatorVKDesc, CommandAllocator*& commandAllocator) {
     NRI_RETURN_ON_FAILURE(this, commandAllocatorVKDesc.vkCommandPool != 0, Result::INVALID_ARGUMENT, "'vkCommandPool' is NULL");
     NRI_RETURN_ON_FAILURE(this, commandAllocatorVKDesc.queueType < QueueType::MAX_NUM, Result::INVALID_ARGUMENT, "'queueType' is invalid");
@@ -1685,6 +1729,21 @@ NRI_INLINE Result DeviceVal::CreateAccelerationStructure(const AccelerationStruc
 
 #if NRI_ENABLE_D3D11_SUPPORT
 
+NRI_INLINE Result DeviceVal::CreateSwapChain(const SwapChainD3D11Desc& swapChainD3D11Desc, SwapChain*& swapChain) {
+    swapChain = nullptr;
+
+    NRI_RETURN_ON_FAILURE(this, m_IsExtSupported.swapChain, Result::UNSUPPORTED, "Swap chains are not supported");
+    NRI_RETURN_ON_FAILURE(this, swapChainD3D11Desc.dxgiSwapChain != nullptr, Result::INVALID_ARGUMENT, "'dxgiSwapChain' is NULL");
+
+    SwapChain* swapChainImpl = nullptr;
+    Result result = m_iWrapperD3D11Impl.CreateSwapChainD3D11(m_Impl, swapChainD3D11Desc, swapChainImpl);
+
+    if (result == Result::SUCCESS)
+        result = WrapSwapChain(*this, swapChainImpl, swapChainD3D11Desc.flags, swapChain);
+
+    return result;
+}
+
 NRI_INLINE Result DeviceVal::CreateCommandBuffer(const CommandBufferD3D11Desc& commandBufferD3D11Desc, CommandBuffer*& commandBuffer) {
     NRI_RETURN_ON_FAILURE(this, commandBufferD3D11Desc.d3d11DeviceContext != nullptr, Result::INVALID_ARGUMENT, "'d3d11DeviceContext' is NULL");
 
@@ -1727,6 +1786,21 @@ NRI_INLINE Result DeviceVal::CreateTexture(const TextureD3D11Desc& textureD3D11D
 #endif
 
 #if NRI_ENABLE_D3D12_SUPPORT
+
+NRI_INLINE Result DeviceVal::CreateSwapChain(const SwapChainD3D12Desc& swapChainD3D12Desc, SwapChain*& swapChain) {
+    swapChain = nullptr;
+
+    NRI_RETURN_ON_FAILURE(this, m_IsExtSupported.swapChain, Result::UNSUPPORTED, "Swap chains are not supported");
+    NRI_RETURN_ON_FAILURE(this, swapChainD3D12Desc.dxgiSwapChain != nullptr, Result::INVALID_ARGUMENT, "'dxgiSwapChain' is NULL");
+
+    SwapChain* swapChainImpl = nullptr;
+    Result result = m_iWrapperD3D12Impl.CreateSwapChainD3D12(m_Impl, swapChainD3D12Desc, swapChainImpl);
+
+    if (result == Result::SUCCESS)
+        result = WrapSwapChain(*this, swapChainImpl, swapChainD3D12Desc.flags, swapChain);
+
+    return result;
+}
 
 NRI_INLINE Result DeviceVal::CreateCommandBuffer(const CommandBufferD3D12Desc& commandBufferD3D12Desc, CommandBuffer*& commandBuffer) {
     NRI_RETURN_ON_FAILURE(this, commandBufferD3D12Desc.d3d12CommandList != nullptr, Result::INVALID_ARGUMENT, "'d3d12CommandList' is NULL");

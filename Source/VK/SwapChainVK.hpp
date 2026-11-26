@@ -24,7 +24,8 @@ SwapChainVK::~SwapChainVK() {
     Destroy(m_LatencyFence);
 
     const auto& vk = m_Device.GetDispatchTable();
-    if (m_Handle)
+
+    if (m_Handle && m_OwnsNativeObjects)
         vk.DestroySwapchainKHR(m_Device, m_Handle, m_Device.GetVkAllocationCallbacks());
 
     if (m_Surface)
@@ -442,37 +443,17 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
     }
 #endif
 
-    { // Textures
-        uint32_t imageNum = 0;
-        vk.GetSwapchainImagesKHR(m_Device, m_Handle, &imageNum, nullptr);
+    // Textures
+    Result result = CreateTextures(surfaceFormat.surfaceFormat.format, swapchainImageUsageFlags, (Dim_t)swapChainExtent.width, (Dim_t)swapChainExtent.height, 1);
 
-        Scratch<VkImage> imageHandles = NRI_ALLOCATE_SCRATCH(m_Device, VkImage, imageNum);
-        vk.GetSwapchainImagesKHR(m_Device, m_Handle, &imageNum, imageHandles);
-
-        m_Textures.resize(imageNum);
-        for (uint32_t i = 0; i < imageNum; i++) {
-            TextureVKDesc desc = {};
-            desc.vkImage = (VKNonDispatchableHandle)imageHandles[i];
-            desc.vkFormat = surfaceFormat.surfaceFormat.format;
-            desc.vkImageType = VK_IMAGE_TYPE_2D;
-            desc.vkImageUsageFlags = swapchainImageUsageFlags;
-            desc.width = (Dim_t)swapChainExtent.width;
-            desc.height = (Dim_t)swapChainExtent.height;
-            desc.depth = 1;
-            desc.mipNum = 1;
-            desc.layerNum = 1;
-            desc.sampleNum = 1;
-
-            Result result = m_Device.CreateImplementation<TextureVK>(m_Textures[i], desc);
-            if (result != Result::SUCCESS)
-                return result;
-        }
-    }
+    if (result != Result::SUCCESS)
+        return result;
 
     // Latency fence
     if (allowLowLatency) {
         FenceDesc fenceDesc = {};
-        Result result = m_Device.CreateImplementation<FenceVK>(m_LatencyFence, fenceDesc);
+        result = m_Device.CreateImplementation<FenceVK>(m_LatencyFence, fenceDesc);
+
         if (result != Result::SUCCESS)
             return result;
     }
@@ -491,8 +472,67 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
     return Result::SUCCESS;
 }
 
+Result SwapChainVK::Create(const SwapChainVKDesc& swapChainVKDesc) {
+    m_OwnsNativeObjects = false;
+    m_Handle = (VkSwapchainKHR)swapChainVKDesc.vkSwapChain;
+    m_Queue = (QueueVK*)swapChainVKDesc.queue;
+    m_Hwnd = swapChainVKDesc.window.hwnd;
+    m_Flags = swapChainVKDesc.flags;
+
+    Result result = CreateTextures((VkFormat)swapChainVKDesc.vkFormat, swapChainVKDesc.vkImageUsageFlags, swapChainVKDesc.width, swapChainVKDesc.height, swapChainVKDesc.layerNum);
+
+    if (result != Result::SUCCESS)
+        return result;
+
+    if (m_Flags & SwapChainBits::ALLOW_LOW_LATENCY) {
+        FenceDesc fenceDesc = {};
+        result = m_Device.CreateImplementation<FenceVK>(m_LatencyFence, fenceDesc);
+
+        if (result != Result::SUCCESS)
+            return result;
+    }
+
+    return Result::SUCCESS;
+}
+
+Result SwapChainVK::CreateTextures(VkFormat format, VkImageUsageFlags usage, Dim_t width, Dim_t height, Dim_t layerNum) {
+    const auto& vk = m_Device.GetDispatchTable();
+    uint32_t imageNum = 0;
+    VkResult vkResult = vk.GetSwapchainImagesKHR(m_Device, m_Handle, &imageNum, nullptr);
+    NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkGetSwapchainImagesKHR");
+
+    Scratch<VkImage> imageHandles = NRI_ALLOCATE_SCRATCH(m_Device, VkImage, imageNum);
+    vkResult = vk.GetSwapchainImagesKHR(m_Device, m_Handle, &imageNum, imageHandles);
+    NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkGetSwapchainImagesKHR");
+
+    m_Textures.resize(imageNum);
+
+    for (uint32_t i = 0; i < imageNum; i++) {
+        TextureVKDesc desc = {};
+        desc.vkImage = (VKNonDispatchableHandle)imageHandles[i];
+        desc.vkFormat = format;
+        desc.vkImageType = VK_IMAGE_TYPE_2D;
+        desc.vkImageUsageFlags = usage;
+        desc.width = width;
+        desc.height = height;
+        desc.depth = 1;
+        desc.mipNum = 1;
+        desc.layerNum = layerNum;
+        desc.sampleNum = 1;
+
+        Result result = m_Device.CreateImplementation<TextureVK>(m_Textures[i], desc);
+
+        if (result != Result::SUCCESS)
+            return result;
+    }
+
+    return Result::SUCCESS;
+}
+
 NRI_INLINE void SwapChainVK::SetDebugName(const char* name) {
-    m_Device.SetDebugNameToTrivialObject(VK_OBJECT_TYPE_SURFACE_KHR, (uint64_t)m_Surface, name);
+    if (m_Surface)
+        m_Device.SetDebugNameToTrivialObject(VK_OBJECT_TYPE_SURFACE_KHR, (uint64_t)m_Surface, name);
+
     m_Device.SetDebugNameToTrivialObject(VK_OBJECT_TYPE_SWAPCHAIN_KHR, (uint64_t)m_Handle, name);
 }
 

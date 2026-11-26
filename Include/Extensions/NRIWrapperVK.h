@@ -8,6 +8,7 @@
 
 #include "NRIDeviceCreation.h"
 #include "NRIRayTracing.h"
+#include "NRISwapChain.h"
 
 typedef void* VKHandle;
 typedef int32_t VKEnum;
@@ -83,6 +84,20 @@ NriStruct(TextureVKDesc) {
     Nri(Sample_t) sampleNum;
 };
 
+// Borrows native objects; release NRI views and wrapper before replacing them
+// WAITABLE requires present-ID/wait; ALLOW_LOW_LATENCY requires latencyModeEnable at native creation
+NriStruct(SwapChainVKDesc) {
+    VKNonDispatchableHandle vkSwapChain;
+    const NriPtr(Queue) queue;                  // GRAPHICS or COMPUTE (requires "features.presentFromCompute")
+    VKEnum vkFormat;
+    VKFlags vkImageUsageFlags;
+    Nri(Dim_t) width;
+    Nri(Dim_t) height;
+    Nri(Dim_t) layerNum;
+    Nri(SwapChainBits) flags;                   // must match native creation; does not reconfigure the swap chain
+    NriOptional Nri(WindowsWindow) window;      // GetDisplayDesc only
+};
+
 NriStruct(MemoryVKDesc) {
     VKNonDispatchableHandle vkDeviceMemory;
     NriOptional uint64_t offset;
@@ -133,6 +148,8 @@ NriStruct(WrapperVKInterface) {
     VKHandle    (NRI_CALL *GetInstanceVK)                   (const NriRef(Device) device);
     void*       (NRI_CALL *GetInstanceProcAddrVK)           (const NriRef(Device) device);
     void*       (NRI_CALL *GetDeviceProcAddrVK)             (const NriRef(Device) device);
+
+    Nri(Result) (NRI_CALL *CreateSwapChainVK)               (NriRef(Device) device, const NriRef(SwapChainVKDesc) swapChainVKDesc, NriOut NriRef(SwapChain*) swapChain);
 };
 
 NRI_API Nri(Result) NRI_CALL nriCreateDeviceFromVKDevice(const NriRef(DeviceCreationVKDesc) deviceDesc, NriOut NriRef(Device*) device);

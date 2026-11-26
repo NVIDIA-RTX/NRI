@@ -1382,6 +1382,10 @@ static Result NRI_CALL CreateSwapChain(Device&, const SwapChainDesc&, SwapChain*
 static void NRI_CALL DestroySwapChain(SwapChain*) {
 }
 
+static uint64_t NRI_CALL GetSwapChainNativeObject(const SwapChain*) {
+    return 0;
+}
+
 static Texture* const* NRI_CALL GetSwapChainTextures(const SwapChain&, uint32_t& textureNum) {
     static Texture* const textures[1] = {DummyObject<Texture>()};
     textureNum = 1;
@@ -1417,6 +1421,7 @@ Result DeviceNONE::FillFunctionTable(SwapChainInterface& table) const {
     table.AcquireNextTexture = ::AcquireNextTexture;
     table.WaitForPresent = ::WaitForPresent;
     table.QueuePresent = ::QueuePresent;
+    table.GetSwapChainNativeObject = ::GetSwapChainNativeObject;
 
     return Result::SUCCESS;
 }

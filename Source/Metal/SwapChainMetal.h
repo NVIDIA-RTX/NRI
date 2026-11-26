@@ -19,6 +19,10 @@ struct SwapChainMetal final : public DebugNameBase {
         return m_Device;
     }
 
+    inline CA::MetalLayer* GetNativeObject() const {
+        return m_Layer;
+    }
+
     Texture* const* GetTextures(uint32_t& textureNum) const;
     Result AcquireNextTexture(FenceMetal& fence, uint32_t& textureIndex);
     Result Present(FenceMetal& fence, uint64_t presentId);

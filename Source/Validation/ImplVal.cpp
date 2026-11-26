@@ -2215,6 +2215,10 @@ static void NRI_CALL DestroySwapChain(SwapChain* swapChain) {
         GetDeviceVal(*swapChain).DestroySwapChain(swapChain);
 }
 
+static uint64_t NRI_CALL GetSwapChainNativeObject(const SwapChain* swapChain) {
+    return swapChain ? (uint64_t)((const SwapChainVal*)swapChain)->GetNativeObject() : 0;
+}
+
 static Texture* const* NRI_CALL GetSwapChainTextures(const SwapChain& swapChain, uint32_t& textureNum) {
     return ((SwapChainVal&)swapChain).GetTextures(textureNum);
 }
@@ -2246,6 +2250,7 @@ Result DeviceVal::FillFunctionTable(SwapChainInterface& table) const {
     table.AcquireNextTexture = ::AcquireNextTexture;
     table.WaitForPresent = ::WaitForPresent;
     table.QueuePresent = ::QueuePresent;
+    table.GetSwapChainNativeObject = ::GetSwapChainNativeObject;
 
     return Result::SUCCESS;
 }
@@ -2466,6 +2471,10 @@ static Result NRI_CALL CreateBufferD3D11(Device& device, const BufferD3D11Desc& 
     return ((DeviceVal&)device).CreateBuffer(bufferD3D11Desc, buffer);
 }
 
+static Result NRI_CALL CreateSwapChainD3D11(Device& device, const SwapChainD3D11Desc& swapChainD3D11Desc, SwapChain*& swapChain) {
+    return ((DeviceVal&)device).CreateSwapChain(swapChainD3D11Desc, swapChain);
+}
+
 static Result NRI_CALL CreateTextureD3D11(Device& device, const TextureD3D11Desc& textureD3D11Desc, Texture*& texture) {
     return ((DeviceVal&)device).CreateTexture(textureD3D11Desc, texture);
 }
@@ -2479,6 +2488,7 @@ Result DeviceVal::FillFunctionTable(WrapperD3D11Interface& table) const {
 
     table.CreateCommandBufferD3D11 = ::CreateCommandBufferD3D11;
     table.CreateTextureD3D11 = ::CreateTextureD3D11;
+    table.CreateSwapChainD3D11 = ::CreateSwapChainD3D11;
     table.CreateBufferD3D11 = ::CreateBufferD3D11;
 
     return Result::SUCCESS;
@@ -2508,6 +2518,10 @@ static Result NRI_CALL CreateBufferD3D12(Device& device, const BufferD3D12Desc& 
     return ((DeviceVal&)device).CreateBuffer(bufferD3D12Desc, buffer);
 }
 
+static Result NRI_CALL CreateSwapChainD3D12(Device& device, const SwapChainD3D12Desc& swapChainD3D12Desc, SwapChain*& swapChain) {
+    return ((DeviceVal&)device).CreateSwapChain(swapChainD3D12Desc, swapChain);
+}
+
 static Result NRI_CALL CreateTextureD3D12(Device& device, const TextureD3D12Desc& textureD3D12Desc, Texture*& texture) {
     return ((DeviceVal&)device).CreateTexture(textureD3D12Desc, texture);
 }
@@ -2535,6 +2549,7 @@ Result DeviceVal::FillFunctionTable(WrapperD3D12Interface& table) const {
     table.CreateDescriptorPoolD3D12 = ::CreateDescriptorPoolD3D12;
     table.CreateBufferD3D12 = ::CreateBufferD3D12;
     table.CreateTextureD3D12 = ::CreateTextureD3D12;
+    table.CreateSwapChainD3D12 = ::CreateSwapChainD3D12;
     table.CreateMemoryD3D12 = ::CreateMemoryD3D12;
     table.CreateFenceD3D12 = ::CreateFenceD3D12;
     table.CreateAccelerationStructureD3D12 = ::CreateAccelerationStructureD3D12;
@@ -2613,6 +2628,10 @@ static Result NRI_CALL CreateBufferVK(Device& device, const BufferVKDesc& buffer
     return ((DeviceVal&)device).CreateBuffer(bufferVKDesc, buffer);
 }
 
+static Result NRI_CALL CreateSwapChainVK(Device& device, const SwapChainVKDesc& swapChainVKDesc, SwapChain*& swapChain) {
+    return ((DeviceVal&)device).CreateSwapChain(swapChainVKDesc, swapChain);
+}
+
 static Result NRI_CALL CreateTextureVK(Device& device, const TextureVKDesc& textureVKDesc, Texture*& texture) {
     return ((DeviceVal&)device).CreateTexture(textureVKDesc, texture);
 }
@@ -2670,6 +2689,7 @@ Result DeviceVal::FillFunctionTable(WrapperVKInterface& table) const {
     table.CreateDescriptorPoolVK = ::CreateDescriptorPoolVK;
     table.CreateBufferVK = ::CreateBufferVK;
     table.CreateTextureVK = ::CreateTextureVK;
+    table.CreateSwapChainVK = ::CreateSwapChainVK;
     table.CreateMemoryVK = ::CreateMemoryVK;
     table.CreatePipelineVK = ::CreatePipelineVK;
     table.CreateQueryPoolVK = ::CreateQueryPoolVK;

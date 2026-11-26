@@ -1328,6 +1328,10 @@ static Result NRI_CALL QueuePresent(SwapChain& swapChain, Fence&, uint64_t prese
     return ((SwapChainD3D12&)swapChain).Present(presentId);
 }
 
+static uint64_t NRI_CALL GetSwapChainNativeObject(const SwapChain* swapChain) {
+    return swapChain ? (uint64_t)((const SwapChainD3D12*)swapChain)->GetNativeObject() : 0;
+}
+
 Result DeviceD3D12::FillFunctionTable(SwapChainInterface& table) const {
     if (!m_Desc.features.swapChain)
         return Result::UNSUPPORTED;
@@ -1339,6 +1343,7 @@ Result DeviceD3D12::FillFunctionTable(SwapChainInterface& table) const {
     table.AcquireNextTexture = ::AcquireNextTexture;
     table.WaitForPresent = ::WaitForPresent;
     table.QueuePresent = ::QueuePresent;
+    table.GetSwapChainNativeObject = ::GetSwapChainNativeObject;
 
     return Result::SUCCESS;
 }
@@ -1419,6 +1424,10 @@ static Result NRI_CALL CreateAccelerationStructureD3D12(Device& device, const Ac
     return ((DeviceD3D12&)device).CreateImplementation<AccelerationStructureD3D12>(accelerationStructure, accelerationStructureD3D12Desc);
 }
 
+static Result NRI_CALL CreateSwapChainD3D12(Device& device, const SwapChainD3D12Desc& swapChainD3D12Desc, SwapChain*& swapChain) {
+    return ((DeviceD3D12&)device).CreateImplementation<SwapChainD3D12>(swapChain, swapChainD3D12Desc);
+}
+
 Result DeviceD3D12::FillFunctionTable(WrapperD3D12Interface& table) const {
     table.CreateCommandBufferD3D12 = ::CreateCommandBufferD3D12;
     table.CreateDescriptorPoolD3D12 = ::CreateDescriptorPoolD3D12;
@@ -1427,6 +1436,7 @@ Result DeviceD3D12::FillFunctionTable(WrapperD3D12Interface& table) const {
     table.CreateMemoryD3D12 = ::CreateMemoryD3D12;
     table.CreateFenceD3D12 = ::CreateFenceD3D12;
     table.CreateAccelerationStructureD3D12 = ::CreateAccelerationStructureD3D12;
+    table.CreateSwapChainD3D12 = ::CreateSwapChainD3D12;
 
     return Result::SUCCESS;
 }

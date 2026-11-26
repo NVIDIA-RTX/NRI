@@ -1111,6 +1111,10 @@ static void NRI_CALL DestroySwapChain(SwapChain* swapChain) {
     Destroy((SwapChainMetal*)swapChain);
 }
 
+static uint64_t NRI_CALL GetSwapChainNativeObject(const SwapChain* swapChain) {
+    return swapChain ? (uint64_t)((const SwapChainMetal*)swapChain)->GetNativeObject() : 0;
+}
+
 static Texture* const* NRI_CALL GetSwapChainTextures(const SwapChain& swapChain, uint32_t& textureNum) {
     return ((SwapChainMetal&)swapChain).GetTextures(textureNum);
 }
@@ -1142,6 +1146,7 @@ Result DeviceMetal::FillFunctionTable(SwapChainInterface& table) const {
     table.AcquireNextTexture = ::AcquireNextTexture;
     table.WaitForPresent = ::WaitForPresent;
     table.QueuePresent = ::QueuePresent;
+    table.GetSwapChainNativeObject = ::GetSwapChainNativeObject;
 
     return Result::SUCCESS;
 }

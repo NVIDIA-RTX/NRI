@@ -15,6 +15,10 @@ struct SwapChainVal final : public ObjectVal {
 
     Result Create();
 
+    inline uint64_t GetNativeObject() const {
+        return GetSwapChainInterfaceImpl().GetSwapChainNativeObject(GetImpl());
+    }
+
     inline SwapChain* GetImpl() const {
         return (SwapChain*)m_Impl;
     }

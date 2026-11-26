@@ -944,6 +944,10 @@ static void NRI_CALL DestroySwapChain(SwapChain* swapChain) {
     Destroy((SwapChainWGPU*)swapChain);
 }
 
+static uint64_t NRI_CALL GetSwapChainNativeObject(const SwapChain* swapChain) {
+    return swapChain ? (uint64_t)((const SwapChainWGPU*)swapChain)->GetNativeObject() : 0;
+}
+
 static Texture* const* NRI_CALL GetSwapChainTextures(const SwapChain& swapChain, uint32_t& textureNum) {
     return ((SwapChainWGPU&)swapChain).GetTextures(textureNum);
 }
@@ -975,6 +979,7 @@ Result DeviceWGPU::FillFunctionTable(SwapChainInterface& table) const {
     table.AcquireNextTexture = ::AcquireNextTexture;
     table.WaitForPresent = ::WaitForPresent;
     table.QueuePresent = ::QueuePresent;
+    table.GetSwapChainNativeObject = ::GetSwapChainNativeObject;
 
     return Result::SUCCESS;
 }

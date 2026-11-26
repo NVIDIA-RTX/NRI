@@ -16,7 +16,7 @@ constexpr std::array<DXGI_COLOR_SPACE_TYPE, (size_t)SwapChainFormat::MAX_NUM> g_
 };
 NRI_VALIDATE_ARRAY(g_colorSpace);
 
-static uint8_t QueryLatestInterface(ComPtr<IDXGISwapChainBest>& in, ComPtr<IDXGISwapChainBest>& out) {
+static inline uint8_t QueryLatestInterface(IDXGISwapChain* in, ComPtr<IDXGISwapChainBest>& out) {
     static const IID versions[] = {
         __uuidof(IDXGISwapChain4),
         __uuidof(IDXGISwapChain3),
@@ -136,23 +136,10 @@ Result SwapChainD3D12::Create(const SwapChainDesc& swapChainDesc) {
         m_FrameLatencyWaitableObject = m_SwapChain->GetFrameLatencyWaitableObject();
     }
 
-    // Textures
-    m_Textures.reserve(swapChainDesc.textureNum);
-    for (uint32_t i = 0; i < swapChainDesc.textureNum; i++) {
-        ComPtr<ID3D12Resource> textureNative;
-        hr = m_SwapChain->GetBuffer(i, IID_PPV_ARGS(&textureNative));
-        NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "IDXGISwapChain::GetBuffer");
+    Result result = CreateTextures(swapChainDesc.textureNum);
 
-        TextureD3D12Desc textureDesc = {};
-        textureDesc.d3d12Resource = textureNative;
-
-        TextureD3D12* texture = nullptr;
-        const Result res = m_Device.CreateImplementation<TextureD3D12>(texture, textureDesc);
-        if (res != Result::SUCCESS)
-            return res;
-
-        m_Textures.push_back(texture);
-    }
+    if (result != Result::SUCCESS)
+        return result;
 
     // Finalize
     m_Hwnd = swapChainDesc.window.windows.hwnd;
@@ -163,7 +150,60 @@ Result SwapChainD3D12::Create(const SwapChainDesc& swapChainDesc) {
         m_Flags &= ~SwapChainBits::ALLOW_TEARING;
     if (!m_FrameLatencyWaitableObject)
         m_Flags &= ~SwapChainBits::WAITABLE;
-    m_Flags &= ~SwapChainBits::LATEST_READY; // DXGI has no such mode
+
+    return Result::SUCCESS;
+}
+
+Result SwapChainD3D12::Create(const SwapChainD3D12Desc& swapChainDesc) {
+    m_Version = QueryLatestInterface(swapChainDesc.dxgiSwapChain, m_SwapChain);
+    NRI_CHECK(m_Version >= 3, "D3D12 swap chains require IDXGISwapChain3");
+
+    DXGI_SWAP_CHAIN_DESC desc = {};
+    HRESULT hr = m_SwapChain->GetDesc(&desc);
+    NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "IDXGISwapChain::GetDesc");
+
+    Result result = CreateTextures(desc.BufferCount);
+
+    if (result != Result::SUCCESS)
+        return result;
+
+    m_Hwnd = desc.OutputWindow;
+    m_Flags = swapChainDesc.flags;
+
+    if (!m_Device.HasNvExt())
+        m_Flags &= ~SwapChainBits::ALLOW_LOW_LATENCY;
+
+    if (!desc.Windowed || !(desc.Flags & DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING))
+        m_Flags &= ~SwapChainBits::ALLOW_TEARING;
+
+    if ((m_Flags & SwapChainBits::WAITABLE) && (desc.Flags & DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT))
+        m_FrameLatencyWaitableObject = m_SwapChain->GetFrameLatencyWaitableObject();
+
+    if (!m_FrameLatencyWaitableObject)
+        m_Flags &= ~SwapChainBits::WAITABLE;
+
+    return Result::SUCCESS;
+}
+
+Result SwapChainD3D12::CreateTextures(uint32_t textureNum) {
+    m_Textures.reserve(textureNum);
+
+    for (uint32_t i = 0; i < textureNum; i++) {
+        ComPtr<ID3D12Resource> textureNative;
+        HRESULT hr = m_SwapChain->GetBuffer(i, IID_PPV_ARGS(&textureNative));
+        NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "IDXGISwapChain::GetBuffer");
+
+        TextureD3D12Desc textureDesc = {};
+        textureDesc.d3d12Resource = textureNative;
+
+        TextureD3D12* texture = nullptr;
+        const Result result = m_Device.CreateImplementation<TextureD3D12>(texture, textureDesc);
+
+        if (result != Result::SUCCESS)
+            return result;
+
+        m_Textures.push_back(texture);
+    }
 
     return Result::SUCCESS;
 }

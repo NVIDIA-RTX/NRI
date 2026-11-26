@@ -1324,6 +1324,10 @@ static Texture* const* NRI_CALL GetSwapChainTextures(const SwapChain& swapChain,
     return ((SwapChainVK&)swapChain).GetTextures(textureNum);
 }
 
+static uint64_t NRI_CALL GetSwapChainNativeObject(const SwapChain* swapChain) {
+    return swapChain ? (uint64_t)((const SwapChainVK*)swapChain)->GetNativeObject() : 0;
+}
+
 static Result NRI_CALL GetDisplayDesc(SwapChain& swapChain, DisplayDesc& displayDesc) {
     return ((SwapChainVK&)swapChain).GetDisplayDesc(displayDesc);
 }
@@ -1351,6 +1355,7 @@ Result DeviceVK::FillFunctionTable(SwapChainInterface& table) const {
     table.AcquireNextTexture = ::AcquireNextTexture;
     table.WaitForPresent = ::WaitForPresent;
     table.QueuePresent = ::QueuePresent;
+    table.GetSwapChainNativeObject = ::GetSwapChainNativeObject;
 
     return Result::SUCCESS;
 }
@@ -1402,6 +1407,10 @@ Result DeviceVK::FillFunctionTable(UpscalerInterface& table) const {
 
 //============================================================================================================================================================================================
 #pragma region[  WrapperVK  ]
+
+static Result NRI_CALL CreateSwapChainVK(Device& device, const SwapChainVKDesc& swapChainVKDesc, SwapChain*& swapChain) {
+    return ((DeviceVK&)device).CreateImplementation<SwapChainVK>(swapChain, swapChainVKDesc);
+}
 
 static Result NRI_CALL CreateCommandAllocatorVK(Device& device, const CommandAllocatorVKDesc& commandAllocatorVKDesc, CommandAllocator*& commandAllocator) {
     return ((DeviceVK&)device).CreateImplementation<CommandAllocatorVK>(commandAllocator, commandAllocatorVKDesc);
@@ -1479,6 +1488,7 @@ Result DeviceVK::FillFunctionTable(WrapperVKInterface& table) const {
     table.GetInstanceVK = ::GetInstanceVK;
     table.GetDeviceProcAddrVK = ::GetDeviceProcAddrVK;
     table.GetInstanceProcAddrVK = ::GetInstanceProcAddrVK;
+    table.CreateSwapChainVK = ::CreateSwapChainVK;
 
     return Result::SUCCESS;
 }

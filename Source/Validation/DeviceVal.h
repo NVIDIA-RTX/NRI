@@ -160,6 +160,9 @@ struct DeviceVal final : public DeviceBase {
     Result CreateQueryPool(const QueryPoolDesc& queryPoolDesc, QueryPool*& queryPool);
     Result CreateQueryPool(const QueryPoolVKDesc& queryPoolVKDesc, QueryPool*& queryPool);
     Result CreateSwapChain(const SwapChainDesc& swapChainDesc, SwapChain*& swapChain);
+    Result CreateSwapChain(const SwapChainD3D11Desc& swapChainD3D11Desc, SwapChain*& swapChain);
+    Result CreateSwapChain(const SwapChainD3D12Desc& swapChainD3D12Desc, SwapChain*& swapChain);
+    Result CreateSwapChain(const SwapChainVKDesc& swapChainVKDesc, SwapChain*& swapChain);
     Result CreateDescriptor(const SamplerDesc& samplerDesc, Descriptor*& sampler);
     Result CreateDescriptor(const BufferViewDesc& bufferViewDesc, Descriptor*& bufferView);
     Result CreateDescriptor(const TextureViewDesc& textureViewDesc, Descriptor*& textureView);

@@ -17,6 +17,11 @@ struct SwapChainWGPU final : public DisplayDescHelper, public DebugNameBase {
     }
 
     Result Create(const SwapChainDesc& swapChainDesc);
+
+    inline WGPUSurface GetNativeObject() const {
+        return m_Surface;
+    }
+
     Texture* const* GetTextures(uint32_t& textureNum) const;
     Result GetDisplayDesc(DisplayDesc& displayDesc);
     Result AcquireNextTexture(uint32_t& textureIndex);
