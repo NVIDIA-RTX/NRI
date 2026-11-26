@@ -537,6 +537,7 @@ void DeviceMetal::FillDesc(const AdapterDesc& adapterDesc) {
     m_Desc.features.pipelineCache = true;
     m_Desc.features.pipelineCacheControl = true;
     m_Desc.features.extendedDynamicState = true;
+    m_Desc.features.instanceStepRate = true;
     m_Desc.features.mutableDescriptorType = true;
     // Counter heap timestamps are in GPU ticks, not nanoseconds
     m_Desc.other.timestampFrequencyHz = m_Device->queryTimestampFrequency();

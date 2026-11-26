@@ -107,6 +107,7 @@ static uint64_t HashGraphicsPipelineDesc(const GraphicsPipelineDesc& d) {
             const VertexStreamDesc& s = d.vertexInput->streams[i];
             h = HashField(h, s.bindingSlot);
             h = HashField(h, s.stepRate);
+            h = HashField(h, s.instanceStepRate);
         }
     }
     h = HashField(h, d.outputMerger.colorNum);
@@ -281,7 +282,7 @@ static inline void FillInputLayout(D3D12_INPUT_LAYOUT_DESC& inputLayoutDesc, con
         inputElementsDescs[i].InputSlot = stream.bindingSlot;
         inputElementsDescs[i].AlignedByteOffset = attribute.offset;
         inputElementsDescs[i].InputSlotClass = isPerVertexData ? D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA : D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA;
-        inputElementsDescs[i].InstanceDataStepRate = isPerVertexData ? 0 : 1;
+        inputElementsDescs[i].InstanceDataStepRate = isPerVertexData ? 0 : (stream.instanceStepRate ? stream.instanceStepRate : 1);
     }
 }
 

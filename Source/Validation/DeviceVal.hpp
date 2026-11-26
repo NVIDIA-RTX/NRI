@@ -792,6 +792,8 @@ NRI_INLINE Result DeviceVal::CreatePipeline(const GraphicsPipelineDesc& graphics
         for (uint32_t i = 0; i < graphicsPipelineDesc.vertexInput->streamNum; i++) {
             NRI_RETURN_ON_FAILURE(this, graphicsPipelineDesc.vertexInput->streams[i].bindingSlot < GetDesc().shaderStage.vertex.streamMaxNum, Result::INVALID_ARGUMENT, "'vertexInput->streams[%u].bindingSlot' must be < 'shaderStage.vertex.streamMaxNum'", i);
             NRI_RETURN_ON_FAILURE(this, graphicsPipelineDesc.vertexInput->streams[i].stepRate < VertexStreamStepRate::MAX_NUM, Result::INVALID_ARGUMENT, "'vertexInput->streams[%u].stepRate' is invalid", i);
+            NRI_RETURN_ON_FAILURE(this, graphicsPipelineDesc.vertexInput->streams[i].instanceStepRate <= 1 || graphicsPipelineDesc.vertexInput->streams[i].stepRate == VertexStreamStepRate::PER_INSTANCE, Result::INVALID_ARGUMENT, "'vertexInput->streams[%u].instanceStepRate' needs 'PER_INSTANCE'", i);
+            NRI_RETURN_ON_FAILURE(this, graphicsPipelineDesc.vertexInput->streams[i].instanceStepRate <= 1 || GetDesc().features.instanceStepRate, Result::INVALID_ARGUMENT, "'vertexInput->streams[%u].instanceStepRate' is > 1, but 'features.instanceStepRate' is false", i);
             NRI_RETURN_ON_FAILURE(this, GetDesc().features.extendedDynamicState || graphicsPipelineDesc.vertexInput->streams[i].stride != 0, Result::INVALID_ARGUMENT, "'vertexInput->streams[%u].stride' is 0, but 'features.extendedDynamicState' is false", i);
         }
     }

@@ -150,6 +150,10 @@ Result PipelineVK::Create(const GraphicsPipelineDesc& graphicsPipelineDesc) {
     Scratch<VkVertexInputAttributeDescription> vertexAttributeDescs = NRI_ALLOCATE_SCRATCH(m_Device, VkVertexInputAttributeDescription, attributeNum);
     Scratch<VkVertexInputBindingDescription> vertexBindingDescs = NRI_ALLOCATE_SCRATCH(m_Device, VkVertexInputBindingDescription, streamNum);
 
+    Scratch<VkVertexInputBindingDivisorDescription> vertexBindingDivisors = NRI_ALLOCATE_SCRATCH(m_Device, VkVertexInputBindingDivisorDescription, streamNum);
+    VkPipelineVertexInputDivisorStateCreateInfo vertexInputDivisorState = {VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_DIVISOR_STATE_CREATE_INFO};
+    vertexInputDivisorState.pVertexBindingDivisors = vertexBindingDivisors;
+
     VkPipelineVertexInputStateCreateInfo vertexInputState = {VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO};
     vertexInputState.pVertexAttributeDescriptions = vertexAttributeDescs;
     vertexInputState.pVertexBindingDescriptions = vertexBindingDescs;
@@ -178,7 +182,13 @@ Result PipelineVK::Create(const GraphicsPipelineDesc& graphicsPipelineDesc) {
             vertexBindingDesc.inputRate = stream.stepRate == VertexStreamStepRate::PER_VERTEX ? VK_VERTEX_INPUT_RATE_VERTEX : VK_VERTEX_INPUT_RATE_INSTANCE;
             if (!m_Device.GetDesc().features.extendedDynamicState)
                 vertexBindingDesc.stride = stream.stride;
+
+            if (stream.stepRate == VertexStreamStepRate::PER_INSTANCE && stream.instanceStepRate > 1)
+                vertexBindingDivisors[vertexInputDivisorState.vertexBindingDivisorCount++] = {stream.bindingSlot, stream.instanceStepRate};
         }
+
+        if (vertexInputDivisorState.vertexBindingDivisorCount != 0)
+            vertexInputState.pNext = &vertexInputDivisorState;
     }
 
     // Input assembly

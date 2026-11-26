@@ -640,6 +640,7 @@ void DeviceD3D11::FillDesc() {
     m_Desc.features.pipelineStatistics = true;
     m_Desc.features.mutableDescriptorType = true;
     m_Desc.features.extendedDynamicState = true;
+    m_Desc.features.instanceStepRate = true;
 
     m_Desc.shaderFeatures.nativeF64 = options.ExtendedDoublesShaderInstructions;
     m_Desc.shaderFeatures.atomicsF16 = isShaderAtomicsF16Supported;

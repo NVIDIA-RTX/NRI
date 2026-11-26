@@ -53,7 +53,7 @@ Result PipelineD3D11::Create(const GraphicsPipelineDesc& pipelineDesc) {
             inputElementDesc.Format = dxgiFormat.typed;
             inputElementDesc.InputSlot = stream.bindingSlot;
             inputElementDesc.AlignedByteOffset = attribute.offset;
-            inputElementDesc.InstanceDataStepRate = stream.stepRate == VertexStreamStepRate::PER_VERTEX ? 0 : 1;
+            inputElementDesc.InstanceDataStepRate = stream.stepRate == VertexStreamStepRate::PER_VERTEX ? 0 : (stream.instanceStepRate ? stream.instanceStepRate : 1);
             inputElementDesc.InputSlotClass = stream.stepRate == VertexStreamStepRate::PER_VERTEX ? D3D11_INPUT_PER_VERTEX_DATA : D3D11_INPUT_PER_INSTANCE_DATA;
         };
 

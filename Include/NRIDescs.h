@@ -1335,6 +1335,7 @@ NriStruct(VertexStreamDesc) {
     uint16_t bindingSlot;
     Nri(VertexStreamStepRate) stepRate;
     NriOptional uint16_t stride; // fallback if "features.extendedDynamicState" is not supported
+    NriOptional uint32_t instanceStepRate; // "PER_INSTANCE" streams advance once every this many instances ("0" means "1"), values > 1 require "features.instanceStepRate"
 };
 
 NriStruct(VertexInputDesc) {
@@ -2368,6 +2369,7 @@ NriStruct(DeviceDesc) {
         bool unifiedTextureLayouts;                               // VK: allows to use "GENERAL" everywhere: https://docs.vulkan.org/refpages/latest/refpages/source/VK_KHR_unified_image_layouts.html
         bool resourceAliasing;                                    // binding multiple distinct texture or buffer objects to overlap the same underlying memory allocation (unsupported only in D3D11)
         bool waveLaneNumControl;                                  // see "ComputePipelineDesc::waveLaneNum"
+        bool instanceStepRate;                                    // see "VertexStreamDesc::instanceStepRate"
     } features;
 
     // Shader features
