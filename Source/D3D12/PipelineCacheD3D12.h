@@ -25,6 +25,12 @@ struct PipelineCacheD3D12 final : public DebugNameBase {
         return m_StoreLock;
     }
 
+    // D3D12 requires callers to serialize concurrent loads of the same pipeline name; striping by name keeps
+    // loads of different pipelines parallel.
+    inline Lock& GetLoadLock(uint64_t nameHash) {
+        return m_LoadLocks[nameHash % LOAD_LOCK_NUM];
+    }
+
     //================================================================================================================
     // DebugNameBase
     //================================================================================================================
@@ -45,6 +51,8 @@ private:
     Vector<uint8_t> m_Blob; // do not sort, becaquse "m_Library" must be released before "m_Blob"
     ComPtr<ID3D12PipelineLibrary1> m_Library;
     Lock m_StoreLock;
+    static constexpr uint64_t LOAD_LOCK_NUM = 16;
+    Lock m_LoadLocks[LOAD_LOCK_NUM];
 };
 
 } // namespace nri
