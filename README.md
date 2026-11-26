@@ -36,36 +36,40 @@ There is [NVRHI](https://github.com/NVIDIA-RTX/NVRHI), which offers a higher-lev
 *NRI* is console friendly. Console backends for *Nintendo Switch (NVN)*, *PlayStation 5 (AGC)* and *Xbox (D3D12.x)* are possible. These are not included in this public repository and cannot be maintained by NVIDIA. Authorized developers may maintain them in access-controlled repositories. Generic API fixes for console portability are welcome here.
 
 ## KEY FEATURES
- - *Multi-API support* - a unified interface for *D3D12*, *Vulkan*, *D3D11*, *WebGPU*, and native *Metal 4* (default *D3D11* behavior is changed to match *D3D12*/VK using *NVAPI* or **AMD AGS** libraries, where applicable)
- - *C/C++ compatible* - native interface, compatible with both languages (can be used as a *shared* or *static* library)
- - *High performance* - low overhead, with support for user-provided memory allocators
- - *Modern hardware tech* - support for Ray Tracing, Mesh Shaders, descriptor indexing (including directly indexed descriptor heaps) and more
- - *Mobile-ready* - optimized for Tile-Based Rendering (TBR/TBDR) architectures and friendly to mobile-oriented API designs
- - *Portable API shape* - explicit resource, command and synchronization models suitable for console GAPIs, with capability reporting for optional features
- - *D3D12 Ultimate* - full support, including Enhanced Barriers
- - *Platform Flexibility* - Windows, Linux, macOS, iOS, and Android support
- - *Developer Experience* - integrated GAPI and NRI validation, VK [printf](https://github.com/KhronosGroup/Vulkan-ValidationLayers/blob/main/docs/debug_printf.md), and timeline annotations (GAPI, [NVTX](https://github.com/NVIDIA/NVTX) and [PIX](https://devblogs.microsoft.com/pix/winpixeventruntime/), if "WinPixEventRuntime.dll" is nearby)
- - *Memory Management* - integration with *Vulkan Memory Allocator* and *D3D12 Memory Allocator* to ease memory management and memory reuse
- - *C# bindings* - available through the community project [SharpNRI](https://github.com/Nullpoint56/SharpNRI)
+- *Multi-API support* - a unified interface for *D3D12*, *Vulkan*, *D3D11*, *WebGPU*, and native *Metal 4* (default *D3D11* behavior is changed to match *D3D12*/VK using *NVAPI* or **AMD AGS** libraries, where applicable)
+- *C/C++ compatible* - native interface, compatible with both languages (can be used as a *shared* or *static* library)
+- *High performance* - low overhead, with support for user-provided memory allocators
+- *Modern hardware tech* - support for Ray Tracing, Mesh Shaders, descriptor indexing (including directly indexed descriptor heaps) and more
+- *Mobile-ready* - optimized for Tile-Based Rendering (TBR/TBDR) architectures and friendly to mobile-oriented API designs
+- *Portable API shape* - explicit resource, command and synchronization models suitable for console GAPIs, with capability reporting for optional features
+- *D3D12 Ultimate* - full support, including Enhanced Barriers
+- *Platform Flexibility* - Windows, Linux, macOS, iOS, and Android support
+- *Developer Experience* - integrated GAPI and NRI validation, VK [printf](https://github.com/KhronosGroup/Vulkan-ValidationLayers/blob/main/docs/debug_printf.md), and timeline annotations (GAPI, [NVTX](https://github.com/NVIDIA/NVTX) and [PIX](https://devblogs.microsoft.com/pix/winpixeventruntime/), if "WinPixEventRuntime.dll" is nearby)
+- *Memory Management* - integration with *Vulkan Memory Allocator* and *D3D12 Memory Allocator* to ease memory management and memory reuse
 
 Available interfaces:
- - `NRI.h` - core functionality
- - `NRIDeviceCreation.h` - device creation and related functionality
- - `NRIHelper.h` - a collection of various helpers to ease use of the core interface
- - `NRIDescriptorHeap.h` - directly indexed descriptor heaps
- - `NRIImgui.h` - a lightweight *ImGui* renderer (no *ImGui* dependency)
- - `NRILowLatency.h` - low latency support (aka *NVIDIA REFLEX*)
- - `NRIMeshShader.h` - mesh shaders
- - `NRIRayTracing.h` - ray tracing
- - `NRIStreamer.h` - a convenient way to stream data into resources
- - `NRISwapChain.h` - swap chain and related functionality
- - `NRIUpscaler.h` - a configurable collection of common upscalers (*NIS*, *FSR*, *XeSS*, *DLSS-SR*, *DLSS-RR*, *MetalFX*)
- - `NRIVideo.h` - hardware video encoding and decoding
- - `NRIWrapperD3D11.h`, `NRIWrapperD3D12.h`, `NRIWrapperVK.h`, `NRIWrapperMetal.h` - interoperability with native GAPI devices and resources
+- `NRI.h` - core functionality
+- `NRIDeviceCreation.h` - device creation and related functionality
+- `NRIHelper.h` - a collection of various helpers to ease use of the core interface
+- `NRIDescriptorHeap.h` - directly indexed descriptor heaps
+- `NRIImgui.h` - a lightweight *ImGui* renderer (no *ImGui* dependency)
+- `NRILowLatency.h` - low latency support (aka *NVIDIA REFLEX*)
+- `NRIMeshShader.h` - mesh shaders
+- `NRIRayTracing.h` - ray tracing
+- `NRIStreamer.h` - a convenient way to stream data into resources
+- `NRISwapChain.h` - swap chain and related functionality
+- `NRIUpscaler.h` - a configurable collection of common upscalers (*NIS*, *FSR*, *XeSS*, *DLSS-SR*, *DLSS-RR*, *MetalFX*)
+- `NRIVideo.h` - hardware video encoding and decoding
+- `NRIWrapperD3D11.h`, `NRIWrapperD3D12.h`, `NRIWrapperVK.h`, `NRIWrapperMetal.h` - interoperability with native GAPI devices and resources
 
 Repository organization:
 - development takes place on the `main` branch
 - stable versions are available in the `Releases` section
+
+## LANGUAGE BINDINGS
+
+- C#: [SharpNRI](https://github.com/Nullpoint56/SharpNRI)
+- Odin: [NRI-Odin](https://github.com/steinarb1234/NRI-Odin)
 
 ## BUILD INSTRUCTIONS
 
