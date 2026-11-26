@@ -185,6 +185,33 @@ static int SortAdapters(const void* pa, const void* pb) {
 
 #if (NRI_ENABLE_D3D11_SUPPORT || NRI_ENABLE_D3D12_SUPPORT)
 
+#    include <d3dkmthk.h>
+#    pragma comment(lib, "gdi32.lib") // D3DKMT*
+
+// Indirect-display drivers (remote and virtual monitors) register display-only adapters that DXGI reports with
+// the description of the GPU rendering for them. Devices created on them work, but vendor runtimes reject them (NGX:
+// "unsupported hw"), and they duplicate the real adapter's identity. Enumeration exposes only render-capable adapters.
+static bool IsDisplayOnlyAdapter(const LUID& luid) {
+    D3DKMT_OPENADAPTERFROMLUID openAdapter = {};
+    openAdapter.AdapterLuid = luid;
+    if (D3DKMTOpenAdapterFromLuid(&openAdapter) != 0)
+        return false;
+
+    D3DKMT_ADAPTERTYPE adapterType = {};
+    D3DKMT_QUERYADAPTERINFO query = {};
+    query.hAdapter = openAdapter.hAdapter;
+    query.Type = KMTQAITYPE_ADAPTERTYPE;
+    query.pPrivateDriverData = &adapterType;
+    query.PrivateDriverDataSize = sizeof(adapterType);
+    const bool isDisplayOnly = D3DKMTQueryAdapterInfo(&query) == 0 && !adapterType.RenderSupported;
+
+    D3DKMT_CLOSEADAPTER closeAdapter = {};
+    closeAdapter.hAdapter = openAdapter.hAdapter;
+    D3DKMTCloseAdapter(&closeAdapter);
+
+    return isDisplayOnly;
+}
+
 static inline void UpdateAdaptersD3D(AdapterDesc* adapterDescs, uint32_t& adapterDescNum, LUID* precreatedLuid, bool countOnly = false, GraphicsAPI desiredGraphicsAPIs = GraphicsAPI::D3D11 | GraphicsAPI::D3D12) {
     ComPtr<IDXGIFactory4> dxgifactory;
     if (FAILED(CreateDXGIFactory2(0, IID_PPV_ARGS(&dxgifactory))))
@@ -198,6 +225,9 @@ static inline void UpdateAdaptersD3D(AdapterDesc* adapterDescs, uint32_t& adapte
 
         DXGI_ADAPTER_DESC1 desc = {};
         if (FAILED(adapter->GetDesc1(&desc)))
+            continue;
+
+        if (!precreatedLuid && IsDisplayOnlyAdapter(desc.AdapterLuid))
             continue;
 
         // Logic: append unique or wait for "precreated"
