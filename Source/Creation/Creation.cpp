@@ -185,6 +185,7 @@ static int SortAdapters(const void* pa, const void* pb) {
 
 #if (NRI_ENABLE_D3D11_SUPPORT || NRI_ENABLE_D3D12_SUPPORT)
 
+#    include <winternl.h> // NTSTATUS, used by d3dkmthk.h
 #    include <d3dkmthk.h>
 #    pragma comment(lib, "gdi32.lib") // D3DKMT*
 
