@@ -1292,6 +1292,7 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     m_Desc.features.descriptorHeap = m_Desc.tiers.bindless >= 2;
     m_Desc.features.video = m_Desc.adapterDesc.queueNum[(size_t)QueueType::VIDEO_DECODE] != 0 || m_Desc.adapterDesc.queueNum[(size_t)QueueType::VIDEO_ENCODE] != 0;
     m_Desc.features.extendedDynamicState = true;
+    m_Desc.features.instanceStepRate = true;
     m_Desc.features.resourceAliasing = true;
 
     ComPtr<ID3D12VideoDevice> videoDevice;

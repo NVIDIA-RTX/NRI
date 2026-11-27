@@ -595,6 +595,7 @@ void DeviceVK::ProcessDeviceExtensions(Vector<const char*>& desiredDeviceExts, b
 
     APPEND_EXT(m_MinorVersion < 4, VK_KHR_LINE_RASTERIZATION_EXTENSION_NAME);
     APPEND_EXT(m_MinorVersion < 4, VK_KHR_MAINTENANCE_5_EXTENSION_NAME);
+    APPEND_EXT(m_MinorVersion < 4, VK_KHR_VERTEX_ATTRIBUTE_DIVISOR_EXTENSION_NAME);
     APPEND_EXT(m_MinorVersion < 4, VK_KHR_EXTENDED_FLAGS_EXTENSION_NAME);
     APPEND_EXT(m_MinorVersion < 4, VK_KHR_MAINTENANCE_6_EXTENSION_NAME);
     APPEND_EXT(m_MinorVersion < 4, VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME);
@@ -961,6 +962,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
 
     PNEXTCHAIN_APPEND_FEATURES(m_MinorVersion < 4, KHR, LineRasterization, LINE_RASTERIZATION);
     PNEXTCHAIN_APPEND_FEATURES(m_MinorVersion < 4, KHR, Maintenance5, MAINTENANCE_5);
+    PNEXTCHAIN_APPEND_FEATURES(m_MinorVersion < 4, KHR, VertexAttributeDivisor, VERTEX_ATTRIBUTE_DIVISOR);
     PNEXTCHAIN_APPEND_FEATURES(m_MinorVersion < 4, KHR, Maintenance6, MAINTENANCE_6);
     PNEXTCHAIN_APPEND_FEATURES(m_MinorVersion < 4, EXT, PipelineRobustness, PIPELINE_ROBUSTNESS);
     PNEXTCHAIN_APPEND_FEATURES(m_MinorVersion < 4, EXT, HostImageCopy, HOST_IMAGE_COPY);
@@ -1030,6 +1032,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
 
     if (m_MinorVersion < 4) {
         features14.maintenance5 = Maintenance5Features.maintenance5;
+        features14.vertexAttributeInstanceRateDivisor = VertexAttributeDivisorFeatures.vertexAttributeInstanceRateDivisor;
         features14.maintenance6 = Maintenance6Features.maintenance6;
         features14.pipelineRobustness = PipelineRobustnessFeatures.pipelineRobustness;
         features14.rectangularLines = LineRasterizationFeatures.rectangularLines;
@@ -1247,6 +1250,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         PNEXTCHAIN_APPEND_PROPS(m_MinorVersion < 4, KHR, PushDescriptor, PUSH_DESCRIPTOR);
         PNEXTCHAIN_APPEND_PROPS(m_MinorVersion < 4, KHR, Maintenance5, MAINTENANCE_5);
         PNEXTCHAIN_APPEND_PROPS(m_MinorVersion < 4, KHR, Maintenance6, MAINTENANCE_6);
+        PNEXTCHAIN_APPEND_PROPS(m_MinorVersion < 4, KHR, VertexAttributeDivisor, VERTEX_ATTRIBUTE_DIVISOR);
 
         PNEXTCHAIN_APPEND_PROPS(true, KHR, AccelerationStructure, ACCELERATION_STRUCTURE);
         PNEXTCHAIN_APPEND_PROPS(true, KHR, ComputeShaderDerivatives, COMPUTE_SHADER_DERIVATIVES);
@@ -1288,6 +1292,9 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
             props14.fragmentShadingRateClampCombinerInputs = Maintenance6Props.fragmentShadingRateClampCombinerInputs;
 
             props14.maxPushDescriptors = PushDescriptorProps.maxPushDescriptors;
+
+            props14.maxVertexAttribDivisor = VertexAttributeDivisorProps.maxVertexAttribDivisor;
+            props14.supportsNonZeroFirstInstance = VertexAttributeDivisorProps.supportsNonZeroFirstInstance;
 
             // These "local read" features were "all or nothing" before 1.4
             props14.dynamicRenderingLocalReadDepthStencilAttachments = DynamicRenderingLocalReadFeatures.dynamicRenderingLocalRead;
@@ -1731,6 +1738,8 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         m_Desc.features.unifiedTextureLayouts = UnifiedImageLayoutsFeatures.unifiedImageLayouts;
         m_Desc.features.resourceAliasing = true;
         m_Desc.features.waveLaneNumControl = features13.subgroupSizeControl && (props13.requiredSubgroupSizeStages & VK_SHADER_STAGE_COMPUTE_BIT);
+        // Instance-rate streams are usually drawn with a non-zero first instance, which divisors other than 1 only support with "supportsNonZeroFirstInstance"
+        m_Desc.features.instanceStepRate = features14.vertexAttributeInstanceRateDivisor && props14.supportsNonZeroFirstInstance;
 
         const VkVideoCodecOperationFlagsKHR decodeCodecOperations = m_IsSupported.videoMaintenance1 ? GetVideoCodecOperations(true, false) : 0;
         m_Desc.videoFeatures.decode.H264 = (decodeCodecOperations & VK_VIDEO_CODEC_OPERATION_DECODE_H264_BIT_KHR) != 0;

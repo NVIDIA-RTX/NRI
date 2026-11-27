@@ -953,7 +953,8 @@ Result PipelineMetal::ConvertShader(const ShaderDesc& shader, const ShaderLoadDe
             const bool perInstance = stream.stepRate == VertexStreamStepRate::PER_INSTANCE;
 
             layout.desc_1_0.semanticNames[i] = attribute.d3d.semanticName;
-            layout.desc_1_0.inputElementDescs[i] = {attribute.d3d.semanticIndex, GetIRVertexFormat(attribute.format), stream.bindingSlot, attribute.offset, perInstance ? 1u : 0u, perInstance ? IRInputClassificationPerInstanceData : IRInputClassificationPerVertexData};
+            const uint32_t instanceStepRate = stream.instanceStepRate ? stream.instanceStepRate : 1;
+            layout.desc_1_0.inputElementDescs[i] = {attribute.d3d.semanticIndex, GetIRVertexFormat(attribute.format), stream.bindingSlot, attribute.offset, perInstance ? instanceStepRate : 0u, perInstance ? IRInputClassificationPerInstanceData : IRInputClassificationPerVertexData};
         }
 
         IRMetalLibBinary* stageIn = IRMetalLibBinaryCreate();
@@ -1795,7 +1796,7 @@ Result PipelineMetal::Create(const GraphicsPipelineDesc& desc) {
                 MTL::VertexBufferLayoutDescriptor* layout = vertex->layouts()->object(ARGUMENT_SLOT_VERTEX_BUFFER_BASE + source.bindingSlot);
                 layout->setStride(MTL::BufferLayoutStrideDynamic);
                 layout->setStepFunction(source.stepRate == VertexStreamStepRate::PER_INSTANCE ? MTL::VertexStepFunctionPerInstance : MTL::VertexStepFunctionPerVertex);
-                layout->setStepRate(1);
+                layout->setStepRate(source.stepRate == VertexStreamStepRate::PER_INSTANCE && source.instanceStepRate ? source.instanceStepRate : 1);
             }
 
             pd->setVertexDescriptor(vertex);
