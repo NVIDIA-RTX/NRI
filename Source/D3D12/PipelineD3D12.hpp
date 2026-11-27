@@ -443,7 +443,9 @@ Result PipelineD3D12::CreateFromStream(const GraphicsPipelineDesc& graphicsPipel
 
     HRESULT hr = E_INVALIDARG;
     if (lib) {
-        FormatPipelineCacheName(HashGraphicsPipelineDesc(graphicsPipelineDesc), cacheName);
+        const uint64_t nameHash = HashGraphicsPipelineDesc(graphicsPipelineDesc);
+        FormatPipelineCacheName(nameHash, cacheName);
+        ExclusiveScope loadLock(cache->GetLoadLock(nameHash));
         hr = lib->LoadPipeline(cacheName, &pipelineStateStreamDesc, IID_PPV_ARGS(&m_PipelineState));
         if (SUCCEEDED(hr))
             return Result::SUCCESS;
@@ -488,7 +490,9 @@ Result PipelineD3D12::Create(const ComputePipelineDesc& computePipelineDesc) {
 
     HRESULT hr = E_INVALIDARG;
     if (lib) {
-        FormatPipelineCacheName(HashComputePipelineDesc(computePipelineDesc), cacheName);
+        const uint64_t nameHash = HashComputePipelineDesc(computePipelineDesc);
+        FormatPipelineCacheName(nameHash, cacheName);
+        ExclusiveScope loadLock(cache->GetLoadLock(nameHash));
         hr = lib->LoadComputePipeline(cacheName, &computePipleineStateDesc, IID_PPV_ARGS(&m_PipelineState));
         if (SUCCEEDED(hr))
             return Result::SUCCESS;
@@ -506,9 +510,7 @@ Result PipelineD3D12::Create(const ComputePipelineDesc& computePipelineDesc) {
 
     if (lib) {
         ExclusiveScope lock(cache->GetStoreLock());
-
-        hr = lib->StorePipeline(cacheName, m_PipelineState);
-        NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12PipelineLibrary::StorePipeline");
+        lib->StorePipeline(cacheName, m_PipelineState); // ignore failures (e.g., name already present), fallback PSO is still valid
     }
 
     return Result::SUCCESS;
