@@ -644,8 +644,16 @@ NRI_INLINE Result SwapChainVK::LatencySleep(uint64_t presentId) {
     sleepInfo.signalSemaphore = *m_LatencyFence;
     sleepInfo.value = presentId;
 
-    const auto& vk = m_Device.GetDispatchTable();
-    VkResult vkResult = vk.LatencySleepNV(m_Device, m_Handle, &sleepInfo);
+    // Unlike "vkSetLatencyMarkerNV", "vkLatencySleepNV" has no exception to the swapchain's external synchronization,
+    // so the call excludes "vkAcquireNextImage2KHR" and "vkQueuePresentKHR" through the same queue lock. It returns
+    // immediately; the wait for the signal below runs unlocked so that presentation can continue meanwhile.
+    VkResult vkResult;
+    {
+        ExclusiveScope lock(m_Queue->GetLock());
+
+        const auto& vk = m_Device.GetDispatchTable();
+        vkResult = vk.LatencySleepNV(m_Device, m_Handle, &sleepInfo);
+    }
     NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "LatencySleepNV");
 
     m_LatencyFence->Wait(presentId); // VK_SUCCESS is guaranteed by "NRI_RETURN_ON_BAD_VKRESULT"
