@@ -3102,7 +3102,7 @@ NRI_INLINE void CommandBufferD3D12::BuildBottomLevelAccelerationStructures(const
 
         uint32_t micromapNum = 0;
         for (uint32_t j = 0; j < desc.geometryNum; j++) {
-            const BottomLevelGeometryDesc& geometryDesc = desc.geometries[i];
+            const BottomLevelGeometryDesc& geometryDesc = desc.geometries[j];
             if (geometryDesc.type == BottomLevelGeometryType::TRIANGLES && geometryDesc.triangles.micromap)
                 micromapNum++;
         }
